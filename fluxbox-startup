@@ -6,7 +6,7 @@
 xrdb -merge ~/.Xresources
 
 # Start xterm in fullscreen mode
-xterm -name xterm-fullscreen -title "Terminal" &
+# xterm -name xterm-fullscreen -title "Terminal" &
 
 # Wait a moment for xterm to start
 sleep 1
