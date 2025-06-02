@@ -76,7 +76,8 @@ RUN mkdir -p /var/run/sshd && \
 RUN useradd -m -s /bin/bash -u 1000 vnc && \
     echo "vnc:vnc" | chpasswd && \
     usermod -aG sudo vnc && \
-    mkdir -p /home/vnc/.fluxbox
+    mkdir -p /home/vnc/.fluxbox && \
+    mkdir -p /home/vnc/mnt
 
 # Copy configuration files
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
