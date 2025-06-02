@@ -1,0 +1,11 @@
+[app] (name=xterm-fullscreen) (class=XTerm)
+  [Maximized] {yes}
+  [Deco] {NONE}
+  [Fullscreen] {yes}
+  [Close] {yes}
+[end]
+
+[app] (class=XTerm)
+  [Maximized] {yes}
+  [Close] {yes}
+[end]

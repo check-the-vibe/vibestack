@@ -1,0 +1,10 @@
+2025-06-02: Enhanced Docker container with SSH support and XTerm customization
+- Added openssh-server package and configuration
+- Exposed port 22 for SSH access
+- Created SSH user accounts (root:root, vnc:vnc)  
+- Configured XTerm with Ctrl+Shift+C/V copy/paste support
+- Applied black background with green text color scheme
+- Created Xresources configuration file
+- Updated fluxbox startup to load XTerm settings
+- Added supervisord configuration for SSH daemon
+- Documented all changes in .vibe/docs/

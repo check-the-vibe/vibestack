@@ -1,0 +1,24 @@
+! XTerm configuration
+XTerm*background: black
+XTerm*foreground: green
+XTerm*cursorColor: green
+XTerm*selectToClipboard: true
+XTerm*VT100.translations: #override \
+    Ctrl Shift <KeyPress> C: copy-selection(CLIPBOARD) \n\
+    Ctrl Shift <KeyPress> V: insert-selection(CLIPBOARD)
+
+! Enable font settings for better readability
+XTerm*faceName: DejaVu Sans Mono
+XTerm*faceSize: 12
+XTerm*utf8: 1
+XTerm*locale: true
+
+! Scrollback
+XTerm*saveLines: 2000
+XTerm*scrollBar: true
+XTerm*scrollKey: true
+XTerm*scrollTtyOutput: false
+
+! Mouse support
+XTerm*selectToClipboard: true
+XTerm*trimSelection: true
