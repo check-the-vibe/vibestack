@@ -81,13 +81,15 @@ RUN useradd -m -s /bin/bash -u 1000 vnc && \
 # Copy configuration files
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY entrypoint.sh /entrypoint.sh
 COPY --chown=vnc:vnc fluxbox-init /home/vnc/.fluxbox/init
 COPY --chown=vnc:vnc fluxbox-startup /home/vnc/.fluxbox/startup
 COPY --chown=vnc:vnc fluxbox-apps /home/vnc/.fluxbox/apps
 COPY --chown=vnc:vnc Xresources /home/vnc/.Xresources
 
 # Convert line endings to Unix format to prevent Windows compatibility issues
-RUN dos2unix /home/vnc/.fluxbox/init /home/vnc/.fluxbox/startup /home/vnc/.fluxbox/apps /home/vnc/.Xresources
+RUN dos2unix /home/vnc/.fluxbox/init /home/vnc/.fluxbox/startup /home/vnc/.fluxbox/apps /home/vnc/.Xresources /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
@@ -102,5 +104,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Expose noVNC and SSH ports
 EXPOSE ${NOVNC_PORT} 22
 
-# Run supervisor as root (it will handle user switching)
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Set entrypoint and default command
+ENTRYPOINT ["/entrypoint.sh"]
+CMD []
