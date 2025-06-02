@@ -38,6 +38,7 @@ RUN apt-get update && \
         jq \
         nano \
         vim \
+        dos2unix \
         # Security and user management
         sudo \
         openssh-server \
@@ -84,6 +85,9 @@ COPY --chown=vnc:vnc fluxbox-init /home/vnc/.fluxbox/init
 COPY --chown=vnc:vnc fluxbox-startup /home/vnc/.fluxbox/startup
 COPY --chown=vnc:vnc fluxbox-apps /home/vnc/.fluxbox/apps
 COPY --chown=vnc:vnc Xresources /home/vnc/.Xresources
+
+# Convert line endings to Unix format to prevent Windows compatibility issues
+RUN dos2unix /home/vnc/.fluxbox/init /home/vnc/.fluxbox/startup /home/vnc/.fluxbox/apps /home/vnc/.Xresources
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
