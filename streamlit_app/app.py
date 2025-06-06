@@ -18,7 +18,7 @@ def main():
         st.header("Available Files for Download")
         
         # Path to uploads/downloads directory
-        downloads_dir = Path("/home/vibe/mnt/uploads_downloads")
+        downloads_dir = Path("/home/vibe/mnt/")
         
         if not downloads_dir.exists():
             st.warning("Downloads directory not found.")
@@ -69,7 +69,7 @@ def main():
         )
         
         if uploaded_files:
-            downloads_dir = Path("/home/vibe/mnt/uploads_downloads")
+            downloads_dir = Path("/home/vibe/mnt/")
             downloads_dir.mkdir(exist_ok=True)
             
             for uploaded_file in uploaded_files:

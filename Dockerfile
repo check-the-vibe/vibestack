@@ -90,6 +90,7 @@ COPY --chown=vibe:vibe fluxbox-init /home/vibe/.fluxbox/init
 COPY --chown=vibe:vibe fluxbox-startup /home/vibe/.fluxbox/startup
 COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
+COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 
 # Convert line endings to Unix format to prevent Windows compatibility issues
 RUN dos2unix /home/vibe/.fluxbox/init /home/vibe/.fluxbox/startup /home/vibe/.fluxbox/apps /home/vibe/.Xresources /entrypoint.sh && \
