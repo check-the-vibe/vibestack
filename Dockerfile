@@ -1,8 +1,8 @@
 FROM ubuntu:22.04
 
 # Metadata
-LABEL maintainer="NoVNC Docker Project"
-LABEL description="Lightweight VNC desktop environment using Fluxbox and noVNC"
+LABEL maintainer="VibeStack Project"
+LABEL description="VibeStack - Lightweight VNC desktop environment using Fluxbox and noVNC"
 LABEL version="1.0"
 
 # Environment variables
@@ -12,6 +12,8 @@ ENV NOVNC_PORT=6080
 ENV VNC_PORT=5900
 ENV RESOLUTION=1280x720
 ENV VNC_PASSWORD=""
+ENV ROOT_PASSWORD=""
+ENV VIBE_PASSWORD="coding"
 
 # Install packages for VNC and desktop environment
 RUN apt-get update && \
@@ -65,45 +67,47 @@ RUN npx -y playwright install chrome
 # Install llm cli
 RUN pip install llm
 
-# Configure SSH server
+# Install Streamlit
+RUN pip install streamlit
+
+# Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
-    echo 'root:root' | chpasswd && \
     sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     ssh-keygen -A
 
 # Create non-root user for better security
-RUN useradd -m -s /bin/bash -u 1000 vnc && \
-    echo "vnc:vnc" | chpasswd && \
-    usermod -aG sudo vnc && \
-    mkdir -p /home/vnc/.fluxbox && \
-    mkdir -p /home/vnc/mnt
+RUN useradd -m -s /bin/bash -u 1000 vibe && \
+    usermod -aG sudo vibe && \
+    mkdir -p /home/vibe/.fluxbox && \
+    mkdir -p /home/vibe/mnt
 
 # Copy configuration files
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY entrypoint.sh /entrypoint.sh
-COPY --chown=vnc:vnc fluxbox-init /home/vnc/.fluxbox/init
-COPY --chown=vnc:vnc fluxbox-startup /home/vnc/.fluxbox/startup
-COPY --chown=vnc:vnc fluxbox-apps /home/vnc/.fluxbox/apps
-COPY --chown=vnc:vnc Xresources /home/vnc/.Xresources
+COPY --chown=vibe:vibe fluxbox-init /home/vibe/.fluxbox/init
+COPY --chown=vibe:vibe fluxbox-startup /home/vibe/.fluxbox/startup
+COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
+COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
+COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 
 # Convert line endings to Unix format to prevent Windows compatibility issues
-RUN dos2unix /home/vnc/.fluxbox/init /home/vnc/.fluxbox/startup /home/vnc/.fluxbox/apps /home/vnc/.Xresources /entrypoint.sh && \
+RUN dos2unix /home/vibe/.fluxbox/init /home/vibe/.fluxbox/startup /home/vibe/.fluxbox/apps /home/vibe/.Xresources /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
-    chown -R vnc:vnc /home/vnc && \
-    chmod 755 /home/vnc/.fluxbox && \
-    chmod +x /home/vnc/.fluxbox/startup
+    chown -R vibe:vibe /home/vibe && \
+    chmod 755 /home/vibe/.fluxbox && \
+    chmod +x /home/vibe/.fluxbox/startup
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
 
-# Expose noVNC and SSH ports
-EXPOSE ${NOVNC_PORT} 22
+# Expose noVNC, SSH, and Streamlit ports
+EXPOSE ${NOVNC_PORT} 22 8501
 
 # Set entrypoint and default command
 ENTRYPOINT ["/entrypoint.sh"]
