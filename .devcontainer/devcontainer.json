@@ -1,0 +1,19 @@
+{
+  "name": "Vibestack DevContainer",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "runArgs": [
+    "--init"
+  ],
+  "postStartCommand": "/bin/bash -c /entrypoint.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {},
+      "extensions": []
+    }
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/vibestack"
+}
