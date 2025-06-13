@@ -1,10 +1,16 @@
 # VibeStack Command Center Menu
 
 ## Overview
-The VibeStack Command Center is an interactive menu system built with Ink that provides quick access to commonly used development tools.
+The VibeStack Command Center is an interactive menu system built with Ink that provides quick access to commonly used development tools. It automatically appears when you open a new terminal.
 
-## Usage
-Run the menu by typing:
+## Automatic Launch
+The menu automatically launches when you open a new terminal session. To disable this behavior:
+```bash
+export VIBESTACK_NO_MENU=true
+```
+
+## Manual Usage
+Run the menu anytime by typing:
 ```bash
 vibestack-menu
 ```
@@ -17,7 +23,8 @@ vibestack-menu
 ## Menu Options
 1. **Run Claude**: Launches the Claude AI assistant
 2. **LLM Help**: Shows help for the LLM command-line tool
-3. **Exit**: Closes the menu
+3. **Skip to Shell**: Exits the menu and continues to the shell prompt
+4. **Exit Menu**: Exits the current terminal session
 
 ## Implementation Details
 
