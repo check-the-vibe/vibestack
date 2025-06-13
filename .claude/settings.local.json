@@ -12,7 +12,9 @@
       "Bash(git add:*)",
       "Bash(npm install:*)",
       "Bash(npm view:*)",
-      "Bash(ln:*)"
+      "Bash(ln:*)",
+      "Bash(vibestack-menu)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
