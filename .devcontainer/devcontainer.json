@@ -7,7 +7,16 @@
   "runArgs": [
     "--init"
   ],
-  "postStartCommand": "/bin/bash -c /entrypoint.sh",
+  "forwardPorts": [80],
+  "portsAttributes": {
+    "80": {
+      "label": "Web Server",
+      "onAutoForward": "openPreview",
+      "requireLocalPort": false,
+      "protocol": "http"
+    }
+  },
+  "postStartCommand": "/bin/bash -c /entrypoint.sh & echo 'App running at http://localhost/' && exec bash",
   "customizations": {
     "vscode": {
       "settings": {},
