@@ -9,7 +9,10 @@
       "Bash(dos2unix:*)",
       "Bash(/opt/vibestack-welcome.sh:*)",
       "Bash(node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(ln:*)"
     ],
     "deny": []
   }

@@ -12,3 +12,4 @@ For all research tasks, document your findings in .vibe/docs/, in a markdown fil
 
 ## Development
 1. ✅ COMPLETED - Implement the phrase "Welcome to VibeStack" in the Ink library as a startup message. Remove the original echo and just use an interesting ink implementation. (Implemented at /opt/vibestack-ink/simple.js with gradient styling and informative messages) 
+2. ✅ COMPLETED - Create a selection menu, first item will simply run the "claude" command, second item will run the "llm --help" command. Allow the user to navigate with arrow keys. (Implemented at /opt/vibestack-ink/menu.js, accessible via "vibestack-menu" command)
