@@ -1,3 +1,10 @@
 title,url
-Claude Documentation, https://docs.anthropic.com/en/docs/claude-code/overview
-Ink - React for CLI, https://github.com/vadimdemedes/ink
+Claude Documentation,https://docs.anthropic.com/en/docs/claude-code/overview
+Claude Code Starter Template,https://github.com/check-the-vibe/claude-code-starter-template.git
+Ink library,https://github.com/vadimdemedes/ink
+Creating CLIs with Ink React and magic,https://vadimdemedes.com/posts/creating-clis-with-ink-react-and-a-bit-of-magic
+React Ink CLI Tutorial FreeCodeCamp,https://www.freecodecamp.org/news/react-js-ink-cli-tutorial/
+Ink UI Components,https://github.com/vadimdemedes/ink-ui
+Dev Container metadata reference,https://containers.dev/implementors/json_reference/
+VS Code Start Processes in Containers,https://code.visualstudio.com/remote/advancedcontainers/start-processes
+Shipping user friendly bash scripts with Dev Container,https://keestalkstech.com/shipping-user-friendly-bash-scripts-with-your-dev-container/

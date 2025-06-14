@@ -1,20 +1,61 @@
-2025-06-02: Enhanced Docker container with SSH support and XTerm customization
-- Added openssh-server package and configuration
-- Exposed port 22 for SSH access
-- Created SSH user accounts (root:root, vnc:vnc)  
-- Configured XTerm with Ctrl+Shift+C/V copy/paste support
-- Applied black background with green text color scheme
-- Created Xresources configuration file
-- Updated fluxbox startup to load XTerm settings
-- Added supervisord configuration for SSH daemon
-- Documented all changes in .vibe/docs/
+Starting task execution. Tasks identified:
+- Research Ink CLI library 
+- Research shell startup script approach
+- POC: Set up basic echo script as startup
+- Development: Implement "Welcome to VibeStack" using Ink library
 
-2025-01-13: Implemented VibeStack welcome message system
-- Researched Ink (React for CLI) and documented in ink-overview.md
-- Documented bash startup scripts approach in bash-startup-scripts.md
-- Created vibestack-welcome script with "hello" test message
-- Updated Dockerfile to install Ink dependencies (npm install ink react)
-- Added welcome script to Docker build process
-- Configured bashrc for both root and vibe users to run welcome script
-- Updated welcome script with final VibeStack branding message
-- All tasks completed successfully
+Starting research on Ink CLI library...
+Completed Ink library research - documented in ink-library-research.md
+
+Researching shell startup scripts for Docker/devcontainer...
+Completed shell startup research - documented in shell-startup-research.md
+
+Setting up POC echo script...
+Created /opt/vibestack-welcome.sh and added to /root/.bashrc
+POC completed - basic echo script working
+
+Implementing Ink-based welcome message...
+Created Ink app at /opt/vibestack-ink/ with gradient-styled welcome message
+Completed implementation - Ink welcome message now displays on shell startup
+
+Session completed - All tasks finished successfully.
+
+--- New Session ---
+Creating selection menu with arrow key navigation for claude and llm commands...
+Installed ink-select-input@5 for menu functionality
+Created interactive menu at /opt/vibestack-ink/menu.js
+Created display-only version for non-interactive terminals
+Added wrapper script and symlink for easy access via "vibestack-menu"
+Updated welcome message to mention the command center
+Documented implementation in vibestack-menu-documentation.md
+Task completed successfully.
+
+--- New Task ---
+Implementing interactive menu as default welcome screen...
+Modified welcome script to show menu after brief welcome message
+Added "Skip to Shell" option to menu
+Added "Exit Menu" option for exiting terminal
+Added VIBESTACK_NO_MENU environment variable to disable auto-menu
+Updated documentation with new behavior
+Task completed successfully.Starting analysis of container setup...
+Checking vibe user bashrc...
+Reviewing supervisord setup - runs as root but spawns most processes as vibe user
+Planning migration from root to vibe user...
+
+--- Execution Plan Complete ---
+Migration plan documented in TASKS.md
+Ready to execute changes to migrate from root to vibe user
+Starting execution - updating devcontainer.json...
+
+--- Task Execution Complete ---
+Successfully migrated container to use vibe user as default
+Updated entrypoint.sh for better user handling
+Created vibestack-terminal-init.sh for startup tasks
+All scripts converted to Unix format and made executable
+
+--- Startup Message Verification ---
+Fixed title to 'Vibe Stack' (was 'Vibe StacK')
+Removed 'Starting VibeStack services...' message
+Removed 'App running at http://localhost/' from devcontainer.json
+Removed non-interactive welcome messages
+Now only one startup message: interactive menu with 'Vibe Stack' title

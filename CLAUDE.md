@@ -5,18 +5,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Focus on project root when performing your actions. The following files are meant to guide you while developing:
-- .vibe/docs
-- .vibe/tasks
+- .vibe/docs/
+- .vibe/TASKS.md
 - .vibe/ERRORS.md
-- .vibe/INSTRUCTIONS.md
-- .vibe/LINKS.md
+- .vibe/PERSONA.md
+- .vibe/LINKS.csv
 - .vibe/LOG.txt
+- .vibe/ENVIRONMENT.md
 
-Your instructions you will follow are in INSTRUCTIONS.md. If INSTRUCTIONS.md is empty, check .vibe/tasks for any open tasks, determine which task is best to complete next and ask the user for permission to continue with the task in question. If there are no INSTRUCTIONS or TASKS, continue with your assumption of what the user is looking to achieve. WHen you complete an action, please clear the INSTRUCTIONS.md file to prepare for the next action. 
+Read through .vibe/ENVIRONMENT.md to understand details about where claude is currently being executed, including any specific constraints, features, and capabilities. You may need to refer to documentation in .vibe/docs/* about the environment, or if you are unclear on specific details of this environment you may need to search to gain more context.
 
-Any errors that occured in a previous development iteration are stored in ERRORS.md. If no errors are found,it is either the first iteration or no errors have occurred. Once you have completed your actions based on your prompt, INSTRUCTIONS and ERRORS, please clear the ERRORS.md file. 
+Assume the role that is defined in .vibe/PERSONA.md. This will define how you should respond to requests. Use this persona throughout the rest of your tasks. 
 
-Add any tasks that need actioning are in the tasks/ folder. By default there will be one TASKS.md file, however there may be more taks in this folder, read all tasks in the folder.  When a task is complete, update the relevant task file showing that this task is completed. Do so in a way that makes it easy to scan later for open and closed tasks. 
+Any errors that occured in a previous development iteration are stored in ERRORS.md. If no errors are found,it is either the first iteration or no errors have occurred. Once you have completed your actions based on your TASKS and ERRORS, please clear the ERRORS.md file. 
+
+Add any tasks that need actioning are in TASKS.md folder. By default there will be one TASKS.md file, however there may be more taks in this folder, read all tasks in the folder.  When a task is complete, update the relevant task file showing that this task is completed. Do so in a way that makes it easy to scan later for open and closed tasks. 
 
 Relevant documentation can be found in the folder .vibe/docs. You will find different formats of document there, use this to supplement your approach, your understanding, and your actions. You may choose to use these documents if you need more context or guidance. Not every task will require this action. As you learn more from your own actions, the output of running code, or from querying the web, place relevant information in the docs folder. You can choose the structure that best works for you. 
 
@@ -28,4 +31,17 @@ You are working in a project which has git as a requirement. If you find there i
 
 ## Development Commands
 
-When the user provides a specific project idea, you can add your relvant development commands here. 
+Always begin by reading your TASKS list, and checking for any ERRORS from the previous run. Use the LOG to check for previous actions and prompts. Read through the documentation found in /vibe/docs/*. 
+
+Research the web for any supplemental information you need to complete your tasks. If you use a LINK from the web, write it to LINKS.csv. Store any necessary documentation in the .vibe/docs/* folder with an appropriate file name. 
+
+Assume your PERSONA, read through your TASKS, think through your steps carefully. 
+
+Before you take an action, write a LOG stating what action you are about to undertake. Do this for each action you take. 
+
+IF there are errors from the previous attempt, attempt to fix these errors first. 
+IF there are no errors, begin completing your tasks. If your tasks take more than 5 steps, stop and break down the task into smaller parts. Add these subtasks to .vibe/TASKS.md, then continue taking your actions. 
+
+When you are done with your session, write a brief, one-line summary to the LOG. When you complete a TASK, set the TASK as completed in the TASKS list. 
+
+Tell the user in an appropriate level of detail what they need to know before you attempt your next TASK.

@@ -13,16 +13,11 @@
       "label": "Web Server",
       "onAutoForward": "openPreview",
       "requireLocalPort": false,
-      "protocol": "http"
+      "protocol": "http",
+      "visibility": "public"
     }
   },
-  "postStartCommand": "/bin/bash -c /entrypoint.sh & echo 'App running at http://localhost/' && exec bash",
-  "customizations": {
-    "vscode": {
-      "settings": {},
-      "extensions": []
-    }
-  },
-  "remoteUser": "root",
+  "postStartCommand": "sudo /bin/bash -c '/entrypoint.sh'",
+  "remoteUser": "vibe",
   "workspaceFolder": "/workspaces/vibestack"
 }

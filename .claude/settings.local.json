@@ -3,11 +3,7 @@
     "allow": [
       "Bash(ls:*)",
       "Bash(mkdir:*)",
-      "Bash(grep:*)",
-      "WebFetch(domain:github.com)",
-      "Bash(chmod:*)",
-      "Bash(/workspaces/vibestack/vibestack-welcome)",
-      "Bash(git add:*)"
+      "Bash(grep:*)"
     ],
     "deny": []
   }
