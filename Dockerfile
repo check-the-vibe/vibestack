@@ -101,9 +101,6 @@ COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 
-# Copy welcome script
-COPY vibestack-welcome /usr/local/bin/vibestack-welcome
-
 # Copy VibeStack menu
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
 COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
