@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "VibeStack"
+echo 'type "claude", "codex" or "help" to get started'

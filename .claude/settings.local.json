@@ -3,20 +3,7 @@
     "allow": [
       "Bash(ls:*)",
       "Bash(mkdir:*)",
-      "Bash(grep:*)",
-      "Bash(chmod:*)",
-      "Bash(bash:*)",
-      "Bash(dos2unix:*)",
-      "Bash(/opt/vibestack-welcome.sh:*)",
-      "Bash(node:*)",
-      "Bash(git add:*)",
-      "Bash(npm install:*)",
-      "Bash(npm view:*)",
-      "Bash(ln:*)",
-      "Bash(vibestack-menu)",
-      "Bash(git commit:*)",
-      "Bash(touch:*)",
-      "Bash(source:*)"
+      "Bash(grep:*)"
     ],
     "deny": []
   }
