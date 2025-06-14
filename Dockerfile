@@ -122,10 +122,6 @@ RUN mkdir -p /var/log/supervisor /var/run && \
     chmod 755 /home/vibe/.fluxbox && \
     chmod +x /home/vibe/.fluxbox/startup
 
-# Add welcome script to bashrc for both users
-RUN echo -e '\n# VibeStack welcome message\nif [ -f /usr/local/bin/vibestack-welcome ]; then\n    /usr/local/bin/vibestack-welcome\nfi' >> /root/.bashrc && \
-    echo -e '\n# VibeStack welcome message\nif [ -f /usr/local/bin/vibestack-welcome ]; then\n    /usr/local/bin/vibestack-welcome\nfi' >> /home/vibe/.bashrc
-
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
