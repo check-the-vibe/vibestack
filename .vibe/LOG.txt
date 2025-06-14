@@ -37,4 +37,25 @@ Added "Skip to Shell" option to menu
 Added "Exit Menu" option for exiting terminal
 Added VIBESTACK_NO_MENU environment variable to disable auto-menu
 Updated documentation with new behavior
-Task completed successfully.
+Task completed successfully.Starting analysis of container setup...
+Checking vibe user bashrc...
+Reviewing supervisord setup - runs as root but spawns most processes as vibe user
+Planning migration from root to vibe user...
+
+--- Execution Plan Complete ---
+Migration plan documented in TASKS.md
+Ready to execute changes to migrate from root to vibe user
+Starting execution - updating devcontainer.json...
+
+--- Task Execution Complete ---
+Successfully migrated container to use vibe user as default
+Updated entrypoint.sh for better user handling
+Created vibestack-terminal-init.sh for startup tasks
+All scripts converted to Unix format and made executable
+
+--- Startup Message Verification ---
+Fixed title to 'Vibe Stack' (was 'Vibe StacK')
+Removed 'Starting VibeStack services...' message
+Removed 'App running at http://localhost/' from devcontainer.json
+Removed non-interactive welcome messages
+Now only one startup message: interactive menu with 'Vibe Stack' title

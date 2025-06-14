@@ -16,13 +16,13 @@
       "protocol": "http"
     }
   },
-  "postStartCommand": "/bin/bash -c /entrypoint.sh & echo 'App running at http://localhost/' && exec bash",
+  "postStartCommand": "/bin/bash -c '/entrypoint.sh &' && exec bash",
   "customizations": {
     "vscode": {
       "settings": {},
       "extensions": []
     }
   },
-  "remoteUser": "root",
+  "remoteUser": "vibe",
   "workspaceFolder": "/workspaces/vibestack"
 }

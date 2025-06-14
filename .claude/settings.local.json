@@ -14,7 +14,9 @@
       "Bash(npm view:*)",
       "Bash(ln:*)",
       "Bash(vibestack-menu)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(touch:*)",
+      "Bash(source:*)"
     ],
     "deny": []
   }

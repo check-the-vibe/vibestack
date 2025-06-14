@@ -135,7 +135,7 @@ export const VibeStackMenu = () => {
   },
     React.createElement(Box, { marginBottom: 2 },
       React.createElement(Gradient, { name: 'rainbow' },
-        React.createElement(BigText, { text: 'Vibe StacK', font: 'block' })
+        React.createElement(BigText, { text: 'Vibe Stack', font: 'block' })
       )
     ),
     
