@@ -47,3 +47,25 @@ temp/
 # VNC specific
 .vnc/
 .Xauthority
+
+# Node.js / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.npm
+.eslintcache
+.node_repl_history
+*.tsbuildinfo
+
+# Node.js build output
+dist/
+build/
+out/
+
+# Vibestack menu specific
+vibestack-menu/node_modules/
+vibestack-menu/dist/
+vibestack-menu/build/
+vibestack-menu/.cache/

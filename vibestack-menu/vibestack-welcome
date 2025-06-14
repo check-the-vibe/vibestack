@@ -1,0 +1,18 @@
+#!/bin/bash
+# VibeStack Welcome Menu
+
+# Check if we should skip the menu
+if [ "$VIBESTACK_NO_MENU" = "1" ]; then
+    echo "Welcome to VibeStack! (Menu skipped)"
+    exit 0
+fi
+
+# Check if this is an interactive terminal
+if [ -t 0 ] && [ -t 1 ]; then
+    # Run the interactive menu
+    cd /workspaces/vibestack/vibestack-menu && node menu.js
+else
+    # Non-interactive, just show a message
+    echo "Welcome to VibeStack!"
+    echo "Run 'vibestack-welcome' to access the menu."
+fi

@@ -92,9 +92,16 @@ COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 
+# Copy VibeStack menu
+COPY --chown=vibe:vibe vibestack-menu /workspaces/vibestack/vibestack-menu
+COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
+
 # Convert line endings to Unix format to prevent Windows compatibility issues
-RUN dos2unix /home/vibe/.fluxbox/init /home/vibe/.fluxbox/startup /home/vibe/.fluxbox/apps /home/vibe/.Xresources /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+RUN dos2unix /home/vibe/.fluxbox/init /home/vibe/.fluxbox/startup /home/vibe/.fluxbox/apps /home/vibe/.Xresources /entrypoint.sh /setup-vibestack-menu.sh && \
+    chmod +x /entrypoint.sh /setup-vibestack-menu.sh && \
+    cd /workspaces/vibestack/vibestack-menu && npm install && \
+    chmod +x /workspaces/vibestack/vibestack-menu/vibestack-welcome && \
+    /setup-vibestack-menu.sh
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
