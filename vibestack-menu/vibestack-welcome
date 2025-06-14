@@ -9,7 +9,7 @@ fi
 # Check if this is an interactive terminal
 if [ -t 0 ] && [ -t 1 ]; then
     # Run the interactive menu
-    cd /workspaces/vibestack/vibestack-menu && node menu.js
+    cd /workspaces/vibestack/vibestack-menu && npm install && node menu.js
 else
     # Non-interactive terminal, don't show any messages
     exit 0

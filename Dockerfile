@@ -79,8 +79,14 @@ RUN mkdir -p /var/run/sshd && \
 # Create non-root user for better security
 RUN useradd -m -s /bin/bash -u 1000 vibe && \
     usermod -aG sudo vibe && \
-    mkdir -p /home/vibe/.fluxbox && \
-    mkdir -p /home/vibe/mnt
+    mkdir -p /home/vibe/.fluxbox
+
+# Allow vibe to sudo without a password
+RUN echo 'vibe ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/vibe && \
+    chmod 440 /etc/sudoers.d/vibe
+
+# (optional) set the vibe user’s actual login password from your ENV
+RUN echo "vibe:${VIBE_PASSWORD}" | chpasswd
 
 # Copy configuration files
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -93,15 +99,22 @@ COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 
 # Copy VibeStack menu
-COPY --chown=vibe:vibe vibestack-menu /workspaces/vibestack/vibestack-menu
+COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
 COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 
-# Convert line endings to Unix format to prevent Windows compatibility issues
-RUN dos2unix /home/vibe/.fluxbox/init /home/vibe/.fluxbox/startup /home/vibe/.fluxbox/apps /home/vibe/.Xresources /entrypoint.sh /setup-vibestack-menu.sh && \
-    chmod +x /entrypoint.sh /setup-vibestack-menu.sh && \
-    cd /workspaces/vibestack/vibestack-menu && npm install && \
-    chmod +x /workspaces/vibestack/vibestack-menu/vibestack-welcome && \
-    /setup-vibestack-menu.sh
+# Convert line endings to Unix format & set +x
+RUN dos2unix \
+      /home/vibe/.fluxbox/init \
+      /home/vibe/.fluxbox/startup \
+      /home/vibe/.fluxbox/apps \
+      /home/vibe/.Xresources \
+      /entrypoint.sh \
+      /setup-vibestack-menu.sh \
+      /home/vibe/vibestack-menu/vibestack-welcome && \
+    chmod +x \
+      /entrypoint.sh \
+      /setup-vibestack-menu.sh \
+      /home/vibe/vibestack-menu/vibestack-welcome
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
@@ -116,6 +129,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Expose noVNC, SSH, and Streamlit ports
 EXPOSE ${NOVNC_PORT} 22 8501
 
+RUN /bin/bash -c "/setup-vibestack-menu.sh"
+
 # Set entrypoint and default command
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["sudo", "/entrypoint.sh"]
 CMD []

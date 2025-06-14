@@ -36,8 +36,8 @@ main() {
     fi
     
     # Run the welcome menu
-    if [ -f /workspaces/vibestack/vibestack-menu/vibestack-welcome ]; then
-        /workspaces/vibestack/vibestack-menu/vibestack-welcome
+    if [ -f /home/vibe/vibestack-menu/vibestack-welcome ]; then
+        /home/vibe/vibestack-menu/vibestack-welcome
     fi
 }
 

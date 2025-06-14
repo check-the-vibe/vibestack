@@ -1,11 +1,18 @@
 #!/bin/bash
 
+# Ensure script is running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: entrypoint.sh must be run as root to set user passwords. Exiting."
+    exit 1
+fi
+
 # Set up passwords at startup
 setup_passwords() {
     # Set root password (randomize if not provided via environment)
     if [ -z "$ROOT_PASSWORD" ]; then
-        ROOT_PASSWORD=$(openssl rand -base64 32)
-        echo "Generated random root password: $ROOT_PASSWORD"
+        # Optionally generate a random password here if desired
+        echo "Warning: ROOT_PASSWORD not set. Using default 'root'."
+        ROOT_PASSWORD="root"
     fi
     echo "root:$ROOT_PASSWORD" | chpasswd
     

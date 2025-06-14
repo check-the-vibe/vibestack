@@ -11,14 +11,14 @@ if ! grep -q "vibestack-welcome" /home/vibe/.bashrc; then
     cat >> /home/vibe/.bashrc << 'EOF'
 
 # VibeStack Welcome Menu
-if [ -f /workspaces/vibestack/vibestack-menu/vibestack-welcome ]; then
-    /workspaces/vibestack/vibestack-menu/vibestack-welcome
+if [ -f /home/vibe/vibestack-menu/vibestack-welcome ]; then
+    /home/vibe/vibestack-menu/vibestack-welcome
 fi
 EOF
 fi
 
 # Create symlink for easy access
-ln -sf /workspaces/vibestack/vibestack-menu/vibestack-welcome /usr/local/bin/vibestack-menu 2>/dev/null || true
+ln -sf /home/vibe/vibestack-menu/vibestack-welcome /usr/local/bin/vibestack-menu 2>/dev/null || true
 
 # Ensure correct permissions
 chown vibe:vibe /home/vibe/.bashrc
