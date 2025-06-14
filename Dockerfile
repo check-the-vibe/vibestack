@@ -58,9 +58,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
 # Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code
 
-# Install Ink for CLI welcome message
-RUN npm install -g ink react
-
 # Install playwright MCP
 RUN npm install -g playwright-mcp
 
