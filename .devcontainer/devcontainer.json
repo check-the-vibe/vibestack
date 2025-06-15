@@ -4,9 +4,6 @@
     "dockerfile": "../Dockerfile",
     "context": ".."
   },
-  "runArgs": [
-    "--init"
-  ],
   "forwardPorts": [80],
   "portsAttributes": {
     "80": {
@@ -17,7 +14,9 @@
       "visibility": "public"
     }
   },
-  "postStartCommand": "sudo /bin/bash -c '/entrypoint.sh'",
+  "overrideCommand": false,
+  "init": true,
+  "postStartCommand": "echo 'Container ready!'",
   "remoteUser": "vibe",
   "workspaceFolder": "/workspaces/vibestack"
 }

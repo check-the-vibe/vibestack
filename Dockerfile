@@ -132,5 +132,5 @@ EXPOSE ${NOVNC_PORT} 22 8501
 RUN /bin/bash -c "/setup-vibestack-menu.sh"
 
 # Set entrypoint and default command
-ENTRYPOINT ["sudo", "/entrypoint.sh"]
-CMD []
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
