@@ -3,13 +3,42 @@ import os
 from pathlib import Path
 
 st.set_page_config(
-    page_title="File Manager",
-    page_icon="📁",
+    page_title="VibeStack Control Panel",
+    page_icon="🎛️",
     layout="wide"
 )
 
 def main():
-    st.title("📁 File Manager")
+    st.title("🎛️ VibeStack Control Panel")
+    st.markdown("Welcome to the VibeStack development environment control panel.")
+    
+    # Overview section
+    st.header("🚀 Quick Start")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.info("""
+        ### Edit Configuration Files
+        Navigate to the pages in the sidebar to edit:
+        - 📝 **ENVIRONMENT.md** - Container setup
+        - 🚨 **ERRORS.md** - Track errors
+        - 🔗 **LINKS.csv** - External resources
+        - 🎭 **PERSONA.md** - Claude's behavior
+        - ✅ **TASKS.md** - Project tasks
+        """)
+    
+    with col2:
+        st.success("""
+        ### Run Claude Code
+        - 🤖 Go to **Claude Code** page
+        - Configure your session prompt
+        - Start a session to work on tasks
+        - View real-time output
+        - Export session logs
+        """)
+    
+    st.divider()
+    st.header("📁 File Manager")
     
     # Create tabs for different functions
     tab1, tab2 = st.tabs(["📥 Downloads", "📤 Upload"])

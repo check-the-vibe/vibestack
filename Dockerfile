@@ -67,8 +67,8 @@ RUN npx -y playwright install chrome
 # Install llm cli
 RUN pip install llm
 
-# Install Streamlit
-RUN pip install streamlit
+# Install Streamlit and Claude Code SDK
+RUN pip install streamlit claude-code-sdk
 
 # Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
