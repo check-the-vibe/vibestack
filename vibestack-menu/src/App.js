@@ -69,6 +69,7 @@ export const VibeStackMenu = () => {
     // Spawn the command in a way that gives it control of the terminal
     spawn(command, [], {
       stdio: 'inherit',
+      cwd: '/workspaces/vibestack',
       shell: true,
       detached: false
     });
