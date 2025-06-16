@@ -55,6 +55,9 @@ RUN apt-get update && \
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
     apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
 
+# Install ttyd binary from github releases
+RUN wget https://github.com/tsl0922/ttyd/releases/download/1.6.3/ttyd.x86_64 -O /usr/bin/ttyd && chmod +x /usr/bin/ttyd
+
 # Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code
 
