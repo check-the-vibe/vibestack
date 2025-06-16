@@ -17,6 +17,5 @@
   "overrideCommand": false,
   "init": true,
   "postStartCommand": "echo 'Container ready!'",
-  "remoteUser": "vibe",
-  "workspaceFolder": "/workspaces/vibestack"
+  "remoteUser": "vibe"
 }
