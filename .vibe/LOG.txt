@@ -69,3 +69,31 @@ Implemented terminal iframe component with responsive sizing
 Added sidebar controls for height adjustment
 Fixed terminal URL to match nginx config (/terminal/)
 Task completed successfully - terminal now embedded in streamlit app
+
+--- New Session: Fix npm install duplicate ---
+Working on removing duplicate npm install from vibestack-menu startup...
+Found issue: npm install runs every time in /home/vibe/vibestack-menu/vibestack-welcome line 12
+Analyzing Dockerfile - vibestack-menu is copied but npm install not run during build
+Planning fix: Add npm install to Dockerfile to run during image build
+Implementing fix...
+Added npm install to Dockerfile after COPY vibestack-menu (line 109)
+Removed npm install from vibestack-welcome script (line 12)
+Task completed - npm dependencies will now be installed during Docker build
+
+--- Starting README creation ---
+Gathering context about VibeStack project...
+Created comprehensive README.md with:
+- Project overview and features
+- Quick start guides for Codespaces and Docker
+- Access methods (web interfaces and SSH)
+- Pre-installed tools documentation
+- Interactive command center usage
+- Configuration options
+- Architecture overview
+- Troubleshooting section
+Task completed - README.md created successfully
+
+--- Session Complete ---
+All tasks completed successfully. Both issues resolved:
+1. npm install duplicate removed - now runs during Docker build
+2. README.md created with comprehensive documentation

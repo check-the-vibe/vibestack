@@ -1,21 +1,3 @@
-<!-- This document holds the tasks that have previously been completed, or need to be completed. Please ensure a consistent format for your tasks. Please add to this list when performing a task. You can also choose to add ideas for future work here, even if you are not intending to take those actions currently. -->
-
-1. ✅ COMPLETED - Research the project https://github.com/vadimdemedes/ink?tab=readme-ov-file, document a brief overview of how we can create a welcome login message when a user logs in to a shell. Add your documentation in .vibe/docs/* in a filename of your choosing. 
-   - Created: /workspaces/vibestack/.vibe/docs/ink-overview.md
-   
-2. ✅ COMPLETED - Research the best way to add a starting script for a bash shell, currently devcontainer is using the 'root' user to launch terminals. Document your recommended method in .vibe/docs
-   - Created: /workspaces/vibestack/.vibe/docs/bash-startup-scripts.md
-   
-3. ✅ COMPLETED - Implement a basic welcome message (echo'ing "hello")
-   - Created: /workspaces/vibestack/vibestack-welcome
-   - Added to /root/.bashrc
-   
-4. ✅ COMPLETED - Add the ink file to the docker file build process
-   - Updated Dockerfile to install ink and react via npm
-   - Added vibestack-welcome script to Docker build
-   - Configured bashrc for both root and vibe users
-   
-5. ✅ COMPLETED - Create a "welcome" script that says: 
-VibeStack
-type "claude", "codex" or "help" to get started
-   - Updated vibestack-welcome script with the specified message
+1. ✅ COMPLETED - Determine the best course of action for removing the npm install line (12):
+cd /home/vibe/vibestack-menu && npm install && node menu.js from vibestack-menu/from vibesetack-welcome, and only npm installing once. Ideally this would happen after the image is built, so we are not backing node_modles into our repo, but before a bash shell is run by a user for the first time. Implement this fix in the best way you can. 
+2. ✅ COMPLETED - Based on the history, log, context, .devcontainer/devcontainer.json, Dockerfile, and other context, write a README that explains how to use this project. The project should be called "VibeStack". 

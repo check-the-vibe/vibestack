@@ -105,6 +105,9 @@ COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
 COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 
+# Install npm dependencies for vibestack-menu
+RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
+
 # Convert line endings to Unix format & set +x
 RUN dos2unix \
       /home/vibe/.fluxbox/init \
