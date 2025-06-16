@@ -20,16 +20,14 @@
    - Press 2 to select LLM
    - Press Enter or Ctrl+S to start with selected provider
    
-   ### Environment Tab:
-   - Press Tab to navigate to Environment tab
-   - Type your environment configuration (e.g., "GitHub Codespaces, Docker")
-   - Press Ctrl+S to save to .vibe/ENVIRONMENT.md
-   
-   ### Tasks Tab:
-   - Press Tab to navigate to Tasks tab
-   - Type your tasks
-   - For multiline: Shift+Enter adds a new line
-   - Press Ctrl+S to save to .vibe/TASKS.md
+   ### Configuration Tab:
+   - Press Tab to navigate to Configuration tab
+   - Two input fields: Environment and Tasks
+   - Use ↑↓ arrow keys to switch between fields
+   - The active field has full opacity, inactive field is dimmed
+   - Type in the active field
+   - For Tasks field: Shift+Enter adds a new line
+   - Press Ctrl+S to save both fields to .vibe/ENVIRONMENT.md and .vibe/TASKS.md
    
    ### Tools Tab:
    - Shows "Coming Soon!" message
@@ -45,6 +43,10 @@
 - [ ] Loading screen appears and transitions after 2 seconds
 - [ ] Can navigate between all tabs using Tab key
 - [ ] Provider selection works with keys 1 and 2
-- [ ] Environment text input accepts typing and saves
-- [ ] Tasks text input accepts multiline text and saves
+- [ ] Configuration tab shows both Environment and Tasks fields
+- [ ] Can switch between fields with ↑↓ arrow keys
+- [ ] Active field is highlighted, inactive field is dimmed
+- [ ] Environment text input accepts typing
+- [ ] Tasks text input accepts multiline text
+- [ ] Ctrl+S saves both fields at once
 - [ ] Files are created in .vibe/ directory after saving

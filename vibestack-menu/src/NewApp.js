@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box } from 'ink';
 import { LoadingScreen } from './components/LoadingScreen.js';
-import { AgentSelectionScreen } from './components/AgentSelectionScreenSimple.js';
+import { AgentSelectionScreen } from './components/AgentSelectionCombined.js';
 
 export const VibeStackMenuNew = () => {
   const [screen, setScreen] = useState('loading');
