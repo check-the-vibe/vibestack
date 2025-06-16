@@ -59,3 +59,13 @@ Removed 'Starting VibeStack services...' message
 Removed 'App running at http://localhost/' from devcontainer.json
 Removed non-interactive welcome messages
 Now only one startup message: interactive menu with 'Vibe Stack' title
+
+--- New Task: Terminal iframe in Streamlit ---
+Starting work on embedding terminal iframe in Streamlit app...
+Cloned streamlit-ttyd repository for reference
+Analyzed implementation approach - documented in terminal-iframe-approach.md
+Removed file manager content from streamlit app
+Implemented terminal iframe component with responsive sizing
+Added sidebar controls for height adjustment
+Fixed terminal URL to match nginx config (/terminal/)
+Task completed successfully - terminal now embedded in streamlit app
