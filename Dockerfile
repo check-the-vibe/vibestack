@@ -132,8 +132,8 @@ RUN mkdir -p /var/log/supervisor /var/run && \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
 
-# Expose noVNC, SSH, and Streamlit ports
-EXPOSE ${NOVNC_PORT} 22 8501
+# Expose nginx port
+EXPOSE 80
 
 RUN /bin/bash -c "/setup-vibestack-menu.sh"
 
