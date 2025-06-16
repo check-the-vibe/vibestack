@@ -4,7 +4,12 @@ Claude Code Starter Template,https://github.com/check-the-vibe/claude-code-start
 Ink library,https://github.com/vadimdemedes/ink
 Creating CLIs with Ink React and magic,https://vadimdemedes.com/posts/creating-clis-with-ink-react-and-a-bit-of-magic
 React Ink CLI Tutorial FreeCodeCamp,https://www.freecodecamp.org/news/react-js-ink-cli-tutorial/
-Ink UI Components,https://github.com/vadimdemedes/ink-ui
-Dev Container metadata reference,https://containers.dev/implementors/json_reference/
-VS Code Start Processes in Containers,https://code.visualstudio.com/remote/advancedcontainers/start-processes
-Shipping user friendly bash scripts with Dev Container,https://keestalkstech.com/shipping-user-friendly-bash-scripts-with-your-dev-container/
+Ink UI,https://github.com/vadimdemedes/ink-ui
+Ink Ui Component: Hyperlink, https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+Ink Ui Component: spinner, https://github.com/vadimdemedes/ink-spinner
+Ink Ui Component: ink-tab, https://jdeniau.gitbook.io/ink-tab/usage
+Ink Ui Component: table, https://github.com/maticzav/ink-table
+Ink Ui Component: text animation, https://github.com/yardnsm/ink-text-animation/tree/master
+Ink Ui Component: form, https://github.com/lukasbach/ink-form
+Ink Ui Component: divider, https://github.com/JureSotosek/ink-divider
+Ink Ui Component: ascii art, https://github.com/AeonFr/ink-ascii-image?tab=readme-ov-file

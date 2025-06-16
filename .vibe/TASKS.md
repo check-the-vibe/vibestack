@@ -1,16 +1,12 @@
-I would like to load the path /terminal, on the current host, inside of streamlit as an iframe. You can use the method that is followed in https://github.com/NeveIsa/streamlit-ttyd for handling the iframe (and size etc.), but I would like you to create this as a component embedded in the streamlit app directly. 
+# Outcome
 
-## Research [COMPLETED]
-- ✅ Clone the project https://github.com/NeveIsa/streamlit-ttyd in .vibe/streamlit-ttyd, scan this project for insights and approaches. 
-- ✅ Document your approach for a similar component that can be used in this streamlit app. 
-
-## Development [COMPLETED]
-- ✅ Add this component that embeds an iframe into streamlit app. Remove all of the current streamlit app before starting this work.  Outcome: user can interact with the terminal in the iframe, and it is responsive to the size of the streamlit app.
-
-## Implementation Summary
-- Replaced file manager app with terminal iframe component
-- Terminal is embedded using Streamlit's native iframe component
-- Points to /terminal/ endpoint (ttyd on port 7681)
-- Includes responsive sizing with sidebar controls
-- Height can be adjusted via slider or preset buttons
-- Custom CSS for better visual integration
+## Research ✓
+1. ✓ Iterate through .vibe/LINKS.csv, understand the available Ink components for install. 
+2. ✓ Build a guide on how to connect tabs, forms, and ascii art images.
+## Design ✓
+1. ✓ Read the .vibe/docs/ux-flow.md doc, understand the steps, components, structure, and interlinking parts of each menu and stage in the customer journey
+2. ✓ Create an implementation plan for each customer journey, document them in a new file in .vibe/docs/. 
+3. ✓ Document in a new file in .vibe/docs/ the implementation steps of new components (like new llm clis). 
+## Develop (In Progress)
+1. ✓ Take the UX flow, implement each path sequentially. 
+2. ⏳ Ensure that each implementation is placed in the Dockerfile/entrypoint/vibestack-welcome etc. scripts that are used to build the Docker image. 
