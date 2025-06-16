@@ -27,6 +27,8 @@ setup_passwords() {
 # Set up passwords on first run
 setup_passwords
 
+touch /home/vibe/.sudo_as_admin_successful
+
 # If no arguments provided, run supervisord (default behavior)
 if [ $# -eq 0 ]; then
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

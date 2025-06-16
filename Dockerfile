@@ -56,7 +56,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
     apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
 
 # Install ttyd binary from github releases
-RUN wget https://github.com/tsl0922/ttyd/releases/download/1.6.3/ttyd.x86_64 -O /usr/bin/ttyd && chmod +x /usr/bin/ttyd
+RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O /usr/bin/ttyd && chmod +x /usr/bin/ttyd
 
 # Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code
@@ -105,6 +105,9 @@ COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
 COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 
+# Install npm dependencies for vibestack-menu
+RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
+
 # Convert line endings to Unix format & set +x
 RUN dos2unix \
       /home/vibe/.fluxbox/init \
@@ -129,8 +132,8 @@ RUN mkdir -p /var/log/supervisor /var/run && \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
 
-# Expose noVNC, SSH, and Streamlit ports
-EXPOSE ${NOVNC_PORT} 22 8501
+# Expose nginx port
+EXPOSE 80
 
 RUN /bin/bash -c "/setup-vibestack-menu.sh"
 
