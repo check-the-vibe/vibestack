@@ -4,38 +4,23 @@ import BigText from 'ink-big-text';
 import Gradient from 'ink-gradient';
 import { spawn } from 'child_process';
 
-const MenuState = {
-  MAIN: 'main',
-  CLAUDE_CODE: 'claude_code',
-  LLM_CLI: 'llm_cli'
+// Construct BASE_URL based on environment
+const getBaseUrl = () => {
+  if (process.env.CODESPACES === 'true' && process.env.CODESPACE_NAME) {
+    // In Codespaces, construct the URL
+    return `https://${process.env.CODESPACE_NAME}-80.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`;
+  }
+  // Default to localhost for Docker/local setup
+  return 'http://localhost';
 };
 
-const menus = {
-  main: {
-    title: 'Choose your platform:',
-    options: [
-      { label: 'Claude Code', value: 'claude_code', action: 'navigate' },
-      { label: 'LLM CLI', value: 'llm_cli', action: 'navigate' },
-      { label: 'Exit to Shell', value: 'exit', action: 'exit' }
-    ]
-  },
-  claude_code: {
-    title: 'Claude Code Options:',
-    options: [
-      { label: 'Add MCP Server', value: 'add_mcp', action: 'placeholder' },
-      { label: 'Configure Settings', value: 'settings', action: 'placeholder' },
-      { label: 'Start', value: 'start_claude', action: 'command', command: 'claude' },
-      { label: 'Back to Main Menu', value: 'back', action: 'back' }
-    ]
-  },
-  llm_cli: {
-    title: 'LLM CLI Options:',
-    options: [
-      { label: 'Start', value: 'start_llm', action: 'command', command: 'llm' },
-      { label: 'Back to Main Menu', value: 'back', action: 'back' }
-    ]
-  }
-};
+const BASE_URL = getBaseUrl();
+
+const menuOptions = [
+  { label: 'Claude', value: 'claude', action: 'command', command: 'claude' },
+  { label: 'LLM CLI', value: 'llm', action: 'command', command: 'llm' },
+  { label: 'Exit to Shell', value: 'exit', action: 'exit' }
+];
 
 const MenuOption = ({ label, isSelected }) => {
   return React.createElement(Box, {
@@ -54,13 +39,7 @@ const MenuOption = ({ label, isSelected }) => {
 
 export const VibeStackMenu = () => {
   const { exit } = useApp();
-  const [currentMenu, setCurrentMenu] = useState(MenuState.MAIN);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [menuHistory, setMenuHistory] = useState([]);
-  const [message, setMessage] = useState('');
-
-  const activeMenu = menus[currentMenu];
-  const menuOptions = activeMenu.options;
 
   const executeCommand = (command) => {
     // Exit Ink app first
@@ -77,30 +56,10 @@ export const VibeStackMenu = () => {
 
   const handleAction = (option) => {
     switch (option.action) {
-      case 'navigate':
-        setMenuHistory([...menuHistory, currentMenu]);
-        setCurrentMenu(option.value);
-        setSelectedIndex(0);
-        break;
-      
-      case 'back':
-        if (menuHistory.length > 0) {
-          const previousMenu = menuHistory[menuHistory.length - 1];
-          setMenuHistory(menuHistory.slice(0, -1));
-          setCurrentMenu(previousMenu);
-          setSelectedIndex(0);
-        }
-        break;
-      
       case 'command':
         if (option.command) {
           executeCommand(option.command);
         }
-        break;
-      
-      case 'placeholder':
-        setMessage(`${option.label} - Coming soon!`);
-        setTimeout(() => setMessage(''), 2000);
         break;
       
       case 'exit':
@@ -118,16 +77,9 @@ export const VibeStackMenu = () => {
       const selected = menuOptions[selectedIndex];
       handleAction(selected);
     } else if (key.escape) {
-      if (menuHistory.length > 0) {
-        handleAction({ action: 'back' });
-      } else {
-        exit();
-      }
+      exit();
     }
   });
-
-  // Determine if we should use horizontal or vertical layout based on option count
-  const useVerticalLayout = menuOptions.length > 3;
 
   return React.createElement(Box, {
     flexDirection: 'column',
@@ -140,12 +92,30 @@ export const VibeStackMenu = () => {
       )
     ),
     
+    // Configuration UI link section
+    React.createElement(Box, { 
+      flexDirection: 'column',
+      alignItems: 'center',
+      marginBottom: 2,
+      borderStyle: 'round',
+      borderColor: 'blue',
+      paddingX: 2,
+      paddingY: 1
+    },
+      React.createElement(Text, { color: 'blue', bold: true }, 
+        'Configure VibeStack at:'
+      ),
+      React.createElement(Text, { color: 'cyan', underline: true }, 
+        `${BASE_URL}/ui`
+      )
+    ),
+    
     React.createElement(Box, { marginBottom: 1 },
-      React.createElement(Text, { bold: true }, activeMenu.title)
+      React.createElement(Text, { bold: true }, 'Choose your tool:')
     ),
     
     React.createElement(Box, { 
-      flexDirection: useVerticalLayout ? 'column' : 'row', 
+      flexDirection: 'row', 
       marginBottom: 2 
     },
       menuOptions.map((item, index) =>
@@ -157,15 +127,9 @@ export const VibeStackMenu = () => {
       )
     ),
     
-    message && React.createElement(Box, { marginBottom: 1 },
-      React.createElement(Text, { color: 'yellow' }, message)
-    ),
-    
     React.createElement(Box, { marginTop: 1 },
       React.createElement(Text, { dimColor: true },
-        useVerticalLayout 
-          ? 'Use ↑ ↓ arrow keys to navigate, Enter to select, Esc to go back'
-          : 'Use ← → arrow keys to navigate, Enter to select, Esc to go back'
+        'Use ← → arrow keys to navigate, Enter to select, Esc to exit'
       )
     )
   );
