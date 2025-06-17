@@ -1,3 +1,0 @@
-1. ✅ COMPLETED - Determine the best course of action for removing the npm install line (12):
-cd /home/vibe/vibestack-menu && npm install && node menu.js from vibestack-menu/from vibesetack-welcome, and only npm installing once. Ideally this would happen after the image is built, so we are not backing node_modles into our repo, but before a bash shell is run by a user for the first time. Implement this fix in the best way you can. 
-2. ✅ COMPLETED - Based on the history, log, context, .devcontainer/devcontainer.json, Dockerfile, and other context, write a README that explains how to use this project. The project should be called "VibeStack". 
