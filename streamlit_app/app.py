@@ -12,7 +12,7 @@ def main():
     
     # Build terminal URL - use relative path to inherit protocol
     # Note: nginx config has /terminal/ with trailing slash
-    terminal_url = "/terminal/"
+    terminal_url = "/"
     
     # Add custom CSS for full-height iframe
     st.markdown("""

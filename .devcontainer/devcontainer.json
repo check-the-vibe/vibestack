@@ -8,10 +8,10 @@
   "portsAttributes": {
     "80": {
       "label": "Web Server",
-      "onAutoForward": "openPreview",
-      "requireLocalPort": false,
+      "onAutoForward": "openBrowser",
       "protocol": "http",
-      "visibility": "public"
+      "visibility": "public",
+      "elevateIfNeeded": true
     }
   },
   "overrideCommand": false,
