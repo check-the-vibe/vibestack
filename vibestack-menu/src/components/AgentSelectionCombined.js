@@ -22,9 +22,9 @@ export const AgentSelectionScreen = () => {
     if (isCodespaces) {
       const codespaceName = process.env.CODESPACE_NAME || '';
       const domain = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN || 'app.github.dev';
-      setBaseUrl(`https://${codespaceName}-80.${domain}`);
+      setBaseUrl(`https://${codespaceName}-80.${domain}/ui`);
     } else {
-      setBaseUrl('http://localhost');
+      setBaseUrl('http://localhost/ui');
     }
   }, []);
 
