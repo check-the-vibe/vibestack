@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { Tab, Tabs } from 'ink-tab';
 import { spawn } from 'child_process';
@@ -14,6 +14,19 @@ export const AgentSelectionScreen = () => {
   const [tasksText, setTasksText] = useState('');
   const [saveStatus, setSaveStatus] = useState({});
   const [activeField, setActiveField] = useState('environment'); // Which field is active in config tab
+  const [baseUrl, setBaseUrl] = useState('');
+
+  // Detect base URL on component mount
+  useEffect(() => {
+    const isCodespaces = process.env.CODESPACES === 'true';
+    if (isCodespaces) {
+      const codespaceName = process.env.CODESPACE_NAME || '';
+      const domain = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN || 'app.github.dev';
+      setBaseUrl(`https://${codespaceName}-80.${domain}`);
+    } else {
+      setBaseUrl('http://localhost');
+    }
+  }, []);
 
   const handleTabChange = (name) => {
     setActiveTab(name);
@@ -56,17 +69,8 @@ export const AgentSelectionScreen = () => {
       exit();
     } else if (key.ctrl && input === 's') {
       // Save based on active tab
-      if (activeTab === 'configuration') {
-        handleSaveConfiguration();
-      } else if (activeTab === 'provider' && selectedProvider) {
+      if (activeTab === 'provider' && selectedProvider) {
         handleStart();
-      }
-    }
-    
-    // Tab navigation with arrow keys in configuration tab
-    if (activeTab === 'configuration') {
-      if (key.upArrow || key.downArrow) {
-        setActiveField(activeField === 'environment' ? 'tasks' : 'environment');
       }
     }
     
@@ -99,33 +103,27 @@ export const AgentSelectionScreen = () => {
       
       case 'configuration':
         return React.createElement(Box, { flexDirection: 'column' },
+          React.createElement(Text, { bold: true, marginBottom: 2 }, 'Configuration'),
+          React.createElement(Box, { marginBottom: 1 },
+            React.createElement(Text, {}, 'To configure your environment and tasks, visit:')
+          ),
           React.createElement(Box, { marginBottom: 2 },
-            React.createElement(FocusableTextInput, {
-              label: 'Environment Configuration',
-              value: environmentText,
-              onChange: setEnvironmentText,
-              placeholder: 'Enter environments (e.g., GitHub Codespaces, Docker)',
-              multiline: false,
-              isActive: activeField === 'environment'
-            })
+            React.createElement(Text, { color: 'cyan', underline: true }, baseUrl || 'Loading...')
           ),
-          React.createElement(Box, {},
-            React.createElement(FocusableTextInput, {
-              label: 'Tasks',
-              value: tasksText,
-              onChange: setTasksText,
-              placeholder: 'Enter your tasks here...',
-              multiline: true,
-              isActive: activeField === 'tasks'
-            })
-          ),
-          saveStatus.configuration && React.createElement(Text, { 
-            color: saveStatus.configuration === 'Both saved!' ? 'green' : 'red',
-            marginTop: 1 
-          }, saveStatus.configuration),
-          React.createElement(Box, { marginTop: 1 },
+          React.createElement(Box, { marginTop: 2 },
             React.createElement(Text, { dimColor: true }, 
-              '↑↓ Switch fields | Type to edit active field | Ctrl+S to save both'
+              'The web interface allows you to edit:'
+            )
+          ),
+          React.createElement(Box, { marginLeft: 2, flexDirection: 'column' },
+            React.createElement(Text, { dimColor: true }, '• Environment configuration'),
+            React.createElement(Text, { dimColor: true }, '• Tasks'),
+            React.createElement(Text, { dimColor: true }, '• Errors'),
+            React.createElement(Text, { dimColor: true }, '• Persona')
+          ),
+          React.createElement(Box, { marginTop: 2 },
+            React.createElement(Text, { color: 'yellow' }, 
+              'Note: Configuration editing has been moved to the web interface for a better experience.'
             )
           )
         );
@@ -188,7 +186,7 @@ export const AgentSelectionScreen = () => {
       React.createElement(Text, { dimColor: true },
         activeTab === 'provider' 
           ? 'Tab: Switch tabs | 1/2: Select provider | Enter: Start | q: Quit'
-          : 'Tab: Switch tabs | Type to edit | Ctrl+S: Save | q: Back to provider tab'
+          : 'Tab: Switch tabs | q: Back to provider tab'
       )
     )
   );
