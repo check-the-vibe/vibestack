@@ -100,6 +100,9 @@ COPY --chown=vibe:vibe fluxbox-startup /home/vibe/.fluxbox/startup
 COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
+COPY --chown=vibe:vibe .vibe /home/vibe/.vibe
+COPY --chown=vibe:vibe CLAUDE.md /home/vibe/CLAUDE.md
+
 
 # Copy VibeStack menu
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu

@@ -2,17 +2,32 @@ import streamlit as st
 from streamlit.components.v1 import iframe
 
 st.set_page_config(
-    page_title="Terminal",
-    page_icon="💻",
+    page_title="VibeStack",
+    page_icon="🚀",
     layout="wide"
 )
 
 def main():
-    st.title("💻 Terminal")
+    st.title("🚀 VibeStack")
+    
+    # Welcome message
+    st.markdown("""
+    Welcome to VibeStack! This is your development environment control center.
+    
+    ### 🎯 Quick Navigation
+    Use the sidebar to access:
+    - **📝 Tasks** - Manage your project tasks
+    - **🌍 Environment** - Configure your development environment
+    - **🚨 Errors** - Track and resolve errors
+    - **🎭 Persona** - Define AI assistant behavior
+    
+    ### 💻 Terminal
+    The terminal below provides direct access to your development environment:
+    """)
     
     # Build terminal URL - use relative path to inherit protocol
     # Note: nginx config has /terminal/ with trailing slash
-    terminal_url = "/terminal/"
+    terminal_url = "/"
     
     # Add custom CSS for full-height iframe
     st.markdown("""
@@ -64,6 +79,18 @@ def main():
     # Add controls in sidebar
     with st.sidebar:
         st.header("⚙️ Terminal Settings")
+        
+        # Add info about the pages
+        with st.expander("📚 About VibeStack Pages"):
+            st.markdown("""
+            **Configuration Pages:**
+            - **Tasks**: Define and track project objectives
+            - **Environment**: Set up your dev environment
+            - **Errors**: Monitor and fix issues
+            - **Persona**: Customize AI assistant behavior
+            
+            All changes are saved directly to `.vibe/` files.
+            """)
         
         # Height slider
         custom_height = st.slider(
