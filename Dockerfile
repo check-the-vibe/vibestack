@@ -108,9 +108,6 @@ COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 # Install npm dependencies for vibestack-menu
 RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
 
-# Copy pyscreenrec MCP server
-COPY --chown=vibe:vibe pyscreenrec-mcp /home/vibe/pyscreenrec-mcp
-
 # Install Python dependencies for MCP server
 RUN pip3 install -r /home/vibe/pyscreenrec-mcp/requirements.txt
 
