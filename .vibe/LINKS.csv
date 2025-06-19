@@ -8,3 +8,7 @@ Ink UI Components,https://github.com/vadimdemedes/ink-ui
 Dev Container metadata reference,https://containers.dev/implementors/json_reference/
 VS Code Start Processes in Containers,https://code.visualstudio.com/remote/advancedcontainers/start-processes
 Shipping user friendly bash scripts with Dev Container,https://keestalkstech.com/shipping-user-friendly-bash-scripts-with-your-dev-container/
+Electron inside Docker with X11 Forwarding,https://stackoverflow.com/questions/42915838/electron-inside-docker-with-x11-forwarding-no-protocol-specified
+How to run Electron on Linux on Docker on Mac,https://jaked.org/blog/2021-02-18-How-to-run-Electron-on-Linux-on-Docker-on-Mac
+How to run electron app inside docker image,https://stackoverflow.com/questions/60164544/how-to-run-electron-app-inside-docker-image
+GitHub - electron-docker X11 forwarding example,https://github.com/anmilleriii/electron-docker

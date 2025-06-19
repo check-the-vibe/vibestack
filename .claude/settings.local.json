@@ -8,7 +8,15 @@
       "Bash(curl:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__recorder__start_record",
+      "mcp__recorder__stop_record",
+      "Bash(chmod:*)",
+      "Bash(od:*)",
+      "Bash(dos2unix:*)",
+      "Bash(supervisorctl restart:*)",
+      "Bash(sudo supervisorctl restart:*)",
+      "Bash(sudo supervisorctl status:*)"
     ],
     "deny": []
   }

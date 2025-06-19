@@ -68,10 +68,7 @@ RUN npm install -g playwright-mcp
 RUN npx -y playwright install chrome
 
 # Install llm cli
-RUN pip install llm
-
-# Install Streamlit
-RUN pip install streamlit
+RUN pip install llm streamlit pyscreenrec fastmcp
 
 # Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
@@ -110,6 +107,12 @@ COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 
 # Install npm dependencies for vibestack-menu
 RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
+
+# Copy pyscreenrec MCP server
+COPY --chown=vibe:vibe pyscreenrec-mcp /home/vibe/pyscreenrec-mcp
+
+# Install Python dependencies for MCP server
+RUN pip3 install -r /home/vibe/pyscreenrec-mcp/requirements.txt
 
 # Convert line endings to Unix format & set +x
 RUN dos2unix \
