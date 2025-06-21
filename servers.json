@@ -10,6 +10,16 @@
       "transportType": "stdio",
       "env": {}
     },
+    "sequential-thinking": {
+      "enabled": true,
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "transportType": "stdio",
+      "env": {}
+    },
     "filesystem": {
       "enabled": true,
       "command": "npx",
