@@ -59,19 +59,17 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
 RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O /usr/bin/ttyd && chmod +x /usr/bin/ttyd
 
 # Install Claude Code
-RUN npm install -g @anthropic-ai/claude-code
-
-# Install playwright MCP
-RUN npm install -g playwright-mcp
+RUN npm install -g @anthropic-ai/claude-code playwright-mcp
 
 # Install Chrome browser for Playwright
 RUN npx -y playwright install chrome
 
-# Install llm cli
-RUN pip install llm
+# Install llm cli and streamlit
+RUN pip install llm streamlit uv
 
-# Install Streamlit
-RUN pip install streamlit
+# Install mcp-proxy
+RUN uv tool install mcp-proxy
+
 
 # Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
@@ -102,7 +100,8 @@ COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 COPY --chown=vibe:vibe .vibe /home/vibe/.vibe
 COPY --chown=vibe:vibe CLAUDE.md /home/vibe/CLAUDE.md
-
+COPY --chown=vibe:vibe servers.json /home/vibe/servers.json
+COPY --chown=vibe:vibe .mcp.json /home/vibe/.mcp.json
 
 # Copy VibeStack menu
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
@@ -136,7 +135,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
 
 # Expose nginx port
-EXPOSE 80
+EXPOSE 80 22 3737
 
 RUN /bin/bash -c "/setup-vibestack-menu.sh"
 
