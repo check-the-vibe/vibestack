@@ -27,6 +27,21 @@ setup_passwords() {
 # Set up passwords on first run
 setup_passwords
 
+# Configure Nginx upstream for Codex callback based on CODEX_CALLBACK_PORT
+configure_nginx_codex_upstream() {
+    local port
+    port="${CODEX_CALLBACK_PORT:-1455}"
+    mkdir -p /etc/nginx/conf.d
+    cat > /etc/nginx/conf.d/codex_callback_upstream.conf <<EOF
+upstream codex_callback {
+    server 127.0.0.1:${port};
+    keepalive 16;
+}
+EOF
+}
+
+configure_nginx_codex_upstream
+
 touch /home/vibe/.sudo_as_admin_successful
 
 # If no arguments provided, run supervisord (default behavior)

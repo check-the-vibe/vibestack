@@ -1,0 +1,11 @@
+[begin] (VibeStack)
+  [submenu] (Applications)
+    [exec] (Firefox) {/usr/local/bin/firefox-vibe}
+    [exec] (Terminal) {xterm}
+  [end]
+  [workspaces] (Workspaces)
+  [config] (Configuration)
+  [reconfig] (Reconfigure)
+  [restart] (Restart)
+  [exit] (Exit)
+[end]

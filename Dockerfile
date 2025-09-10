@@ -2,54 +2,38 @@ FROM ubuntu:22.04
 
 # Metadata
 LABEL maintainer="VibeStack Project"
-LABEL description="VibeStack - Lightweight VNC desktop environment using Fluxbox and noVNC"
-LABEL version="1.0"
+LABEL description="VibeStack - Streamlit UI + Web Terminal (tmux via ttyd)"
+LABEL version="2.0"
 
 # Environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:0
-ENV NOVNC_PORT=6080
-ENV VNC_PORT=5900
-ENV RESOLUTION=1280x720
-ENV VNC_PASSWORD=""
 ENV ROOT_PASSWORD=""
 ENV VIBE_PASSWORD="coding"
+ENV CODEX_CALLBACK_PORT=1455
 
-# Install packages for VNC and desktop environment
+# Install base packages (no VNC/desktop, no browsers)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        # Core VNC and display packages
-        xvfb \
-        x11vnc \
-        novnc \
-        websockify \
-        # Desktop environment
-        fluxbox \
-        xterm \
-        # Programming languages and tools
         python3 \
         python3-pip \
-        # Utilities
+        python3-venv \
         wget \
         curl \
+        ca-certificates \
+        gnupg \
+        file \
         supervisor \
-        dbus-x11 \
-        menu \
         nginx \
         git \
         jq \
         nano \
         vim \
         dos2unix \
-        # Security and user management
         sudo \
         openssh-server \
-        # Cleanup in same layer
-        && apt-get clean \
-        && rm -rf /var/lib/apt/lists/* \
-        && rm -rf /tmp/* \
-        && rm -rf /var/tmp/*
-
+        tmux \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install Node.js (LTS version)
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
@@ -58,20 +42,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
 # Install ttyd binary from github releases
 RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O /usr/bin/ttyd && chmod +x /usr/bin/ttyd
 
-# Install Claude Code
-RUN npm install -g @anthropic-ai/claude-code
+# Install OpenAI Codex (Node)
+RUN npm install -g @openai/codex
 
-# Install playwright MCP
-RUN npm install -g playwright-mcp
-
-# Install Chrome browser for Playwright
-RUN npx -y playwright install chrome
-
-# Install llm cli
-RUN pip install llm
-
-# Install Streamlit
-RUN pip install streamlit
+# Install Python tooling (no cache, single layer)
+RUN pip install --no-cache-dir llm streamlit openai
 
 # Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
@@ -81,65 +56,55 @@ RUN mkdir -p /var/run/sshd && \
 
 # Create non-root user for better security
 RUN useradd -m -s /bin/bash -u 1000 vibe && \
-    usermod -aG sudo vibe && \
-    mkdir -p /home/vibe/.fluxbox
+    usermod -aG sudo vibe
 
 # Allow vibe to sudo without a password
 RUN echo 'vibe ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/vibe && \
     chmod 440 /etc/sudoers.d/vibe
 
-# (optional) set the vibe user’s actual login password from your ENV
-RUN echo "vibe:${VIBE_PASSWORD}" | chpasswd
+# Note: user passwords are set at runtime by entrypoint.sh
 
 # Copy configuration files
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY entrypoint.sh /entrypoint.sh
-COPY --chown=vibe:vibe fluxbox-init /home/vibe/.fluxbox/init
-COPY --chown=vibe:vibe fluxbox-startup /home/vibe/.fluxbox/startup
-COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
-COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
 COPY --chown=vibe:vibe .vibe /home/vibe/.vibe
 COPY --chown=vibe:vibe CLAUDE.md /home/vibe/CLAUDE.md
 
+# tmux session wrapper for ttyd (args via URL)
+COPY tmux_session.sh /usr/local/bin/tmux_session.sh
+RUN dos2unix /usr/local/bin/tmux_session.sh && chmod +x /usr/local/bin/tmux_session.sh
+COPY codex_loader.sh /usr/local/bin/codex_loader.sh
+RUN dos2unix /usr/local/bin/codex_loader.sh && chmod +x /usr/local/bin/codex_loader.sh
 
-# Copy VibeStack menu
+
+# Copy VibeStack menu (kept installed but no auto-load)
 COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
-COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
 
 # Install npm dependencies for vibestack-menu
 RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
 
 # Convert line endings to Unix format & set +x
-RUN dos2unix \
-      /home/vibe/.fluxbox/init \
-      /home/vibe/.fluxbox/startup \
-      /home/vibe/.fluxbox/apps \
-      /home/vibe/.Xresources \
-      /entrypoint.sh \
-      /setup-vibestack-menu.sh \
-      /home/vibe/vibestack-menu/vibestack-welcome && \
-    chmod +x \
-      /entrypoint.sh \
-      /setup-vibestack-menu.sh \
-      /home/vibe/vibestack-menu/vibestack-welcome
+RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
-    chown -R vibe:vibe /home/vibe && \
-    chmod 755 /home/vibe/.fluxbox && \
-    chmod +x /home/vibe/.fluxbox/startup
+    chown -R vibe:vibe /home/vibe
 
-# Health check
+# Health check (nginx/Streamlit)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
+    CMD curl -fsS http://localhost/ui/ >/dev/null || exit 1
 
-# Expose nginx port
-EXPOSE 80
+# Expose nginx + callback proxy ports
+#  - 80:    Nginx reverse proxy (HTTP)
+#  - 1456:  Internal Nginx listener that proxies to 127.0.0.1:${CODEX_CALLBACK_PORT}
+#  - ${CODEX_CALLBACK_PORT}: Document the callback port used by Codex inside the container
+EXPOSE 80 22 7681 8501 1456 ${CODEX_CALLBACK_PORT}
 
-RUN /bin/bash -c "/setup-vibestack-menu.sh"
+RUN chown vibe:vibe /home/vibe/.bashrc || true
 
 # Set entrypoint and default command
+# Note: use the same supervisord config path we copied earlier
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
