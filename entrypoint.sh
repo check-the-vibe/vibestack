@@ -29,6 +29,64 @@ setup_passwords
 
 touch /home/vibe/.sudo_as_admin_successful
 
+# Ensure Python tooling can import the vibestack package
+export VIBESTACK_HOME="${VIBESTACK_HOME:-/home/vibe}"
+if [[ -z "${PYTHONPATH:-}" ]]; then
+    export PYTHONPATH="${VIBESTACK_HOME}"
+else
+    export PYTHONPATH="${VIBESTACK_HOME}:${PYTHONPATH}"
+fi
+
+# Configure optional Codex state directory
+setup_codex_state() {
+    local candidate_dirs=()
+    if [[ -n "${CODEX_STATE_DIR:-}" ]]; then
+        candidate_dirs+=("${CODEX_STATE_DIR}")
+    fi
+    candidate_dirs+=("/projects/codex" "${VIBESTACK_HOME}/codex")
+
+    local source_dir=""
+    for dir in "${candidate_dirs[@]}"; do
+        if [[ -n "${dir}" && -d "${dir}" ]]; then
+            source_dir="${dir}"
+            break
+        fi
+    done
+
+    if [[ -n "${source_dir}" ]]; then
+        mkdir -p "${source_dir}"
+        if [[ -e /home/vibe/.codex && ! -L /home/vibe/.codex ]]; then
+            rm -rf /home/vibe/.codex
+        fi
+        ln -snf "${source_dir}" /home/vibe/.codex
+        chown -h vibe:vibe /home/vibe/.codex
+        echo "Using Codex state directory: ${source_dir}"
+    else
+        mkdir -p /home/vibe/.codex
+        chown vibe:vibe /home/vibe/.codex
+    fi
+}
+
+# Prepare session workspace
+mkdir -p "${VIBESTACK_HOME}/sessions"
+chown vibe:vibe "${VIBESTACK_HOME}/sessions"
+setup_codex_state
+
+
+configure_codex_callback() {
+    local port
+    port="${CODEX_CALLBACK_PORT:-1455}"
+    mkdir -p /etc/nginx/conf.d
+    cat > /etc/nginx/conf.d/codex_callback_upstream.conf <<EOF
+upstream codex_callback {
+    server 127.0.0.1:${port};
+    keepalive 16;
+}
+EOF
+}
+
+configure_codex_callback
+
 # If no arguments provided, run supervisord (default behavior)
 if [ $# -eq 0 ]; then
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

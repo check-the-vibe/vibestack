@@ -1,4 +1,0 @@
-1. ✅ COMPLETED - Combine the approach of the specific file editors in streamlit_app (pages/1,2,3,4) -> Combine this into one file "Editor", which will allow a user to select, and edit files. 
-2. ✅ COMPLETED - If the file is text-based, allow the user to edit it (in the same way that the current pages work, like Tasks.py). If the file is binary just allow the user to download it. 
-3. ✅ COMPLETED - Change the name File_Viewer to Editor, move the base page (app.py) to a subpage (pages/) to Code.
-4. ✅ COMPLETED - Simply add a block of text on the home page, call it VibeStack, say hello to the user and point them to editor or code. 

@@ -14,42 +14,44 @@ ENV RESOLUTION=1280x720
 ENV VNC_PASSWORD=""
 ENV ROOT_PASSWORD=""
 ENV VIBE_PASSWORD="coding"
+ENV VIBESTACK_HOME=/home/vibe
+ENV CODEX_CALLBACK_PORT=1455
 
 # Install packages for VNC and desktop environment
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        # Core VNC and display packages
+        # Core VNC and display packages \
         xvfb \
         x11vnc \
         novnc \
         websockify \
-        # Desktop environment
+        # Desktop environment \
         fluxbox \
         xterm \
-        # Programming languages and tools
+        # Programming languages and tools \
         python3 \
         python3-pip \
-        # Utilities
+        # Utilities \
         wget \
         curl \
         supervisor \
         dbus-x11 \
         menu \
         nginx \
+        tmux \
         git \
         jq \
         nano \
         vim \
         dos2unix \
-        # Security and user management
+        # Security and user management \
         sudo \
         openssh-server \
-        # Cleanup in same layer
+        # Cleanup in same layer \
         && apt-get clean \
         && rm -rf /var/lib/apt/lists/* \
         && rm -rf /tmp/* \
         && rm -rf /var/tmp/*
-
 
 # Install Node.js (LTS version)
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
@@ -60,6 +62,9 @@ RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O 
 
 # Install Claude Code
 RUN npm install -g @anthropic-ai/claude-code
+
+# Install Codex CLI
+RUN npm install -g @openai/codex
 
 # Install playwright MCP
 RUN npm install -g playwright-mcp
@@ -72,6 +77,9 @@ RUN pip install llm
 
 # Install Streamlit
 RUN pip install streamlit
+
+# Install FastAPI stack for the REST service
+RUN pip install fastapi 'uvicorn[standard]'
 
 # Configure SSH server (passwords will be set at runtime)
 RUN mkdir -p /var/run/sshd && \
@@ -100,16 +108,14 @@ COPY --chown=vibe:vibe fluxbox-startup /home/vibe/.fluxbox/startup
 COPY --chown=vibe:vibe fluxbox-apps /home/vibe/.fluxbox/apps
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe streamlit_app /home/vibe/streamlit
-COPY --chown=vibe:vibe .vibe /home/vibe/.vibe
-COPY --chown=vibe:vibe CLAUDE.md /home/vibe/CLAUDE.md
+COPY --chown=vibe:vibe vibestack /home/vibe/vibestack
+COPY --chown=vibe:vibe bin /home/vibe/bin
+COPY --chown=vibe:vibe docs /home/vibe/docs
+COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
 
-
-# Copy VibeStack menu
-COPY --chown=vibe:vibe vibestack-menu /home/vibe/vibestack-menu
-COPY setup-vibestack-menu.sh /setup-vibestack-menu.sh
-
-# Install npm dependencies for vibestack-menu
-RUN cd /home/vibe/vibestack-menu && npm install && chown -R vibe:vibe node_modules
+# Symlink CLI helpers into /usr/local/bin
+RUN ln -sf /home/vibe/bin/vibestack-sessions /usr/local/bin/vibestack-sessions \
+    && ln -sf /home/vibe/bin/vibestack-ttyd-entry /usr/local/bin/vibestack-ttyd-entry
 
 # Convert line endings to Unix format & set +x
 RUN dos2unix \
@@ -118,12 +124,12 @@ RUN dos2unix \
       /home/vibe/.fluxbox/apps \
       /home/vibe/.Xresources \
       /entrypoint.sh \
-      /setup-vibestack-menu.sh \
-      /home/vibe/vibestack-menu/vibestack-welcome && \
+      /home/vibe/bin/vibestack-sessions \
+      /home/vibe/bin/vibestack-ttyd-entry && \
     chmod +x \
       /entrypoint.sh \
-      /setup-vibestack-menu.sh \
-      /home/vibe/vibestack-menu/vibestack-welcome
+      /home/vibe/bin/vibestack-sessions \
+      /home/vibe/bin/vibestack-ttyd-entry
 
 # Create required directories with proper permissions
 RUN mkdir -p /var/log/supervisor /var/run && \
@@ -136,10 +142,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
 
 # Expose nginx port
-EXPOSE 80
-
-RUN /bin/bash -c "/setup-vibestack-menu.sh"
+EXPOSE 80 1456
 
 # Set entrypoint and default command
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

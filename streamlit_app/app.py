@@ -1,65 +1,56 @@
 import streamlit as st
 
-st.set_page_config(
-    page_title="VibeStack",
-    page_icon="🚀",
-    layout="wide"
+from common import (
+    KEY_ACTIVE_SESSION,
+    KEY_ACTIVE_TEMPLATE,
+    MANAGER,
+    get_template_by_name,
+    load_templates,
+    list_sessions,
+    render_session_overview,
+    render_sidebar,
+    require_session,
+    sync_state_from_query,
+    update_query_params,
 )
 
-# Main title with custom styling
-st.markdown("""
-    <h1 style='text-align: center; color: #4A90E2; font-size: 3em; margin-bottom: 0;'>
-        VibeStack
-    </h1>
-    <p style='text-align: center; font-size: 1.2em; color: #666; margin-top: 0;'>
-        Your Development Environment in the Cloud
-    </p>
-    """, unsafe_allow_html=True)
+st.set_page_config(
+    page_title="VibeStack Control Center",
+    page_icon="🚀",
+    layout="wide",
+)
 
-st.divider()
+sync_state_from_query()
 
-# Welcome message
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown("""
-    ### 👋 Hello, Developer!
-    
-    Welcome to **VibeStack**, your fully-featured development environment accessible from anywhere. 
-    Whether you're working on a new project, experimenting with code, or collaborating with AI assistants, 
-    VibeStack provides all the tools you need in one place.
-    
-    ### 🎯 Quick Start
-    
-    Navigate using the sidebar to access:
-    
-    - **✏️ Editor** - Edit and manage your project files with syntax highlighting and full file browser
-    - **💻 Code** - Access the integrated terminal directly in your browser
-    - **📁 File Browser** - Browse and download files from your workspace
-    
-    ### 🛠️ What's Included
-    
-    VibeStack comes pre-configured with:
-    - Full Linux development environment
-    - Python, Node.js, and common development tools
-    - AI assistant integration (Claude CLI and LLM tools)
-    - Web-based terminal access
-    - File editing and management capabilities
-    - Git version control
-    
-    ### 💡 Tips
-    
-    - Use the **Editor** to modify your `.vibe` configuration files
-    - Access the terminal through the **Code** page for command-line operations
-    - Your work is automatically saved in the `/home/vibe` directory
-    - Check out the interactive command center by typing `vibestack-menu` in any terminal
-    
-    Ready to start building? Select a page from the sidebar to begin! 🚀
-    """)
+state = st.session_state
 
-# Footer
-st.markdown("---")
-st.markdown("""
-    <p style='text-align: center; color: #999; font-size: 0.9em;'>
-        VibeStack - Powered by Streamlit, Docker, and Open Source ❤️
-    </p>
-    """, unsafe_allow_html=True)
+templates = load_templates()
+sessions = list_sessions()
+render_sidebar(active_page="Session", templates=templates, sessions=sessions)
+
+active_template = get_template_by_name(templates, state.get(KEY_ACTIVE_TEMPLATE))
+active_metadata = None
+
+if state.get(KEY_ACTIVE_SESSION):
+    try:
+        active_metadata = MANAGER.get_session(state[KEY_ACTIVE_SESSION])
+    except Exception as exc:  # pylint: disable=broad-except
+        st.error(f"Unable to load session '{state[KEY_ACTIVE_SESSION]}': {exc}")
+        state[KEY_ACTIVE_SESSION] = None
+        update_query_params()
+    else:
+        if active_metadata and active_metadata.template and state.get(KEY_ACTIVE_TEMPLATE) != active_metadata.template:
+            state[KEY_ACTIVE_TEMPLATE] = active_metadata.template
+            active_template = get_template_by_name(templates, state.get(KEY_ACTIVE_TEMPLATE))
+            update_query_params()
+
+st.title("🚀 VibeStack Session Control Center")
+
+if not templates:
+    st.info("No templates available. Visit the Templates page to add one.")
+elif not sessions:
+    st.info("Launch a session, then revisit this page.")
+elif not require_session(active_metadata):
+    pass
+else:
+    render_session_overview(active_metadata, active_template)

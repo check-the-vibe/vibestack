@@ -1,3 +1,0 @@
-<!-- This file gives any specific information about the environment that claude is running in, including any specific details about how code is executed, where a user is accessing this project, and whether there are any specific constraints (no write access, e.g). If the user is running in a known platform environment (e.g. Github Codespaces, Replit) this will be called out -->
-
-You are running in Github Codespaces, as a Dev Container. more information on the configuration is in .devcontainer/devcontainer.json. When claude is running, the user accesses a shell in the container (see .devcontainer or Dockerfile for more information). Modifying the dockerfile or any of the configuration attached to devcontainer.json, will require the user to rebuild the devcontainer. 

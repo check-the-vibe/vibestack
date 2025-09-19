@@ -1,0 +1,11 @@
+{
+  "name": "codex-research",
+  "label": "Codex – Writing Research",
+  "command": "codex",
+  "session_type": "long_running",
+  "description": "Codex session tailored for writing/editing research tasks",
+  "include_files": [
+    {"source": "AGENTS-writing.md", "target": "AGENTS.md"},
+    {"source": "TASKS.md", "target": "TASKS.md"}
+  ]
+}

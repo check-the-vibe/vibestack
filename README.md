@@ -8,8 +8,11 @@ VibeStack is a lightweight, full-featured development environment that runs in G
 - **Interactive Terminal**: Web-based terminal with ttyd integration
 - **Development Tools**: Pre-installed with Node.js, Python, Git, and more
 - **AI Development**: Claude Code and LLM CLI tools pre-configured
-- **Interactive Menu**: Custom command center with quick access to development tools
+- **Session Manager**: tmux-backed job queue with Streamlit controls
+- **Composable Python API**: Import `vibestack.api` to script sessions and templates
 - **Streamlit UI**: Web interface with embedded terminal at `/ui/`
+- **REST API Gateway**: FastAPI service exposing the Python session manager at `/api/`
+- **Codex persistence hooks**: mount a host directory and set `CODEX_STATE_DIR` to keep tokens across restarts
 - **Multi-user Support**: SSH access with configurable passwords
 
 ## 🚀 Quick Start
@@ -19,8 +22,6 @@ VibeStack is a lightweight, full-featured development environment that runs in G
 1. Click "Code" → "Codespaces" → "Create codespace on main"
 2. Wait for the container to build and start
 3. Access the desktop at the forwarded URL (port 80)
-4. Use the interactive menu or type `vibestack-menu` in any terminal
-
 ### Local Docker
 
 ```bash
@@ -40,6 +41,7 @@ docker run -p 80:80 -p 22:22 vibestack
 - **Desktop Environment**: `http://localhost/` - Full Linux desktop via noVNC
 - **Terminal UI**: `http://localhost/ui/` - Streamlit app with embedded terminal
 - **Direct Terminal**: `http://localhost/terminal/` - Standalone web terminal
+- **REST API**: `http://localhost/api/` - FastAPI-powered HTTP endpoints (see below)
 
 ### SSH Access
 
@@ -53,6 +55,8 @@ ssh root@localhost -p 22
 ```
 
 ## 🛠️ Pre-installed Tools
+
+> Tip: To persist Codex login state across container restarts, create a `codex/` folder next to this repository and run the container with `-v $(pwd)/codex:/data/codex -e CODEX_STATE_DIR=/data/codex`. The entrypoint will symlink `/home/vibe/.codex` to that directory.
 
 ### Development Tools
 - **Node.js** (LTS) with npm
@@ -69,15 +73,6 @@ ssh root@localhost -p 22
 - **XTerm** - Terminal emulator
 - **Fluxbox** - Lightweight window manager
 
-## 📱 Interactive Command Center
-
-When you open a terminal, you'll see the VibeStack interactive menu with options to:
-
-- Launch Claude Code
-- Use LLM CLI
-- Skip to shell
-- Exit menu
-
 ### Disabling the Menu
 
 To disable the automatic menu on terminal startup:
@@ -88,10 +83,6 @@ export VIBESTACK_NO_MENU=1
 
 Or run the menu manually anytime with:
 
-```bash
-vibestack-menu
-```
-
 ## 🔧 Configuration
 
 ### Environment Variables
@@ -100,11 +91,12 @@ vibestack-menu
 - `ROOT_PASSWORD` - Set root password (default: none)
 - `VIBE_PASSWORD` - Set vibe user password (default: "coding")
 - `RESOLUTION` - Desktop resolution (default: 1280x720)
-- `VIBESTACK_NO_MENU` - Disable interactive menu (set to 1)
+- `CODEX_STATE_DIR` - Optional path that will be symlinked to `/home/vibe/.codex` for Codex tokens
 
 ### Ports
 
 - **80**: Nginx proxy (desktop, terminal, UI)
+- **9000**: FastAPI REST service (internal)
 - **22**: SSH server
 - **5900**: VNC server (internal)
 - **6080**: noVNC web server (internal)
@@ -129,6 +121,36 @@ All services are managed by Supervisor. Check status with:
 sudo supervisorctl status
 ```
 
+### REST API
+
+The FastAPI service exposes the `vibestack.api` helpers over HTTP at `/api/`. Interactive docs are available at `/api/docs`. A few common workflows:
+
+```bash
+# List sessions
+curl http://localhost/api/sessions
+
+# Create a new session
+curl -X POST http://localhost/api/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "demo", "template": "bash"}'
+
+# Tail the last 100 log lines
+curl 'http://localhost/api/sessions/demo/log?lines=100'
+```
+
+Inside the container the service also listens directly on `http://127.0.0.1:9000`, which bypasses Nginx. For example:
+
+```bash
+# Run from within the container shell
+curl http://127.0.0.1:9000/api/docs
+```
+
+If you need to restart just the API without touching other services, run `sudo supervisorctl restart vibestack-api`.
+
+Detailed design notes live in `docs/fastapi-rest.md`; endpoint specifics and curl recipes are documented in `docs/fastapi-rest-endpoints.md`.
+
+Need a ready-to-use workspace? Launch a session with the `rest-api-lab` template—it ships with `AGENTS.md` instructions and the endpoint reference preloaded in the session artifacts.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -138,11 +160,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is open source and available under the MIT License.
 
 ## 🐛 Troubleshooting
-
-### Menu doesn't appear
-- Ensure you're in an interactive terminal
-- Check if `VIBESTACK_NO_MENU` is set
-- Try running `vibestack-menu` manually
 
 ### Desktop not loading
 - Check if services are running: `sudo supervisorctl status`

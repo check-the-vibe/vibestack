@@ -1,0 +1,11 @@
+{
+  "name": "codex",
+  "label": "Codex CLI",
+  "command": "codex",
+  "session_type": "long_running",
+  "description": "Interactive Codex shell session",
+  "include_files": [
+    {"source": "AGENTS.md", "target": "AGENTS.md"},
+    {"source": "TASKS.md", "target": "TASKS.md"}
+  ]
+}

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -n "${VIBESTACK_HOME:-}" ]]; then
+  REPO_ROOT="${VIBESTACK_HOME}"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
+
+VS_CLI="${REPO_ROOT}/bin/vibestack-sessions"
+
+environment_setup() {
+  export PYTHONPATH="${PYTHONPATH:-}${PYTHONPATH:+:}${REPO_ROOT}"
+}
+
+environment_setup
+
+attach_session() {
+  local name="$1"
+  if ! tmux has-session -t "$name" 2>/dev/null; then
+    printf 'Session "%s" not found. Use vibestack-sessions create to start it.\n' "$name" >&2
+    exit 1
+  fi
+  exec tmux attach -t "$name"
+}
+
+action="${1:-}"
+
+case "$action" in
+  "" )
+    exec bash --login
+    ;;
+  session )
+    if [[ -z "${2:-}" ]]; then
+      printf 'Usage: vibestack-ttyd-entry session <name> [template]\n' >&2
+      exit 1
+    fi
+    session_name="${2}"
+    attach_session "$session_name"
+    ;;
+  create )
+    template="${2:-bash}"
+    if [[ "${3:-}" != "" ]]; then
+      session_name="${3}"
+    else
+      session_name="session-$(date +%Y%m%d-%H%M%S)"
+    fi
+    "${VS_CLI}" create "$session_name" --template "$template" >/dev/null
+    attach_session "$session_name"
+    ;;
+  oneoff )
+    template="${2:-script}"
+    session_name="${3:-job-$(date +%Y%m%d-%H%M%S)}"
+    command="${4:-}"
+    if [[ -z "$command" ]]; then
+      printf 'One-off command required.\n' >&2
+      exit 1
+    fi
+    "${VS_CLI}" one-off "$session_name" "$command" >/dev/null
+    printf 'Queued one-off job %s (%s).\n' "$session_name" "$command"
+    printf 'Attaching to follow output. This pane will close once the job exits.\n'
+    attach_session "$session_name"
+    ;;
+  * )
+    session_name="$action"
+    attach_session "$session_name"
+    ;;
+ esac
