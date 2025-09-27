@@ -7,6 +7,8 @@ PLATFORM="linux/amd64"
 PROJECTS_MOUNT="/Users/neal/Projects:/projects"
 CODEX_STATE_HOST="/Users/neal/Projects/codex-state"
 CODEX_STATE_MOUNT="${CODEX_STATE_HOST}:/data/codex"
+# Reserve a minimum memory footprint unless overridden by env.
+MEMORY_RESERVATION="${MEMORY_RESERVATION:-4g}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_NAME="$(basename "$0")"
@@ -47,6 +49,8 @@ start_container() {
   docker run -d \
     --name "${CONTAINER_NAME}" \
     --platform "${PLATFORM}" \
+    --security-opt seccomp=unconfined \
+    --memory-reservation "${MEMORY_RESERVATION}" \
     -p 3000:80 \
     -p 1455:1456 \
     -v "${PROJECTS_MOUNT}" \

@@ -12,6 +12,7 @@ VibeStack is a lightweight, full-featured development environment that runs in G
 - **Composable Python API**: Import `vibestack.api` to script sessions and templates
 - **Streamlit UI**: Web interface with embedded terminal at `/ui/`
 - **REST API Gateway**: FastAPI service exposing the Python session manager at `/api/`
+- **MCP Session API**: Streamable HTTP transport mirroring the session manager at `/mcp/`
 - **Codex persistence hooks**: mount a host directory and set `CODEX_STATE_DIR` to keep tokens across restarts
 - **Multi-user Support**: SSH access with configurable passwords
 
@@ -42,6 +43,7 @@ docker run -p 80:80 -p 22:22 vibestack
 - **Terminal UI**: `http://localhost/ui/` - Streamlit app with embedded terminal
 - **Direct Terminal**: `http://localhost/terminal/` - Standalone web terminal
 - **REST API**: `http://localhost/api/` - FastAPI-powered HTTP endpoints (see below)
+- **MCP Session API**: `http://localhost/mcp/` - Streamable HTTP endpoint for Model Context Protocol clients
 
 ### SSH Access
 
@@ -67,7 +69,6 @@ ssh root@localhost -p 22
 ### AI/ML Tools
 - **Claude Code** (`claude`) - Anthropic's AI coding assistant
 - **LLM CLI** (`llm`) - Command-line interface for language models
-- **Playwright MCP** - Browser automation server
 
 ### Desktop Applications
 - **XTerm** - Terminal emulator
@@ -101,8 +102,8 @@ Or run the menu manually anytime with:
 - **5900**: VNC server (internal)
 - **6080**: noVNC web server (internal)
 - **7681**: ttyd terminal server (internal)
-- **7777**: Playwright MCP server (internal)
 - **8501**: Streamlit app (internal)
+- **9100**: MCP Session API (internal)
 
 ## 🏗️ Architecture
 
@@ -154,6 +155,8 @@ Need a ready-to-use workspace? Launch a session with the `rest-api-lab` template
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+Before opening changes, review the [Repository Guidelines](AGENTS.md) for structure, testing, and PR expectations.
 
 ## 📄 License
 

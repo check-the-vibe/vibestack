@@ -3,16 +3,17 @@
 ## Overview
 Templates define repeatable tmux sessions for VibeStack. They bundle the command to launch, metadata such as labels and descriptions, and optional helper files to seed into a session workspace. Templates can be either built-in (shipped with the repo under `vibestack/templates/`) or user-defined (stored at runtime under `~/.vibestack/templates/`).
 
-At startup the `SessionManager` merges built-in templates with anything in the user directory. The Streamlit UI and REST API expose the same list, so keeping template metadata accurate benefits every entry point.
+At startup the `SessionManager` merges built-in templates with anything in the user directory. The image ships with two built-in templates: `bash` (prints a welcome message) and `codex` (preconfigures the GPT-5 Codex CLI with dangerous permissions). The Streamlit UI and REST API expose the same list, so keeping template metadata accurate benefits every entry point.
 
 ## Template File Structure
 Templates are JSON documents with the following common keys:
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `name` | string | Yes | Template identifier used by `vibestack-sessions` and the REST API. File name is `${name}.json`. |
+| `name` | string | Yes | Template identifier used by `vibe` and the REST API. File name is `${name}.json`. |
 | `label` | string | No | Friendly name shown in the UI. Defaults to `name` if omitted. |
 | `command` | string | No | Command executed inside tmux. Empty string means "launch login shell". |
+| `command_args` | array | No | Optional list of arguments appended to the command; when provided via the API, template defaults are skipped. |
 | `session_type` | enum | No | `"long_running"` (default) or `"one_off"`; controls lifecycle hints. |
 | `description` | string | No | Appears in the Streamlit sidebar. |
 | `working_dir` | string | No | Overrides the session workspace path when launching. |
@@ -34,7 +35,7 @@ User-defined templates can also bundle custom assets by passing `include_sources
 - Keep pages idempotent: they will re-run on every Streamlit refresh, so guard side effects accordingly.
 
 ## Creating a Template from a Working Session
-1. **Launch and verify a session.** Use the Streamlit UI or `vibestack-sessions create` to start a session with your desired command / setup. Make sure the workspace contains any seed files you want future runs to receive.
+1. **Launch and verify a session.** Use the Streamlit UI or `vibe create` to start a session with your desired command / setup. Make sure the workspace contains any seed files you want future runs to receive.
 2. **Collect the essentials.** Note the command (`SessionMetadata.command`), description, working directory, and any environment variables you configured manually. Decide which workspace files should be packaged as reusable assets.
 3. **Prepare asset files.** Move or copy reusable files into a stable location (e.g. `/home/vibe/vibestack/assets/` during development). For ad-hoc assets, you can pass absolute paths when saving the template and they will be captured under the user asset directory.
 4. **Author the template JSON.** Use the fields above to describe the session. A minimal example:
@@ -72,7 +73,7 @@ User-defined templates can also bundle custom assets by passing `include_sources
        -H 'Content-Type: application/json' \
        -d '{"payload": {"name": "pytest-session", "command": "poetry run pytest -q"}, "include_sources": ["/home/vibe/project/pytest.ini"]}'
      ```
-6. **Validate.** Reload the Streamlit page or call `vibestack-sessions list` to ensure the new template appears with `"source": "user"`. Launch a fresh session from it to confirm the workspace assets and command run as expected.
+6. **Validate.** Reload the Streamlit page or call `vibe list` to ensure the new template appears with `"source": "user"`. Launch a fresh session from it to confirm the workspace assets and command run as expected.
 
 ## Maintenance Tips
 - Store shared documentation (`AGENTS.md`, `TASKS.md`, service notes) in assets so every template can reference the same canonical version.

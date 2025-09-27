@@ -16,8 +16,8 @@ Managed via Supervisor:
 
 ## Configuration Touchpoints
 - Environment variables: `RESOLUTION`, `NOVNC_PORT`, `VNC_PORT` can be overridden at runtime.
-- Fluxbox UI tweaks: edit `fluxbox-init`, `fluxbox-startup`, and `fluxbox-apps` in the repository; they are copied to `/home/vibe/.fluxbox/` during the build.
-- X resources: `Xresources` controls fonts and colors for X11 applications.
+- Fluxbox UI tweaks: edit the repo-root files `fluxbox-init`, `fluxbox-startup`, and `fluxbox-apps`; they are copied to `/home/vibe/.fluxbox/` during the build.
+- X resources: the root-level `Xresources` file controls fonts and colors for X11 applications.
 
 ## Logs & Diagnostics
 - Supervisor logs:

@@ -4,7 +4,9 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import runpy
+import shlex
 import sys
 import urllib.parse
 from contextlib import contextmanager
@@ -22,11 +24,10 @@ from vibestack.sessions.models import ISO_FORMAT
 MANAGER = SessionManager()
 
 # Keys stored in session state.
-KEY_ACTIVE_TEMPLATE = "active_template"
 KEY_ACTIVE_SESSION = "active_session"
-KEY_SIDEBAR_SESSION = "sidebar_session_choice"
 KEY_WORKSPACE_FILE_PREFIX = "workspace_file_"
 KEY_TEMPLATE_PAGE_PREFIX = "template_page_"
+KEY_SESSION_SELECT_WIDGET = "sidebar_session_select"
 INACTIVE_STATUSES: Set[str] = {
     "stopped",
     "dead",
@@ -38,10 +39,12 @@ INACTIVE_STATUSES: Set[str] = {
     "exited",
 }
 
+def sanitize_token(value: str, *, fallback: str = "item") -> str:
+    token = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
+    return token or fallback
 
 def ensure_state_defaults() -> None:
     state = st.session_state
-    state.setdefault(KEY_ACTIVE_TEMPLATE, None)
     state.setdefault(KEY_ACTIVE_SESSION, None)
 
 
@@ -91,33 +94,21 @@ def sessions_for_template(sessions: Iterable[SessionMetadata], template_name: Op
 def sync_state_from_query() -> None:
     ensure_state_defaults()
     params = st.query_params
-    template_from_query = params.get("template")
-    if isinstance(template_from_query, list):
-        template_from_query = template_from_query[-1]
     session_from_query = params.get("session")
     if isinstance(session_from_query, list):
         session_from_query = session_from_query[-1]
 
     state = st.session_state
-    changed = False
-    if template_from_query and state.get(KEY_ACTIVE_TEMPLATE) != template_from_query:
-        state[KEY_ACTIVE_TEMPLATE] = template_from_query
-        changed = True
     if session_from_query and state.get(KEY_ACTIVE_SESSION) != session_from_query:
         state[KEY_ACTIVE_SESSION] = session_from_query
-        changed = True
-    if changed:
-        # Keep sidebar selectors in sync on rerun.
-        state[KEY_SIDEBAR_SESSION] = state.get(KEY_ACTIVE_SESSION)
+    # Sidebar widgets derive their state from KEY_ACTIVE_SESSION,
+    # so no additional synchronization is required here.
 
 
 def update_query_params() -> None:
     params: Dict[str, str] = {}
     state = st.session_state
-    template = state.get(KEY_ACTIVE_TEMPLATE)
     session = state.get(KEY_ACTIVE_SESSION)
-    if template:
-        params["template"] = template
     if session:
         params["session"] = session
     query = st.query_params
@@ -126,9 +117,16 @@ def update_query_params() -> None:
         query.update(params)
 
 
-def render_sidebar(*, active_page: str, templates: List[Dict[str, Any]], sessions: List[SessionMetadata]) -> None:
-    state = st.session_state
+
+def render_sidebar(
+    *,
+    active_page: str,
+    templates: Optional[List[Dict[str, Any]]] = None,
+    sessions: Optional[List[SessionMetadata]] = None,
+) -> None:
+    del templates, sessions
     ensure_state_defaults()
+    state = st.session_state
 
     with st.sidebar:
         st.markdown(
@@ -140,65 +138,40 @@ def render_sidebar(*, active_page: str, templates: List[Dict[str, Any]], session
             unsafe_allow_html=True,
         )
 
-        st.subheader("Navigation")
-        st.page_link("app.py", label="Session", icon="📡")
-        st.page_link("pages/1_💻_Terminal.py", label="Terminal", icon="💻")
-        st.page_link("pages/2_📁_Workspace.py", label="Workspace", icon="📁")
-        st.page_link("pages/3_🧩_UI.py", label="UI", icon="🧩")
+        st.markdown(
+            """
+            <div style="margin-bottom: 0.75rem;">
+              <a href="/ui/" target="_self" style="text-decoration: none; font-weight: 600; font-size: 1.1rem; display: inline-flex; gap: 0.5rem; align-items: center;">
+                <span>🚀</span><span>VibeStack</span>
+              </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        if templates:
-            template_names = [tpl["name"] for tpl in templates]
-            if state.get(KEY_ACTIVE_TEMPLATE) not in template_names:
-                state[KEY_ACTIVE_TEMPLATE] = template_names[0]
+        nav_items = [
+            {"target": "app.py", "label": "Home", "icon": "🏠"},
+            {"target": "pages/1_📋_Sessions.py", "label": "Sessions", "icon": "📋"},
+            {"target": "pages/2_📚_Docs.py", "label": "Docs", "icon": "📚"},
+            {"target": "pages/3_⚙️_Templates.py", "label": "Templates", "icon": "⚙️"},
+            {"target": "pages/4_🧑‍💻_Code.py", "label": "Code", "icon": "🧑‍💻"},
+            {"target": "pages/5_🛠️_Services.py", "label": "Services", "icon": "🛠️"},
+            {"target": "pages/6_🖥️_Desktop.py", "label": "Desktop", "icon": "🖥️"},
+            {"target": "pages/7_🧩_MCP.py", "label": "MCP", "icon": "🧩"},
+        ]
+
+        for item in nav_items:
+            st.page_link(item["target"], label=item["label"], icon=item["icon"])
+
+        st.divider()
+        active_session = state.get(KEY_ACTIVE_SESSION)
+        if active_session:
+            st.caption(f"Active session: `{active_session}`")
         else:
-            state[KEY_ACTIVE_TEMPLATE] = None
-            st.info("Add templates to get started.")
+            st.caption("No active session selected.")
 
-        active_sessions = filter_active_sessions(sessions)
-        session_lookup = {meta.name: meta for meta in active_sessions}
-        if session_lookup:
-            options: List[Optional[str]] = [None] + list(session_lookup.keys())
-            current = state.get(KEY_ACTIVE_SESSION)
-            if current not in session_lookup:
-                current = None
-                state[KEY_ACTIVE_SESSION] = None
-
-            default_index = options.index(current) if current in options else 0
-
-            def session_label(value: Optional[str]) -> str:
-                if value is None:
-                    return "Select a session"
-                meta = session_lookup.get(value)
-                template_name = meta.template if meta and meta.template else "—"
-                return f"{template_name} · {value}" if meta else value
-
-            selected_session = st.selectbox(
-                "Session",
-                options=options,
-                index=default_index,
-                format_func=session_label,
-                key=KEY_SIDEBAR_SESSION,
-            )
-            if selected_session != state.get(KEY_ACTIVE_SESSION):
-                state[KEY_ACTIVE_SESSION] = selected_session
-                if selected_session:
-                    meta = session_lookup.get(selected_session)
-                    if meta and meta.template:
-                        state[KEY_ACTIVE_TEMPLATE] = meta.template
-                update_query_params()
-                st.rerun()
-        else:
-            st.caption("No active sessions available yet.")
-            state[KEY_ACTIVE_SESSION] = None
-
-        create_disabled = not templates
-        if st.button("Create a Session", use_container_width=True, disabled=create_disabled):
-            st.switch_page("pages/5_🆕_Create_Session.py")
-
-        st.markdown("---")
-        st.page_link("pages/4_⚙️_Templates.py", label="Templates", icon="⚙️")
-        st.page_link("pages/6_🖥️_Desktop.py", label="Desktop", icon="🖥️")
-        st.page_link("pages/7_📋_Sessions.py", label="Sessions", icon="📋")
+        if active_page != "Home":
+            st.caption("Need onboarding? Visit Home to reopen the guide.")
 
 
 def require_session(metadata: Optional[SessionMetadata]) -> bool:
@@ -274,28 +247,72 @@ def render_dynamic_streamlit_page(page_path: Path, metadata: SessionMetadata) ->
             st.exception(exc)
 
 
-def render_terminal(metadata: SessionMetadata) -> None:
-    with st.form(f"send_input_{metadata.name}"):
-        text = st.text_input("Send text to terminal", placeholder="Type a command")
-        submitted = st.form_submit_button("Send", use_container_width=True)
-        if submitted:
-            if not text:
-                st.warning("Nothing to send.")
-            else:
-                try:
-                    MANAGER.send_text(metadata.name, text, enter=False)
-                    MANAGER.send_text(metadata.name, "", enter=True)
-                except Exception as exc:  # pylint: disable=broad-except
-                    st.error(f"Unable to send text: {exc}")
+def ensure_session(
+    session_name: str,
+    *,
+    command: str,
+    template: str = "script",
+    description: Optional[str] = None,
+) -> Optional[SessionMetadata]:
+    existing = MANAGER.get_session(session_name)
+    if existing:
+        return existing
+
+    try:
+        return MANAGER.create_session(
+            session_name,
+            template=template,
+            command=command,
+            description=description,
+        )
+    except ValueError:
+        return MANAGER.get_session(session_name)
+    except Exception as exc:  # pylint: disable=broad-except
+        st.error(f"Unable to start session '{session_name}': {exc}")
+        return None
+
+
+def ensure_supervisor_tail_session(service_name: str) -> Optional[SessionMetadata]:
+    service_token = sanitize_token(service_name, fallback="service")
+    session_name = f"tail-supervisor-{service_token}"
+    command = f"sudo supervisorctl tail -f {shlex.quote(service_name)}"
+    description = f"Follow supervisor logs for {service_name}"
+    return ensure_session(
+        session_name,
+        command=command,
+        template="script",
+        description=description,
+    )
+
+
+def render_terminal(
+    metadata: SessionMetadata,
+    *,
+    allow_input: bool = True,
+    height: int = 600,
+) -> None:
+    if allow_input:
+        with st.form(f"send_input_{metadata.name}"):
+            text = st.text_input("Send text to terminal", placeholder="Type a command")
+            submitted = st.form_submit_button("Send", use_container_width=True)
+            if submitted:
+                if not text:
+                    st.warning("Nothing to send.")
                 else:
-                    st.success("Sent to session.")
-                    st.rerun()
+                    try:
+                        MANAGER.send_text(metadata.name, text, enter=False)
+                        MANAGER.send_text(metadata.name, "", enter=True)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        st.error(f"Unable to send text: {exc}")
+                    else:
+                        st.success("Sent to session.")
+                        st.rerun()
 
     query = urllib.parse.urlencode(
         [("arg", "session"), ("arg", metadata.name), ("arg", metadata.template)]
     )
     iframe_url = os.environ.get("VIBESTACK_TTYD_BASE", "/terminal/")
-    iframe(src=f"{iframe_url}?{query}", height=600)
+    iframe(src=f"{iframe_url}?{query}", height=height)
     st.caption("Open in a new tab:")
     st.markdown(
         f"[Launch terminal](../terminal/?{query})",
@@ -724,49 +741,185 @@ def render_create_session_form(templates: List[Dict[str, Any]], selected_templat
         return
 
     template_options = [tpl["name"] for tpl in templates]
-    default_template_name = selected_template["name"] if selected_template else template_options[0]
-    template_key = st.selectbox(
-        "Template",
-        options=template_options,
-        index=template_options.index(default_template_name),
-        format_func=lambda key: get_template_label(get_template_by_name(templates, key) or {}),
-        key="create_template_choice",
+    default_template_name = (
+        selected_template.get("name")
+        if selected_template and selected_template.get("name") in template_options
+        else template_options[0]
     )
-    chosen_template = get_template_by_name(templates, template_key)
-    if chosen_template and chosen_template.get("description"):
-        st.caption(chosen_template["description"])
 
-    include_files = chosen_template.get("include_files") if chosen_template else []
-    pretty: List[str] = []
-    for entry in include_files or []:
-        pretty.append(format_include(entry))
-    if pretty:
-        st.caption("Includes: " + ", ".join(filter(None, pretty)))
+    with st.form("create_session_form"):
+        template_key = st.selectbox(
+            "Template",
+            options=template_options,
+            index=template_options.index(default_template_name),
+            format_func=lambda key: get_template_label(get_template_by_name(templates, key) or {}),
+            key="create_template_choice",
+        )
+        chosen_template = get_template_by_name(templates, template_key)
+        if chosen_template and chosen_template.get("description"):
+            st.caption(chosen_template["description"])
 
-    suggested_name = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    default_session_name = f"{template_key}-{suggested_name}" if template_key else suggested_name
+        include_files = chosen_template.get("include_files") if chosen_template else []
+        pretty = [format_include(entry) for entry in include_files or []]
+        if pretty:
+            st.caption("Includes: " + ", ".join(filter(None, pretty)))
 
-    session_name = st.text_input("Session name", value=default_session_name)
-    custom_command = st.text_input("Command override", placeholder="Leave blank to use the template default")
-    description = st.text_area("Description", placeholder="Optional summary of the session")
-    create_clicked = st.button("Launch session", use_container_width=True)
+        suggested_name = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        default_session_name = f"{template_key}-{suggested_name}" if template_key else suggested_name
+        session_name = st.text_input("Session name", value=default_session_name)
 
-    if create_clicked:
-        if not session_name.strip():
-            st.error("Session name is required.")
-            return
-        try:
-            metadata = MANAGER.create_session(
-                session_name.strip(),
-                template=template_key,
-                command=custom_command.strip() or None,
-                description=description.strip() or None,
+        workdir_presets: List[tuple[str, Optional[str]]] = [
+            ("Session workspace (default)", None),
+            ("Repository root (/projects/vibestack)", "/projects/vibestack"),
+            ("Home (/home/vibe)", "/home/vibe"),
+            ("Custom path…", "__custom__"),
+        ]
+        workdir_labels = [label for label, _ in workdir_presets]
+        workdir_choice = st.selectbox(
+            "Starting directory",
+            options=workdir_labels,
+            index=0,
+            key="create_workdir_choice",
+        )
+        workdir_value = next(value for label, value in workdir_presets if label == workdir_choice)
+        custom_workdir = ""
+        if workdir_value == "__custom__":
+            custom_workdir = st.text_input(
+                "Custom path",
+                value=st.session_state.get("create_custom_workdir", ""),
+                placeholder="/projects/vibestack",
+                key="create_custom_workdir",
             )
-            st.success(f"Session '{metadata.name}' is ready.")
-            state = st.session_state
-            state[KEY_ACTIVE_SESSION] = metadata.name
-            state[KEY_ACTIVE_TEMPLATE] = metadata.template
-            update_query_params()
-            st.switch_page("app.py")
-        except Exception as exc:  # pylint: disable=broad-except
-            st.error(f"Unable to create session: {exc}")
+
+        st.caption("Use absolute paths when selecting a custom directory. Leave the default to work from the session workspace.")
+
+        command_override = st.text_input(
+            "Command override",
+            placeholder="Leave blank to use the template default",
+        )
+        description = st.text_area("Description", placeholder="Optional summary of the session")
+
+        command_args: List[str] = []
+        extra_args_error: Optional[str] = None
+        additional_args_raw = ""
+        is_codex_template = template_key == "codex"
+
+        if is_codex_template:
+            st.markdown("### Codex CLI options")
+            model_choices = ["gpt-5-codex", "gpt-4.1-mini", "o4-mini"]
+            default_model_index = model_choices.index("gpt-5-codex") if "gpt-5-codex" in model_choices else 0
+            model_choice = st.selectbox(
+                "Model",
+                options=model_choices,
+                index=default_model_index,
+                key="codex_model_choice",
+            )
+            sandbox_modes = ["danger-full-access", "workspace-write", "read-only"]
+            sandbox_choice = st.selectbox(
+                "Sandbox mode",
+                options=sandbox_modes,
+                index=0,
+                key="codex_sandbox_choice",
+            )
+            approval_policies = ["never", "on-request", "on-failure", "untrusted"]
+            approval_choice = st.selectbox(
+                "Approval policy",
+                options=approval_policies,
+                index=0,
+                key="codex_approval_choice",
+            )
+            enable_search = st.checkbox(
+                "Enable web search (--search)",
+                value=False,
+                key="codex_enable_search",
+            )
+            inherit_env = st.checkbox(
+                "Inherit full shell environment (-c shell_environment_policy.inherit=all)",
+                value=True,
+                key="codex_inherit_env",
+            )
+            additional_args_raw = st.text_input(
+                "Additional Codex arguments",
+                value="",
+                placeholder="e.g. --oss -c runbook.debug=true",
+                key="codex_additional_args",
+            )
+
+            command_args.extend(
+                [
+                    "--model",
+                    model_choice,
+                    "--sandbox",
+                    sandbox_choice,
+                    "--ask-for-approval",
+                    approval_choice,
+                ]
+            )
+            if enable_search:
+                command_args.append("--search")
+            if inherit_env:
+                command_args.extend(["-c", "shell_environment_policy.inherit=all"])
+        else:
+            additional_args_raw = st.text_input(
+                "Additional command arguments",
+                value="",
+                placeholder="Optional extra CLI flags",
+                key="generic_additional_args",
+            )
+
+        if additional_args_raw:
+            try:
+                command_args.extend(shlex.split(additional_args_raw))
+            except ValueError as exc:
+                extra_args_error = str(exc)
+
+        workdir_to_use: Optional[str]
+        if workdir_value == "__custom__":
+            workdir_to_use = custom_workdir.strip() or None
+        else:
+            workdir_to_use = workdir_value
+
+        submitted = st.form_submit_button("Launch session", use_container_width=True)
+
+    if not submitted:
+        return
+
+    if not session_name.strip():
+        st.error("Session name is required.")
+        return
+
+    if workdir_value == "__custom__" and not workdir_to_use:
+        st.error("Enter a custom path for the starting directory or choose a preset.")
+        return
+
+    if extra_args_error:
+        st.error(f"Unable to parse additional arguments: {extra_args_error}")
+        return
+
+    final_command_args: Optional[List[str]] = list(command_args) if command_args else None
+    if is_codex_template:
+        final_command_args = list(final_command_args or [])
+        if workdir_to_use:
+            final_command_args.extend(["--cd", workdir_to_use])
+        if not final_command_args:
+            final_command_args = None
+
+    try:
+        metadata = MANAGER.create_session(
+            session_name.strip(),
+            template=template_key,
+            command=command_override.strip() or None,
+            description=description.strip() or None,
+            working_dir=workdir_to_use,
+            command_args=final_command_args,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        st.error(f"Unable to create session: {exc}")
+        return
+
+    st.success(f"Session '{metadata.name}' is ready.")
+    state = st.session_state
+    state[KEY_ACTIVE_SESSION] = metadata.name
+    state["show_create_session_form"] = False
+    update_query_params()
+    st.rerun()

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -n "${VIBESTACK_HOME:-}" ]]; then
+  REPO_ROOT="${VIBESTACK_HOME}"
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
+
+export PYTHONPATH="${PYTHONPATH:-}${PYTHONPATH:+:}${REPO_ROOT}"
+
+exec python3 -m vibestack.startup.run "$@"

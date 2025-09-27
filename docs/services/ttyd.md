@@ -18,13 +18,14 @@ Provides a browser-based terminal with tmux integration so agents can work insid
 ## Entry Script (`vibestack-ttyd-entry`)
 - Default action: launches an interactive login shell.
 - `session <name>`: attach to an existing tmux/VibeStack session.
-- `create [template] [name]`: create a new session via `vibestack-sessions` CLI and attach immediately.
+- `create [template] [name]`: create a new session via the `vibe` CLI and attach immediately.
 - `oneoff [template] [name] <command>`: queue a one-off job and follow its tmux output.
 - Any other argument is treated as a session name to attach to.
 
 ## Common Tasks
 - **Attach to session:** open `/terminal/` and run `vibestack-ttyd-entry session <name>`.
-- **List sessions:** `vibestack-sessions list`.
+- **List sessions:** `vibe list`.
+- **Attach from CLI:** `vibe attach <name>`.
 - **Run custom command:** `vibestack-ttyd-entry oneoff script job-foo "pytest -q"`.
 
 ## Troubleshooting

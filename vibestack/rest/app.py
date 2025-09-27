@@ -1,9 +1,10 @@
 """FastAPI application exposing the VibeStack Python API via REST."""
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, FastAPI, HTTPException, Query, Response, status
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field
 
 from vibestack import api as vibestack_api
@@ -42,6 +43,10 @@ class SessionCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, description="Unique session identifier")
     template: str = Field("bash", description="Template to base the session on")
     command: Optional[str] = Field(None, description="Command override for the template")
+    command_args: Optional[List[str]] = Field(
+        None, description="Optional list of command arguments to append to the template command"
+    )
+    working_dir: Optional[str] = Field(None, description="Working directory for the session before commands run")
     description: Optional[str] = Field(None, description="Optional human readable summary")
     session_root: Optional[str] = Field(
         None,
@@ -112,6 +117,60 @@ class JobRecord(BaseModel):
 
 
 router = APIRouter(prefix="/api", tags=["vibestack"])
+link_router = APIRouter(prefix="/link", tags=["vibestack-link"])
+
+
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if not normalized:
+            return default
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _coerce_int(value: Any, default: int) -> int:
+    try:
+        return int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+async def _gather_request_payload(request: Request) -> Dict[str, Any]:
+    payload: Dict[str, Any] = dict(request.query_params)
+    if request.method in {"POST", "PUT", "PATCH"}:
+        content_type = request.headers.get("content-type", "").lower()
+        try:
+            if "application/json" in content_type:
+                body = await request.json()
+                if isinstance(body, dict):
+                    payload.update(body)
+            elif "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+                form = await request.form()
+                for key, value in form.multi_items():
+                    payload[key] = value
+            else:
+                raw = (await request.body()).strip()
+                if raw:
+                    try:
+                        body = json.loads(raw)
+                        if isinstance(body, dict):
+                            payload.update(body)
+                    except json.JSONDecodeError:
+                        # Ignore opaque payloads we can't parse.
+                        pass
+        except json.JSONDecodeError:
+            pass
+    return payload
 
 
 @router.get("/sessions", response_model=List[SessionResponse])
@@ -140,6 +199,8 @@ def create_session(request: SessionCreateRequest) -> Dict[str, Any]:
             request.name,
             template=request.template,
             command=request.command,
+            command_args=request.command_args,
+            working_dir=request.working_dir,
             description=request.description,
             session_root=request.session_root,
         )
@@ -246,9 +307,47 @@ def delete_template(name: str) -> MessageResponse:
     return MessageResponse(message="template deleted")
 
 
+@link_router.api_route("/{link_id}/tail_log", methods=["GET", "POST"], response_model=SessionTailResponse)
+async def link_tail_log(link_id: str, request: Request) -> SessionTailResponse:
+    """Compatibility endpoint for ChatGPT link-based log tailing."""
+
+    payload = await _gather_request_payload(request)
+    name = payload.get("name") or payload.get("session")
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="name is required")
+    lines = _coerce_int(payload.get("lines"), 200)
+    session_root = payload.get("session_root")
+    try:
+        log_output = vibestack_api.tail_log(name, lines=lines, session_root=session_root)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return SessionTailResponse(log=log_output)
+
+
+@link_router.api_route("/{link_id}/send_input", methods=["GET", "POST"], response_model=MessageResponse)
+async def link_send_input(link_id: str, request: Request) -> MessageResponse:
+    """Compatibility endpoint for ChatGPT link-based terminal input."""
+
+    payload = await _gather_request_payload(request)
+    name = payload.get("name") or payload.get("session")
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="name is required")
+    if "text" in payload:
+        text = payload.get("text")
+    else:
+        text = payload.get("input")
+    if text is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="text is required")
+    enter = _coerce_bool(payload.get("enter"), default=True)
+    session_root = payload.get("session_root")
+    vibestack_api.send_text(name, str(text), enter=enter, session_root=session_root)
+    return MessageResponse(message="input queued")
+
+
 app = FastAPI(
     title="VibeStack REST API",
     description="HTTP interface for the VibeStack session manager",
     version="1.0.0",
 )
 app.include_router(router)
+app.include_router(link_router)

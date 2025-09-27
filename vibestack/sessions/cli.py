@@ -8,12 +8,15 @@ from .manager import SessionManager
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="vibestack-sessions", description="Manage tmux sessions for VibeStack")
+    parser = argparse.ArgumentParser(prog="vibe", description="Manage tmux sessions for VibeStack")
     parser.add_argument("--root", help="Session root directory", default=None)
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("list", help="List known sessions")
+
+    attach_parser = subparsers.add_parser("attach", help="Attach to an existing session via tmux")
+    attach_parser.add_argument("name", help="Session name")
 
     show_parser = subparsers.add_parser("show", help="Show metadata for a session")
     show_parser.add_argument("name", help="Session name")
@@ -63,6 +66,15 @@ def main(argv: list[str] | None = None) -> int:
         if not metadata:
             parser.error(f"session '{args.name}' not found")
         print(json.dumps(metadata.to_dict(), indent=2))
+        return 0
+
+    if args.command == "attach":
+        try:
+            manager.attach_session(args.name)
+        except ValueError as exc:
+            parser.error(str(exc))
+        except RuntimeError as exc:
+            parser.error(str(exc))
         return 0
 
     if args.command == "create":

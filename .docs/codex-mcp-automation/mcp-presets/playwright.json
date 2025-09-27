@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "env": {
+        "PLAYWRIGHT_BROWSERS_PATH": "0"
+      }
+    }
+  },
+  "install": [
+    "npm install -g playwright"
+  ],
+  "postInstall": [
+    "npx playwright install --with-deps"
+  ],
+  "notes": [
+    "Requires Node.js 18+ and a system capable of running headless browsers.",
+    "Install step optional if Playwright already present; CLI mode uses bundled browsers when PLAYWRIGHT_BROWSERS_PATH=0."
+  ]
+}

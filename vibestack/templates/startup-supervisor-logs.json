@@ -1,0 +1,14 @@
+{
+  "name": "startup-supervisor-logs",
+  "label": "Startup supervisor log viewer",
+  "command": "python3 supervisor_logs.py",
+  "session_type": "long_running",
+  "description": "Cycle through supervisord-managed service logs with arrow keys.",
+  "include_files": [
+    {
+      "source": "vibestack/assets/startup/supervisor_log_viewer.py",
+      "target": "supervisor_logs.py"
+    }
+  ],
+  "hidden": true
+}

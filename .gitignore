@@ -1,6 +1,7 @@
 # Docker
 .dockerignore
 docker-compose.override.yml
+.venv/
 
 # Logs
 *.log

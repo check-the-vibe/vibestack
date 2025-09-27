@@ -2,17 +2,13 @@ import streamlit as st
 
 from common import (
     KEY_ACTIVE_SESSION,
-    KEY_ACTIVE_TEMPLATE,
-    MANAGER,
-    get_template_by_name,
+    filter_active_sessions,
     load_templates,
     list_sessions,
-    render_session_overview,
     render_sidebar,
-    require_session,
     sync_state_from_query,
-    update_query_params,
 )
+from onboarding import render_onboarding_gate, render_onboarding_sidebar_controls
 
 st.set_page_config(
     page_title="VibeStack Control Center",
@@ -21,36 +17,62 @@ st.set_page_config(
 )
 
 sync_state_from_query()
-
 state = st.session_state
 
 templates = load_templates()
 sessions = list_sessions()
-render_sidebar(active_page="Session", templates=templates, sessions=sessions)
+render_sidebar(active_page="Home")
+render_onboarding_sidebar_controls()
 
-active_template = get_template_by_name(templates, state.get(KEY_ACTIVE_TEMPLATE))
-active_metadata = None
+onboarding_active = render_onboarding_gate()
 
-if state.get(KEY_ACTIVE_SESSION):
-    try:
-        active_metadata = MANAGER.get_session(state[KEY_ACTIVE_SESSION])
-    except Exception as exc:  # pylint: disable=broad-except
-        st.error(f"Unable to load session '{state[KEY_ACTIVE_SESSION]}': {exc}")
-        state[KEY_ACTIVE_SESSION] = None
-        update_query_params()
-    else:
-        if active_metadata and active_metadata.template and state.get(KEY_ACTIVE_TEMPLATE) != active_metadata.template:
-            state[KEY_ACTIVE_TEMPLATE] = active_metadata.template
-            active_template = get_template_by_name(templates, state.get(KEY_ACTIVE_TEMPLATE))
-            update_query_params()
+hero_css = """
+<style>
+    .vibestack-hero {
+        border: 2px solid #0ff;
+        border-radius: 12px;
+        padding: 5rem 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        background: radial-gradient(circle at top, rgba(0, 255, 213, 0.15), rgba(0, 0, 0, 0.85));
+        box-shadow: 0 0 40px rgba(0, 255, 213, 0.25);
+    }
 
-st.title("🚀 VibeStack Session Control Center")
+    .vibestack-hero h1 {
+        font-family: 'Source Code Pro', 'Courier New', monospace;
+        font-size: clamp(3rem, 8vw, 6rem);
+        letter-spacing: 0.35rem;
+        color: #0ff;
+        text-transform: uppercase;
+        margin: 0;
+        text-shadow: 0 0 20px rgba(0, 255, 213, 0.6);
+    }
 
-if not templates:
-    st.info("No templates available. Visit the Templates page to add one.")
-elif not sessions:
-    st.info("Launch a session, then revisit this page.")
-elif not require_session(active_metadata):
-    pass
+    .vibestack-hero p {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: clamp(1rem, 2vw, 1.4rem);
+        margin-top: 1.5rem;
+        font-family: 'Source Code Pro', 'Courier New', monospace;
+    }
+</style>
+"""
+
+st.markdown(hero_css, unsafe_allow_html=True)
+
+with st.container():
+    st.markdown(
+        """
+        <div class="vibestack-hero">
+            <h1>WELCOME TO VIBESTACK</h1>
+            <p>Your codex-ready control plane for automated session orchestration.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+if onboarding_active:
+    st.info("Complete the onboarding steps above to unlock the Sessions workspace and automation tools.")
 else:
-    render_session_overview(active_metadata, active_template)
+    st.success("Onboarding complete. You're ready to launch sessions.")
+
+st.page_link("pages/1_📋_Sessions.py", label="Jump to Sessions", icon="🚀", help="Select or create a workspace")

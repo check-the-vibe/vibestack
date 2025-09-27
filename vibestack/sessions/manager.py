@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .codex_config import CodexConfigManager
 from .models import ISO_FORMAT, SessionMetadata, SessionType
 from .storage import SessionStorage
 
@@ -17,19 +18,14 @@ from .storage import SessionStorage
 class SessionManager:
     """Coordinates tmux session lifecycle and persistence."""
 
-    DEFAULT_TEMPLATES: Dict[str, Dict[str, str]] = {
+    DEFAULT_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "bash": {
-            "command": "",
-            "label": "Bash shell",
-            "default_type": SessionType.LONG_RUNNING.value,
-        },
-        "claude": {
-            "command": "claude",
-            "label": "Claude CLI",
+            "command": "printf 'Welcome to VibeStack\\n'",
+            "label": "Welcome shell",
             "default_type": SessionType.LONG_RUNNING.value,
             "include_files": [
-                {"source": "CLAUDE.md", "target": "CLAUDE.md"},
-                {"source": "TASKS.md", "target": "TASKS.md"}
+                {"source": "AGENTS.md", "target": "AGENTS.md"},
+                {"source": "TASKS.md", "target": "TASKS.md"},
             ],
         },
         "codex": {
@@ -38,13 +34,22 @@ class SessionManager:
             "default_type": SessionType.LONG_RUNNING.value,
             "include_files": [
                 {"source": "AGENTS.md", "target": "AGENTS.md"},
-                {"source": "TASKS.md", "target": "TASKS.md"}
+                {"source": "TASKS.md", "target": "TASKS.md"},
+            ],
+            "command_args": [
+                "--model",
+                "gpt-5-codex",
+                "--sandbox",
+                "danger-full-access",
+                "--ask-for-approval",
+                "never",
             ],
         },
         "script": {
             "command": "bash --login",
             "label": "One-off script",
             "default_type": SessionType.ONE_OFF.value,
+            "hidden": True,
         },
     }
 
@@ -89,6 +94,13 @@ class SessionManager:
             self._refresh_status(metadata)
         return metadata
 
+    def attach_session(self, name: str) -> None:
+        """Attach the current terminal to the tmux session backing ``name``."""
+
+        if not self._session_exists(name):
+            raise ValueError(f"tmux session '{name}' not found")
+        self._run_tmux(["attach-session", "-t", name])
+
     def list_jobs(self) -> List[Dict[str, str]]:
         return self.storage.list_jobs()
 
@@ -98,6 +110,7 @@ class SessionManager:
         *,
         template: str = "bash",
         command: Optional[str] = None,
+        command_args: Optional[List[str]] = None,
         session_type: Optional[SessionType] = None,
         description: Optional[str] = None,
         working_dir: Optional[str | Path] = None,
@@ -116,6 +129,14 @@ class SessionManager:
         else:
             template_command = template_config.get("command")
             resolved_command = template_command if template_command is not None else ""
+        use_template_args = command_args is None and command is None
+        template_args: List[str] = []
+        if use_template_args:
+            template_args = [str(arg) for arg in template_config.get("command_args") or []]
+        if command_args is None:
+            combined_args: List[str] = list(template_args)
+        else:
+            combined_args = [str(arg) for arg in command_args]
         default_type_value = template_config.get("default_type", SessionType.LONG_RUNNING.value)
         try:
             resolved_type = session_type or SessionType(default_type_value)
@@ -133,9 +154,20 @@ class SessionManager:
         log_path = self.storage.log_path(name)
         workspace_path = self.storage.workspace_path(name)
 
+        command_vector: List[str] = []
+        stripped_command = (resolved_command or "").strip()
+        if stripped_command:
+            try:
+                command_vector = shlex.split(stripped_command)
+            except ValueError:
+                command_vector = [stripped_command]
+        if combined_args:
+            command_vector.extend(combined_args)
+        resolved_command_str = shlex.join(command_vector) if command_vector else ""
+
         metadata = SessionMetadata(
             name=name,
-            command=resolved_command,
+            command=resolved_command_str,
             template=template,
             session_type=resolved_type,
             status="queued",
@@ -146,6 +178,8 @@ class SessionManager:
             description=resolved_description,
         )
         metadata.ensure_paths()
+        if template == "codex":
+            self._prepare_codex_workspace(metadata, merged_env)
         if not resolved_working_dir:
             resolved_working_dir = metadata.workspace_path
         self._apply_template_artifacts(metadata, template_config)
@@ -154,7 +188,7 @@ class SessionManager:
             "id": job_id,
             "session": name,
             "template": template,
-            "command": resolved_command,
+            "command": resolved_command_str,
             "status": "queued",
             "created_at": created_at,
             "updated_at": created_at,
@@ -192,7 +226,24 @@ class SessionManager:
 
     def send_text(self, name: str, text: str, *, enter: bool = True) -> None:
         target = f"{name}:0.0"
-        payload = [f"{text}\r"] if enter else [text]
+
+        normalized_text = text.replace("\r\n", "\n").replace("\r", "\n")
+        segments = normalized_text.split("\n")
+        payload: List[str] = []
+        for index, segment in enumerate(segments):
+            if segment:
+                payload.append(segment)
+            if index < len(segments) - 1:
+                payload.append("Enter")
+
+        if enter and not normalized_text.endswith("\n"):
+            payload.append("Enter")
+
+        if not payload and enter:
+            payload.append("Enter")
+        if not payload:
+            return
+
         self._run_tmux(["send-keys", "-t", target, *payload])
 
     def kill_session(self, name: str) -> None:
@@ -267,25 +318,7 @@ class SessionManager:
 
         target = f"{session_name}:0.0"
 
-        if metadata.session_type is SessionType.ONE_OFF:
-            script_path = self._prepare_short_run_script(metadata, session_dir, log_path, working_dir)
-            command_str = f"exec {shlex.quote(str(script_path))}"
-            self._run_tmux(
-                [
-                    "respawn-pane",
-                    "-k",
-                    "-t",
-                    target,
-                    "bash",
-                    "--login",
-                    "-c",
-                    command_str,
-                ],
-                env=env,
-            )
-            return
-
-        # Attach pipe-pane to capture output
+        # Always capture pane output so logs stay in sync for all session types.
         self._run_tmux(
             [
                 "pipe-pane",
@@ -296,6 +329,7 @@ class SessionManager:
             ],
             env=env,
         )
+
         if metadata.session_type is SessionType.ONE_OFF:
             script_path = self._prepare_short_run_script(metadata, session_dir, log_path, working_dir)
             command_str = f"exec {shlex.quote(str(script_path))}"
@@ -383,7 +417,7 @@ class SessionManager:
         return script_path
 
     def _load_templates(self) -> Dict[str, Dict[str, str]]:
-        templates: Dict[str, Dict[str, str]] = {key: value.copy() for key, value in self.DEFAULT_TEMPLATES.items()}
+        templates: Dict[str, Dict[str, Any]] = {key: value.copy() for key, value in self.DEFAULT_TEMPLATES.items()}
         sources: Dict[str, str] = {key: "built-in" for key in self.DEFAULT_TEMPLATES}
         candidate_dirs = [self.template_dir, self.user_template_dir]
         for template_dir in candidate_dirs:
@@ -398,6 +432,7 @@ class SessionManager:
                 command = payload.get('command', '')
                 templates[key] = {
                     'command': command,
+                    'command_args': payload.get('command_args'),
                     'label': payload.get('label', key),
                     'default_type': payload.get('session_type', SessionType.LONG_RUNNING.value),
                     'working_dir': payload.get('working_dir'),
@@ -405,6 +440,7 @@ class SessionManager:
                     'env': payload.get('env'),
                     'post_create': payload.get('post_create'),
                     'include_files': payload.get('include_files'),
+                    'hidden': payload.get('hidden', False),
                 }
                 sources[key] = str(file)
         self.template_sources = sources
@@ -459,12 +495,25 @@ class SessionManager:
                 return potential
         return None
 
+    def _prepare_codex_workspace(self, metadata: SessionMetadata, env: Optional[Dict[str, str]]) -> None:
+        """Provision Codex configuration files inside the session workspace."""
+
+        workspace = Path(metadata.workspace_path)
+        codex_home = workspace / ".codex"
+        manager = CodexConfigManager(codex_home)
+        manager.ensure_default_playwright()
+        if env is not None:
+            env["CODEX_HOME"] = str(codex_home)
+
     def list_templates(self) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for name, config in sorted(self.templates.items(), key=lambda item: (item[1].get('label') or item[0]).lower()):
+            if config.get('hidden'):
+                continue
             entry = dict(config)
             entry['name'] = name
             entry['source'] = self.template_sources.get(name, 'user')
+            entry.pop('hidden', None)
             results.append(entry)
         return results
 

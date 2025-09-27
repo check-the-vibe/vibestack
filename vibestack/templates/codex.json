@@ -3,9 +3,31 @@
   "label": "Codex CLI",
   "command": "codex",
   "session_type": "long_running",
+  "command_args": [
+    "--model",
+    "gpt-5-codex",
+    "--sandbox",
+    "danger-full-access",
+    "--ask-for-approval",
+    "never"
+  ],
   "description": "Interactive Codex shell session",
   "include_files": [
-    {"source": "AGENTS.md", "target": "AGENTS.md"},
-    {"source": "TASKS.md", "target": "TASKS.md"}
+    {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md"
+    },
+    {
+      "source": "TASKS.md",
+      "target": "TASKS.md"
+    },
+    {
+      "source": ".docs/gpt-5-codex_prompting_guide.md",
+      "target": ".docs/gpt-5-codex_prompting_guide.md"
+    },
+    {
+      "source": ".docs/codex-mcp-servers.md",
+      "target": ".docs/codex-mcp-servers.md"
+    }
   ]
 }

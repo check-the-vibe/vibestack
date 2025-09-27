@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CODE_BIN=${CODE_BIN:-/usr/local/bin/code}
+TUNNEL_NAME=${VSCODE_TUNNEL_NAME:-vibestack}
+VSCODE_CLI_DATA_DIR=${VSCODE_CLI_DATA_DIR:-/home/vibe/.vscode-cli}
+VSCODE_CLI_LOG_DIR=${VSCODE_CLI_LOG_DIR:-"${VSCODE_CLI_DATA_DIR}/logs"}
+
+mkdir -p "${VSCODE_CLI_DATA_DIR}" "${VSCODE_CLI_LOG_DIR}"
+
+# Allow callers to pass additional arguments (space-delimited) via VSCODE_TUNNEL_EXTRA_ARGS.
+EXTRA_ARGS=()
+if [[ -n "${VSCODE_TUNNEL_EXTRA_ARGS:-}" ]]; then
+  # shellcheck disable=SC2206
+  EXTRA_ARGS=(${VSCODE_TUNNEL_EXTRA_ARGS})
+fi
+
+export VSCODE_CLI_DATA_DIR
+export VSCODE_CLI_LOG_DIR
+
+CMD=("${CODE_BIN}" tunnel --name "${TUNNEL_NAME}" --accept-server-license-terms)
+if ((${#EXTRA_ARGS[@]})); then
+  CMD+=("${EXTRA_ARGS[@]}")
+fi
+
+exec "${CMD[@]}"

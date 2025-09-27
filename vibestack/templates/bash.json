@@ -1,0 +1,10 @@
+{
+  "name": "bash",
+  "label": "Welcome shell",
+  "command": "printf 'Welcome to VibeStack\\n'",
+  "session_type": "long_running",
+  "include_files": [
+    {"source": "AGENTS.md", "target": "AGENTS.md"},
+    {"source": "TASKS.md", "target": "TASKS.md"}
+  ]
+}

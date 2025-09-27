@@ -5,13 +5,15 @@ VibeStack bundles several long-lived services inside a single container image. S
 ## Service Map
 | Service | Role | Supervisor Program | Internal Port | External Path |
 | --- | --- | --- | --- | --- |
-| Playwright MCP | Headless browser automation endpoint for Model Context Protocol clients | `playwright-mcp` | 7777 | `/mcp`, `/sse` |
 | Admin REST API | FastAPI wrapper around the session manager | `vibestack-api` | 9000 | `/admin/` |
+| MCP Session API | Model Context Protocol interface to the session manager | `vibestack-mcp` | 9100 | `/mcp/` |
 | Streamlit UI | Browser UI for launching sessions and managing workspaces | `streamlit` | 8501 | `/ui/` |
 | noVNC Desktop | Web-based remote desktop backed by Fluxbox | `novnc` (depends on `xvfb`, `x11vnc`, `fluxbox`) | 6080 (WebSockets) | `/computer/` |
 | ttyd Terminal | Browser-based terminal with tmux helpers | `ttyd` | 7681 | `/terminal/`, `/` |
+| VS Code Tunnel | Visual Studio Code remote tunnel endpoint | `vscode-tunnel` | Outbound only | n/a |
+| Dev Service Proxies | Generic HTTP pass-through for sandboxed tools | n/a | 3000-3004 | `/services/<port>/` |
 
-See the individual service notes under `services/` for deeper configuration and troubleshooting guidance.
+See the individual service notes under `services/` for deeper configuration and troubleshooting guidance. The new MCP service guide also documents the `examples/mcp_runner.py` smoke test and IDE integration steps.
 
 ## Process Supervision
 - Supervisor definition: `supervisord.conf` in the repository root governs startup order, log locations, and environment variables for every service.
@@ -23,12 +25,16 @@ See the individual service notes under `services/` for deeper configuration and 
 - Health check: Dockerfile defines `HEALTHCHECK` against `http://localhost:${NOVNC_PORT}/vnc.html` to verify the desktop surface is live.
 
 ## Source Layout Highlights
-- Python backend lives in `/home/vibe/vibestack` at runtime (syncs from `vibestack/` in the build context).
-- Streamlit front-end ships from `streamlit_app/` and is copied to `/home/vibe/streamlit`.
-- Helper CLI scripts such as `bin/vibestack-ttyd-entry` and `bin/vibestack-sessions` are linked into `/usr/local/bin` for convenience.
+- Home bundle assets now live directly in the repo root (`bin/`, `streamlit_app/`, `vibestack/`, `fluxbox-*`, `Xresources`, etc.) and are copied into `/home/vibe/` during the image build.
+- Python backend lives in `/home/vibe/vibestack` at runtime (populated from the repository `vibestack/` directory).
+- Streamlit front-end ships from the repository `streamlit_app/` directory and is copied to `/home/vibe/streamlit`.
+- Helper CLI scripts such as `bin/vibestack-ttyd-entry` and `bin/vibe` are linked into `/usr/local/bin` for convenience.
 
 ## Next Steps for Agents
+1. Review the [Repository Guidelines](../AGENTS.md) and the companion [overview](repository-guidelines-overview.md) before editing.
+1. Start with `docs/repo-layout.md` for a map of repository paths and runtime copy behavior.
 1. Read the relevant service guide in `services/`.
-2. Inspect `supervisord.conf` and `nginx.conf` if you need to adjust ports, environment variables, or routing.
-3. Use the Streamlit UI or the REST API to launch a test session before making invasive changes.
-4. Keep docs up to date when processes, ports, or dependencies change.
+1. Inspect `supervisord.conf` and `nginx.conf` if you need to adjust ports, environment variables, or routing.
+1. Use the Streamlit UI or the REST API to launch a test session before making invasive changes.
+1. Keep docs up to date when processes, ports, or dependencies change.
+1. Review `docs/gpt-5-codex.md` before kicking off complex Codex work and add new heuristics as you discover them.

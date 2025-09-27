@@ -14,19 +14,18 @@ Interactive dashboard for launching VibeStack sessions, queuing one-off jobs, an
 - Nginx proxy: `/ui/` prefix (app expects this base URL via `--server.baseUrlPath` flag).
 
 ## Key UI Features
-- **Session launcher:** sidebar form to select templates, override commands, and create named sessions.
-- **Terminal page:** embeds the tmux pane for the active session and auto-sends an extra ENTER after commands so Codex actions start without manual intervention.
-- **Workspace tab:** browse and edit text files for the active session, with download support for binaries.
-- **Template UI tab:** discover `.py` files under `streamlit/` in the session workspace and run them inline so templates can deliver custom controls.
-- **Templates & Desktop links:** quick access in the sidebar to template management and the noVNC desktop view (`/computer/`).
-- **Sessions page:** review every session (including stopped ones), inspect metadata, focus running sessions, and terminate lingering jobs from a dedicated view.
-- **Session data table:** list all sessions with status, template, timestamps, and quick selection.
+- **Home dashboard:** Landing page that surfaces onboarding tasks, quick navigation links, and counts for sessions/templates.
+- **Sessions workspace:** Consolidated selector with creation expander and tabs for Overview, Terminal, Workspace, and Template UI. Session launch supports working-directory presets, Codex CLI parameter toggles, and automatic log streaming.
+- **Docs hub:** Curated Markdown browser for `.docs/` and `docs/` with tree previews and name filtering.
+- **Templates manager:** Full CRUD tooling plus asset browser for built-in and user templates.
+- **Services monitor:** Supervisor status table with restart/tail helpers; launching a tail spawns a hidden `script` session automatically.
+- **Desktop bridge:** Embedded noVNC surface with a one-click link to open the desktop in a new tab.
 
 ## Source Highlights
 - Main entrypoint: `streamlit_app/app.py`.
   - Uses `SessionManager` (`vibestack.sessions`) for backend operations.
   - Helper utilities handle workspace browsing, template page discovery, and dynamic execution of per-session Streamlit components.
-- Additional pages live under `streamlit_app/pages/` (create new files here for multi-page workflows).
+- Additional pages live under `streamlit_app/pages/`.
 
 ## Common Tasks
 - **Local iteration:** run `streamlit run streamlit_app/app.py --server.headless=true` during development, ensuring `PYTHONPATH` includes the repo root.
@@ -37,3 +36,23 @@ Interactive dashboard for launching VibeStack sessions, queuing one-off jobs, an
 - `404 /ui/` → confirm Nginx proxy settings and that `streamlit` Supervisor program is running.
 - Stale session data → call `manager.refresh_templates()` or reload the page (Streamlit caches results aggressively).
 - Permission errors saving files → ensure session workspace paths are owned by `vibe` and writable.
+
+## Design Guidelines
+- Redirect `/` to `/ui/` so the Streamlit surface becomes the primary landing experience while keeping direct `/terminal` embeds functional.
+- Consolidate navigation into Home, Sessions, Docs, Templates, Code, Services, Desktop; avoid nested session sub-pages that duplicate content.
+- Place the session selector and create button on a shared horizontal row at the top of Sessions; reuse the component wherever session switching is required.
+- Keep destructive controls (terminate, delete) under expandable sections or confirmation dialogs to avoid accidental clicks.
+- Validate layouts at 1280×720 and ensure keyboard tab order follows the visual structure.
+- Document new components inline with screenshots or short GIFs when behavior is non-obvious.
+
+## Navigation Overview
+- **Home:** Onboarding prompts, quick metrics, and shortcuts to the most common tools.
+- **Sessions:** Unified management surface with selector, creation form, and per-session tabs.
+- **Docs:** Centralized Markdown viewer for project references.
+- **Templates:** Template CRUD operations and asset explorer.
+- **Code:** Link-out to the VS Code tunnel with setup guidance.
+- **Services:** Supervisor watchdog with restart/tail helpers.
+- **Desktop:** Embedded noVNC experience for full desktop access.
+
+
+Record deviations or UX issues in `TASKS.md` under "Follow-ups" so design adjustments remain visible to the team.

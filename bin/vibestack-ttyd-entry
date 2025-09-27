@@ -8,7 +8,7 @@ else
   REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 fi
 
-VS_CLI="${REPO_ROOT}/bin/vibestack-sessions"
+VS_CLI="${REPO_ROOT}/bin/vibe"
 
 environment_setup() {
   export PYTHONPATH="${PYTHONPATH:-}${PYTHONPATH:+:}${REPO_ROOT}"
@@ -19,7 +19,7 @@ environment_setup
 attach_session() {
   local name="$1"
   if ! tmux has-session -t "$name" 2>/dev/null; then
-    printf 'Session "%s" not found. Use vibestack-sessions create to start it.\n' "$name" >&2
+    printf 'Session "%s" not found. Use vibe create to start it.\n' "$name" >&2
     exit 1
   fi
   exec tmux attach -t "$name"

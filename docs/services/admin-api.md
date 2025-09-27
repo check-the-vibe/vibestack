@@ -13,6 +13,7 @@ Wraps the `vibestack` Python session manager with a documented HTTP interface fo
 - Internal port: `9000`.
 - Nginx proxy: `/admin/` prefix forwards to the FastAPI app; use `/admin/docs` for the interactive OpenAPI UI.
 - Direct access inside the container: `http://127.0.0.1:9000/api/...`.
+- ChatGPT compatibility paths: `/VibeStack/<link_id>/tail_log` and `/VibeStack/<link_id>/send_input` forward to helper endpoints that proxy to the same API (see below).
 
 ## API Surface (selected)
 | Method | Path | Description |
@@ -39,8 +40,10 @@ Refer to `docs/fastapi-rest.md` in the source tree for historical design notes.
 - **Smoke test:** `curl http://localhost/admin/api/sessions | jq` after the container starts.
 - **Schema changes:** update Pydantic models in `vibestack/rest/app.py` and adjust downstream clients (UI, CLI, docs).
 - **Error diagnosis:** watch `/var/log/supervisor/vibestack-api.log` for stack traces; FastAPI surfaces 4xx/5xx status codes.
+- **ChatGPT link bridge:** tail a session log via `curl "http://localhost/VibeStack/link_test/tail_log?name=<session>&lines=100"` or send input with `curl -X POST "http://localhost/VibeStack/link_test/send_input" -d '{"name":"<session>","text":"echo hi","enter":true}' -H 'Content-Type: application/json'`.
 
 ## Troubleshooting
 - 404 on `/admin/...` paths → check the Nginx location block and confirm the service is running (`supervisorctl status vibestack-api`).
+- 404 on `/VibeStack/...` paths → ensure the compatibility rewrite exists in `/etc/nginx/nginx.conf` and the service restarted; the helper endpoints live under `/link/{link_id}/...` inside FastAPI.
 - JSON validation errors → payload does not match request schema. Inspect error body for detailed messages.
 - Hanging requests → ensure the underlying session operation is not blocked (tmux or filesystem). Consider lowering concurrency or checking for lock contention.

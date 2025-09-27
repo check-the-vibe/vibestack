@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from . import settings as vibestack_settings
 from .sessions import SessionManager, SessionMetadata
 
 _MANAGER: Optional[SessionManager] = None
@@ -19,7 +20,12 @@ def get_manager(session_root: Optional[str] = None) -> SessionManager:
 
 
 def _metadata_to_dict(metadata: SessionMetadata) -> Dict[str, Any]:
-    return metadata.to_api_dict()
+    payload = metadata.to_api_dict()
+    payload["session_url"] = vibestack_settings.build_session_ui_url(
+        metadata.name,
+        template=metadata.template,
+    )
+    return payload
 
 
 def list_sessions(session_root: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -38,6 +44,8 @@ def create_session(
     *,
     template: str = "bash",
     command: Optional[str] = None,
+    command_args: Optional[List[str]] = None,
+    working_dir: Optional[str] = None,
     description: Optional[str] = None,
     session_root: Optional[str] = None,
 ) -> Dict[str, Any]:
@@ -46,6 +54,8 @@ def create_session(
         name,
         template=template,
         command=command,
+        command_args=command_args,
+        working_dir=working_dir,
         description=description,
     )
     return _metadata_to_dict(metadata)
@@ -77,6 +87,11 @@ def send_text(name: str, text: str, *, enter: bool = True, session_root: Optiona
 def kill_session(name: str, session_root: Optional[str] = None) -> None:
     manager = get_manager(session_root)
     manager.kill_session(name)
+
+
+def attach_session(name: str, session_root: Optional[str] = None) -> None:
+    manager = get_manager(session_root)
+    manager.attach_session(name)
 
 
 def tail_log(name: str, *, lines: int = 200, session_root: Optional[str] = None) -> str:
@@ -124,6 +139,7 @@ __all__ = [
     "enqueue_one_off",
     "send_text",
     "kill_session",
+    "attach_session",
     "tail_log",
     "list_jobs",
     "list_templates",
