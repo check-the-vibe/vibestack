@@ -10,7 +10,7 @@ Expose a `code tunnel` endpoint so agents can connect with the Visual Studio Cod
 - Logs: `/var/log/supervisor/vscode-tunnel.log` for both stdout and stderr.
 
 ## Authentication Flow
-1. Tail the log (`supervisorctl tail -f vscode-tunnel`) after the service starts.
+1. Tail the log (prefer `python -m vibestack.scripts.supervisor_helper tail -f vscode-tunnel`) after the service starts.
 2. On first launch the CLI prints a `https://microsoft.com/devicelogin` URL plus a code—open it in a browser and authenticate with the Microsoft account that should own the tunnel.
 3. The CLI stores credentials in `/home/vibe/.vscode-cli` so subsequent restarts reuse the session. If you need to sign out, remove that directory and restart the program.
 

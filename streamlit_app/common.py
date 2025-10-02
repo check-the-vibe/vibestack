@@ -275,7 +275,7 @@ def ensure_session(
 def ensure_supervisor_tail_session(service_name: str) -> Optional[SessionMetadata]:
     service_token = sanitize_token(service_name, fallback="service")
     session_name = f"tail-supervisor-{service_token}"
-    command = f"sudo supervisorctl tail -f {shlex.quote(service_name)}"
+    command = f"python -m vibestack.scripts.supervisor_tail --program {shlex.quote(service_name)}"
     description = f"Follow supervisor logs for {service_name}"
     return ensure_session(
         session_name,

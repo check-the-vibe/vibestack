@@ -1,0 +1,18 @@
+{
+  "name": "claude",
+  "label": "Claude Code",
+  "command": "claude",
+  "session_type": "long_running",
+  "prompt_delay_ms": 2500,
+  "description": "Anthropic Claude Code - AI coding assistant",
+  "include_files": [
+    {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md"
+    },
+    {
+      "source": "TASKS.md",
+      "target": "TASKS.md"
+    }
+  ]
+}

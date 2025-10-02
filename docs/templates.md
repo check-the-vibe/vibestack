@@ -3,7 +3,14 @@
 ## Overview
 Templates define repeatable tmux sessions for VibeStack. They bundle the command to launch, metadata such as labels and descriptions, and optional helper files to seed into a session workspace. Templates can be either built-in (shipped with the repo under `vibestack/templates/`) or user-defined (stored at runtime under `~/.vibestack/templates/`).
 
-At startup the `SessionManager` merges built-in templates with anything in the user directory. The image ships with two built-in templates: `bash` (prints a welcome message) and `codex` (preconfigures the GPT-5 Codex CLI with dangerous permissions). The Streamlit UI and REST API expose the same list, so keeping template metadata accurate benefits every entry point.
+At startup the `SessionManager` merges built-in templates with anything in the user directory. The image ships with several built-in templates:
+- `bash` - Prints a welcome message
+- `codex` - OpenAI Codex CLI with full sandbox access
+- `claude` - Anthropic Claude Code AI assistant
+- `opencode` - Open source AI coding agent
+- `startup-supervisor-logs` - Views supervisor service logs
+
+The Streamlit UI and REST API expose the same list, so keeping template metadata accurate benefits every entry point.
 
 ## Template File Structure
 Templates are JSON documents with the following common keys:

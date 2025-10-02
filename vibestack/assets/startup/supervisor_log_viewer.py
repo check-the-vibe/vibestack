@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import curses
-import subprocess
 from dataclasses import dataclass
-from typing import List, Sequence
+from typing import List
+import subprocess
 
-STATUS_COMMAND: Sequence[str] = ("sudo", "supervisorctl", "status")
-TAIL_COMMAND_PREFIX: Sequence[str] = ("sudo", "supervisorctl", "tail", "-200")
+from vibestack.scripts.supervisor_helper import run_supervisor_command
+STATUS_TAIL_DEFAULT_LINES: int = 200
 
 
 @dataclass
@@ -16,10 +16,6 @@ class ProgramLogs:
     name: str
     lines: List[str]
     error: str | None = None
-
-
-def _run_command(args: Sequence[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(args, capture_output=True, text=True, check=True)
 
 
 def parse_status_output(raw: str) -> List[str]:
@@ -35,19 +31,23 @@ def parse_status_output(raw: str) -> List[str]:
 
 
 def list_programs() -> List[str]:
-    result = _run_command(STATUS_COMMAND)
-    return parse_status_output(result.stdout)
+    rc, out, err = run_supervisor_command(["status"])
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, "supervisor status", output=out, stderr=err)
+    return parse_status_output(out)
 
 
 def _format_error(exc: subprocess.CalledProcessError) -> str:
-    return exc.stderr.strip() or exc.stdout.strip() or str(exc)
+    return exc.stderr.strip() or (exc.output.strip() if hasattr(exc, "output") and exc.output else "") or str(exc)
 
 
 def tail_program_logs(program: str) -> ProgramLogs:
     try:
-        result = _run_command(tuple(TAIL_COMMAND_PREFIX) + (program,))
-        lines = result.stdout.rstrip("\n").splitlines()
-        return ProgramLogs(name=program, lines=lines)
+        rc, out, err = run_supervisor_command(["tail", f"-{STATUS_TAIL_DEFAULT_LINES}", program])
+        if rc == 0:
+            lines = out.rstrip("\n").splitlines()
+            return ProgramLogs(name=program, lines=lines)
+        raise subprocess.CalledProcessError(rc, "supervisor tail", output=out, stderr=err)
     except subprocess.CalledProcessError as exc:  # pragma: no cover - surfaced in UI
         return ProgramLogs(name=program, lines=[], error=_format_error(exc))
 
@@ -112,7 +112,7 @@ def _main(stdscr: "curses._CursesWindow") -> None:
         subprocess.CalledProcessError
     ) as exc:  # pragma: no cover - surfaced interactively
         _render_empty_state(
-            stdscr, f"Unable to query supervisorctl: {_format_error(exc)}"
+            stdscr, f"Unable to query supervisor status: {_format_error(exc)}\n\nRun: python -m vibestack.scripts.supervisor_helper status"
         )
         stdscr.getch()
         return

@@ -4,7 +4,7 @@ VibeStack is a lightweight, full-featured development environment that runs in G
 
 ## 🌟 Features
 
-- **Web-based Linux Desktop**: Full Fluxbox desktop environment accessible via noVNC
+- **Web-based Linux Desktop**: Full XFCE4 desktop environment accessible via noVNC
 - **Interactive Terminal**: Web-based terminal with ttyd integration
 - **Development Tools**: Pre-installed with Node.js, Python, Git, and more
 - **AI Development**: Claude Code and LLM CLI tools pre-configured
@@ -68,11 +68,15 @@ ssh root@localhost -p 22
 
 ### AI/ML Tools
 - **Claude Code** (`claude`) - Anthropic's AI coding assistant
+- **OpenCode** (`opencode`) - Open source AI coding agent for the terminal
+- **Codex** (`codex`) - OpenAI's Codex CLI
 - **LLM CLI** (`llm`) - Command-line interface for language models
 
 ### Desktop Applications
-- **XTerm** - Terminal emulator
-- **Fluxbox** - Lightweight window manager
+- **XFCE4 Terminal** - Modern terminal emulator
+- **XFCE4** - Feature-rich desktop environment
+- **Thunar** - File manager (included with XFCE4)
+- **Falkon** - Lightweight web browser
 
 ### Disabling the Menu
 
@@ -91,8 +95,14 @@ Or run the menu manually anytime with:
 - `VNC_PASSWORD` - Set VNC password (default: none)
 - `ROOT_PASSWORD` - Set root password (default: none)
 - `VIBE_PASSWORD` - Set vibe user password (default: "coding")
-- `RESOLUTION` - Desktop resolution (default: 1280x720)
+- `RESOLUTION` - Desktop resolution (default: 1920x1200, optimized for tablets/high-DPI displays)
 - `CODEX_STATE_DIR` - Optional path that will be symlinked to `/home/vibe/.codex` for Codex tokens
+
+**Resolution Recommendations:**
+- Tablets/iPad Pro: 1920x1200 (default) or 2048x1536 for native resolution
+- Desktop: 1920x1080 or 2560x1440
+- 4K displays: 3840x2160
+- Low bandwidth: 1280x720
 
 ### Ports
 
@@ -119,7 +129,8 @@ VibeStack uses a layered architecture:
 All services are managed by Supervisor. Check status with:
 
 ```bash
-sudo supervisorctl status
+# Prefer the centralized helper from Python when possible:
+python -m vibestack.scripts.supervisor_helper status
 ```
 
 ### REST API
@@ -146,11 +157,15 @@ Inside the container the service also listens directly on `http://127.0.0.1:9000
 curl http://127.0.0.1:9000/api/docs
 ```
 
-If you need to restart just the API without touching other services, run `sudo supervisorctl restart vibestack-api`.
+If you need to restart just the API without touching other services, run `python -m vibestack.scripts.supervisor_helper restart vibestack-api`.
 
 Detailed design notes live in `docs/fastapi-rest.md`; endpoint specifics and curl recipes are documented in `docs/fastapi-rest-endpoints.md`.
 
 Need a ready-to-use workspace? Launch a session with the `rest-api-lab` template—it ships with `AGENTS.md` instructions and the endpoint reference preloaded in the session artifacts.
+
+### Complete Container Reference
+
+For a comprehensive guide to the VibeStack container, installed software, folder structure, session management, and MCP integration, see **[VIBESTACK.md](./VIBESTACK.md)**.
 
 ## 🤝 Contributing
 
@@ -165,7 +180,7 @@ This project is open source and available under the MIT License.
 ## 🐛 Troubleshooting
 
 ### Desktop not loading
-- Check if services are running: `sudo supervisorctl status`
+- Check if services are running: `python -m vibestack.scripts.supervisor_helper status`
 - Ensure port 80 is accessible
 - Try accessing `/terminal/` directly
 

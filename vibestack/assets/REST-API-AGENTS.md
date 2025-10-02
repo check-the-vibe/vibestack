@@ -5,7 +5,7 @@ Use this template to exercise the FastAPI layer from inside the container.
 ## Quick Start
 1. Verify the API process is healthy:
    ```bash
-   sudo supervisorctl status vibestack-api
+   python -m vibestack.scripts.supervisor_helper status vibestack-api
    ```
 2. Hit the docs directly on the upstream port:
    ```bash

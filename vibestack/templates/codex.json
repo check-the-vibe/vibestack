@@ -3,6 +3,7 @@
   "label": "Codex CLI",
   "command": "codex",
   "session_type": "long_running",
+  "prompt_delay_ms": 3000,
   "command_args": [
     "--model",
     "gpt-5-codex",

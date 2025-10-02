@@ -1,0 +1,84 @@
+# Core variant (API + Streamlit, no GUI)
+FROM python:3.10-slim
+
+LABEL maintainer="VibeStack Project" description="VibeStack - Core (headless) variant"
+
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ENV VIBESTACK_HOME=/home/vibe \
+    PATH="/home/vibe/bin:${PATH}"
+
+# Base packages (lighter)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        git \
+        jq \
+        nano \
+        nginx \
+        python3 \
+        python3-pip \
+        supervisor \
+        sudo \
+        tmux \
+        wget \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Node.js runtime for some helper tools (optional)
+RUN set -x && \
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get update && apt-get install -y --no-install-recommends nodejs && \
+    npm install -g @anthropic-ai/claude-code @openai/codex && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Python CLI tooling
+RUN pip install --no-cache-dir \
+        fastapi \
+        "uvicorn[standard]" \
+        streamlit \
+        llm \
+        "mcp[cli]" \
+        beautifulsoup4 \
+        requests \
+        httpx \
+        rich \
+        typer \
+        tui
+
+# ttyd for web terminal access - keep for parity
+RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O /usr/bin/ttyd && \
+    chmod +x /usr/bin/ttyd
+
+# Dedicated non-root user
+RUN useradd -m -s /bin/bash -u 1000 vibe && \
+    usermod -aG sudo vibe && \
+    echo 'vibe ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/vibe && \
+    chmod 440 /etc/sudoers.d/vibe
+
+WORKDIR /home/vibe
+
+# Copy application files but omit fluxbox/X11 artifacts
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY entrypoint.sh /entrypoint.sh
+COPY --chown=vibe:vibe bin/ /home/vibe/bin/
+COPY --chown=vibe:vibe docs/ /home/vibe/docs/
+COPY --chown=vibe:vibe streamlit_app/ /home/vibe/streamlit/
+COPY --chown=vibe:vibe vibestack/ /home/vibe/vibestack/
+COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
+
+# Final filesystem tweaks
+RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \
+    ln -sf /home/vibe/bin/vibestack-ttyd-entry /usr/local/bin/vibestack-ttyd-entry && \
+    dos2unix /entrypoint.sh /home/vibe/bin/vibe /home/vibe/bin/vibestack-ttyd-entry && \
+    chmod +x /entrypoint.sh /home/vibe/bin/vibe /home/vibe/bin/vibestack-ttyd-entry && \
+    mkdir -p /var/log/supervisor /var/run && \
+    chown -R vibe:vibe /home/vibe
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:80/ || exit 1
+
+EXPOSE 80 1456
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

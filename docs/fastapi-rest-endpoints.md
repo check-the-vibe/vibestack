@@ -149,6 +149,6 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
   ```
 - ReDoc reference: `GET /api/redoc`
 - Supervisor log path: `/var/log/supervisor/vibestack-api.log`
-- Restart command: `sudo supervisorctl restart vibestack-api`
+- Restart command: prefer `python -m vibestack.scripts.supervisor_helper restart vibestack-api`
 
 Keep responses small when tailing logs—`lines=200` remains a good default for tmux sessions.

@@ -120,7 +120,7 @@ def render_onboarding_gate() -> bool:
 def _launch_vscode_log_session() -> tuple[bool, str]:
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     session_name = f"tail-{VSCODE_SUPERVISOR_PROGRAM}-{timestamp}"
-    command = f"sudo supervisorctl tail -f {VSCODE_SUPERVISOR_PROGRAM}"
+    command = f"python -m vibestack.scripts.supervisor_tail --program {VSCODE_SUPERVISOR_PROGRAM}"
     try:
         metadata = MANAGER.create_session(
             session_name,

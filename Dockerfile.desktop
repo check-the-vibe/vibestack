@@ -1,8 +1,7 @@
+# Desktop variant (full GUI + Playwright deps)
 FROM ubuntu:22.04
 
-LABEL maintainer="VibeStack Project"
-LABEL description="VibeStack - Lightweight VNC desktop environment using XFCE4 and noVNC"
-LABEL version="1.0"
+LABEL maintainer="VibeStack Project" description="VibeStack - Desktop variant with XFCE4"
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
@@ -19,7 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VIBESTACK_MCP_PORT=9100 \
     PATH="/home/vibe/bin:${PATH}"
 
-# Base system + GUI stack
+# Base system + GUI stack + Playwright deps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
@@ -27,6 +26,7 @@ RUN apt-get update && \
         dos2unix \
         xfce4 \
         xfce4-terminal \
+        xfce4-goodies \
         falkon \
         git \
         jq \
@@ -50,6 +50,22 @@ RUN apt-get update && \
         x11vnc \
         xterm \
         xvfb \
+        libnss3 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libgtk-3-0 \
+        libxss1 \
+        libasound2 \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxcursor1 \
+        libxdamage1 \
+        libxrandr2 \
+        libgbm1 \
+        libpangocairo-1.0-0 \
+        libcups2 \
+        fonts-liberation \
+        fonts-noto-color-emoji \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -134,8 +150,7 @@ RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \
       /home/vibe/xfce-startup && \
     mkdir -p /var/log/supervisor /var/run && \
     chown -R vibe:vibe /home/vibe && \
-    chmod 755 /home/vibe && \
-    chmod +x /home/vibe/xfce-startup
+    chmod 755 /home/vibe
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1

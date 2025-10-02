@@ -51,6 +51,7 @@ start_container() {
     --platform "${PLATFORM}" \
     --security-opt seccomp=unconfined \
     --memory-reservation "${MEMORY_RESERVATION}" \
+    --gpus=all \
     -p 3000:80 \
     -p 1455:1456 \
     -v "${PROJECTS_MOUNT}" \

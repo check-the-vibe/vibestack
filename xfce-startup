@@ -1,0 +1,42 @@
+#!/bin/bash
+# XFCE4 startup for VibeStack - supports interactive and programmatic usage
+export DISPLAY=:0
+
+# Start D-Bus session for desktop services
+if ! pgrep -u "$USER" dbus-daemon >/dev/null 2>&1; then
+  eval $(dbus-launch --sh-syntax)
+  echo "$DBUS_SESSION_BUS_ADDRESS" > /tmp/dbus-session-address
+fi
+
+# Load X resources
+xrdb -merge ~/.Xresources 2>/dev/null || true
+
+# Start XFCE4 settings daemon (for theme, fonts, keyboard)
+/usr/lib/x86_64-linux-gnu/xfce4/xfconf/xfconfd &
+
+# Disable screensaver/power management (important for automation)
+xset s off
+xset -dpms
+xset s noblank
+
+# Start panel (taskbar)
+xfce4-panel --disable-wm-check &
+
+# Start desktop manager (icons, wallpaper)
+xfdesktop --disable-wm-check &
+
+# Start window manager (compositor disabled for performance)
+xfwm4 --compositor=off --daemon --replace &
+
+# Start terminal emulator (useful for debugging)
+xfce4-terminal --hide-menubar --hide-scrollbar --geometry=80x24 &
+
+# For MCP/Playwright automation: ensure accessibility is enabled
+export GTK_MODULES=gail:atk-bridge
+export NO_AT_BRIDGE=0
+
+# Wait for window manager
+sleep 2
+
+# Keep session alive
+wait

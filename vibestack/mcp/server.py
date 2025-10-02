@@ -134,11 +134,12 @@ async def _handle_get_session(arguments: Dict[str, Any]) -> List[types.ContentBl
 
 async def _handle_create_session(arguments: Dict[str, Any]) -> List[types.ContentBlock]:
     name = arguments["name"]
+    template_name = arguments.get("template") or DEFAULT_TEMPLATE
     session_root = _coerce_session_root(arguments.get("session_root"))
     metadata = await _run_sync(
         vibestack_api.create_session,
         name,
-        template=arguments.get("template") or DEFAULT_TEMPLATE,
+        template=template_name,
         command=arguments.get("command"),
         command_args=arguments.get("command_args"),
         working_dir=arguments.get("working_dir"),
@@ -147,6 +148,14 @@ async def _handle_create_session(arguments: Dict[str, Any]) -> List[types.Conten
     )
     prompt = arguments.get("prompt")
     if prompt:
+        templates = await _run_sync(vibestack_api.list_templates)
+        template_config = next((t for t in templates if t.get("name") == template_name), None)
+        
+        if template_config:
+            delay_ms = template_config.get("prompt_delay_ms", 0)
+            if delay_ms > 0:
+                await anyio.sleep(delay_ms / 1000.0)
+        
         await _run_sync(
             vibestack_api.send_text,
             name,
@@ -447,9 +456,64 @@ server = Server(
     name=os.environ.get("VIBESTACK_MCP_NAME", "vibestack"),
     version=os.environ.get("VIBESTACK_MCP_VERSION"),
     instructions=(
-        "Use these tools to manage VibeStack sessions. "
-        "Default session creation uses the Codex template and can queue an initial prompt "
-        "for the Codex CLI."
+        "VibeStack Session Manager - Control tmux-backed development sessions via MCP.\n\n"
+        
+        "## Quick Start\n"
+        "Use create_session with template='codex'|'claude'|'opencode' to launch AI coding assistants. "
+        "Pass a 'prompt' parameter to send an initial request after the CLI initializes.\n\n"
+        
+        "## Available Templates\n"
+        "- codex: OpenAI Codex CLI (gpt-5-codex model, full system access)\n"
+        "- claude: Anthropic Claude Code (AI pair programmer)\n"
+        "- opencode: Open-source AI coding agent\n"
+        "- bash: Plain shell session\n"
+        "Use list_templates to see all available templates with descriptions.\n\n"
+        
+        "## Session Lifecycle\n"
+        "1. create_session(name, template, prompt) - Launch CLI and optionally send initial prompt\n"
+        "2. tail_log(name) - Monitor session output (last 200 lines by default)\n"
+        "3. send_input(name, text) - Send commands or follow-up messages\n"
+        "4. get_session_url(name) - Get Streamlit UI link for browser access\n"
+        "5. kill_session(name) - Terminate session when done\n\n"
+        
+        "## Prompt Handling\n"
+        "When creating sessions with 'prompt', the system automatically waits for CLI startup "
+        "before delivering your message:\n"
+        "- Codex: 3 second delay (model loading + config)\n"
+        "- Claude: 2.5 second delay (auth + initialization)\n"
+        "- OpenCode: 2 second delay (lightweight startup)\n"
+        "Sessions remain fully interactive after the initial prompt.\n\n"
+        
+        "## Session Storage\n"
+        "Each session persists in ~/sessions/<name>/ with:\n"
+        "- metadata.json: Session configuration and status\n"
+        "- console.log: Complete terminal output\n"
+        "- artifacts/: Workspace directory (includes AGENTS.md, TASKS.md, template files)\n"
+        "Sessions persist until explicitly killed with kill_session.\n\n"
+        
+        "## Working Directories\n"
+        "By default, sessions start in ~/sessions/<name>/artifacts/. Override with working_dir parameter:\n"
+        "- Repository work: working_dir='/home/vibe/vibestack'\n"
+        "- Persistent projects: working_dir='/projects/<project-name>'\n"
+        "- User home: working_dir='/home/vibe'\n\n"
+        
+        "## Best Practices\n"
+        "- Use descriptive session names (e.g., 'api-debug-20250101', not 'test')\n"
+        "- Include context in prompts (file paths, error messages, specific goals)\n"
+        "- Check tail_log before sending follow-up commands to see latest output\n"
+        "- Use get_session_url to generate shareable links to sessions\n"
+        "- Clean up finished sessions with kill_session to free resources\n"
+        "- For batch jobs, use enqueue_one_off instead of create_session\n\n"
+        
+        "## Environment Details\n"
+        "Container: Ubuntu 22.04 with XFCE4 desktop (full variant)\n"
+        "User: vibe (UID 1000, passwordless sudo)\n"
+        "Home: /home/vibe (VIBESTACK_HOME)\n"
+        "Installed CLIs: codex, claude, opencode, llm, git, tmux, python3, node\n"
+        "Web UI: http://localhost/ui/ (Streamlit session manager)\n"
+        "REST API: http://localhost/api/docs (FastAPI with Swagger)\n\n"
+        
+        "For complete documentation, see VIBESTACK.md in the repository or visit the Streamlit Docs page."
     ),
 )
 

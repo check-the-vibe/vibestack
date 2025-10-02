@@ -1,0 +1,18 @@
+{
+  "name": "opencode",
+  "label": "OpenCode AI",
+  "command": "opencode",
+  "session_type": "long_running",
+  "prompt_delay_ms": 2000,
+  "description": "OpenCode - Open source AI coding agent for the terminal",
+  "include_files": [
+    {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md"
+    },
+    {
+      "source": "TASKS.md",
+      "target": "TASKS.md"
+    }
+  ]
+}

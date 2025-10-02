@@ -17,7 +17,7 @@ Previously, most application code sat under `container-home/` and the repo expos
 | `vibestack/` | Python package that implements the session manager, REST API bindings, and MCP server. |
 | `examples/` | Smoke-test and integration scripts (for example `examples/mcp_runner.py`). |
 | `tests/` | Pytest-based functional and unit tests. |
-| `fluxbox-apps`, `fluxbox-init`, `fluxbox-startup` | Fluxbox window manager configuration copied to `/home/vibe/.fluxbox/` at image build time. |
+| `xfce-startup` | XFCE4 desktop environment startup script copied to `/home/vibe/xfce-startup` at image build time. |
 | `Xresources` | X11 resource defaults for desktop applications. |
 | `AGENTS.md` | Orientation guide for human/agent collaborators, copied to `/home/vibe/AGENTS.md`. |
 | `Dockerfile` | Builds the runtime image and copies the directories above into `/home/vibe`. |
@@ -32,7 +32,7 @@ Previously, most application code sat under `container-home/` and the repo expos
    - `docs/` → `/home/vibe/docs/`
    - `streamlit_app/` → `/home/vibe/streamlit/`
    - `vibestack/` → `/home/vibe/vibestack/`
-   - Fluxbox and X11 configs → `/home/vibe/.fluxbox/` and `/home/vibe/.Xresources`
+   - XFCE4 startup script and X11 configs → `/home/vibe/xfce-startup` and `/home/vibe/.Xresources`
    - `AGENTS.md` → `/home/vibe/AGENTS.md`
 2. A post-copy `RUN` step normalizes line endings, marks scripts executable, and sets ownership/permissions for the `vibe` user.
 3. At runtime, Supervisor launches services that directly reference these paths (for example the Streamlit program runs `streamlit run /home/vibe/streamlit/app.py`).

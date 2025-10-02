@@ -1,7 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
 # Docker
 .dockerignore
 docker-compose.override.yml
-.venv/
 
 # Logs
 *.log
@@ -14,6 +32,7 @@ logs/
 *.swp
 *.swo
 *~
+.claude/settings.local.json
 
 # OS generated files
 .DS_Store

@@ -43,7 +43,7 @@ Refer to `docs/fastapi-rest.md` in the source tree for historical design notes.
 - **ChatGPT link bridge:** tail a session log via `curl "http://localhost/VibeStack/link_test/tail_log?name=<session>&lines=100"` or send input with `curl -X POST "http://localhost/VibeStack/link_test/send_input" -d '{"name":"<session>","text":"echo hi","enter":true}' -H 'Content-Type: application/json'`.
 
 ## Troubleshooting
-- 404 on `/admin/...` paths → check the Nginx location block and confirm the service is running (`supervisorctl status vibestack-api`).
+- 404 on `/admin/...` paths → check the Nginx location block and confirm the service is running (prefer `python -m vibestack.scripts.supervisor_helper status`).
 - 404 on `/VibeStack/...` paths → ensure the compatibility rewrite exists in `/etc/nginx/nginx.conf` and the service restarted; the helper endpoints live under `/link/{link_id}/...` inside FastAPI.
 - JSON validation errors → payload does not match request schema. Inspect error body for detailed messages.
 - Hanging requests → ensure the underlying session operation is not blocked (tmux or filesystem). Consider lowering concurrency or checking for lock contention.

@@ -8,7 +8,7 @@ VibeStack bundles several long-lived services inside a single container image. S
 | Admin REST API | FastAPI wrapper around the session manager | `vibestack-api` | 9000 | `/admin/` |
 | MCP Session API | Model Context Protocol interface to the session manager | `vibestack-mcp` | 9100 | `/mcp/` |
 | Streamlit UI | Browser UI for launching sessions and managing workspaces | `streamlit` | 8501 | `/ui/` |
-| noVNC Desktop | Web-based remote desktop backed by Fluxbox | `novnc` (depends on `xvfb`, `x11vnc`, `fluxbox`) | 6080 (WebSockets) | `/computer/` |
+| noVNC Desktop | Web-based remote desktop backed by XFCE4 | `novnc` (depends on `xvfb`, `x11vnc`, `xfce4`) | 6080 (WebSockets) | `/computer/` |
 | ttyd Terminal | Browser-based terminal with tmux helpers | `ttyd` | 7681 | `/terminal/`, `/` |
 | VS Code Tunnel | Visual Studio Code remote tunnel endpoint | `vscode-tunnel` | Outbound only | n/a |
 | Dev Service Proxies | Generic HTTP pass-through for sandboxed tools | n/a | 3000-3004 | `/services/<port>/` |
@@ -25,7 +25,7 @@ See the individual service notes under `services/` for deeper configuration and 
 - Health check: Dockerfile defines `HEALTHCHECK` against `http://localhost:${NOVNC_PORT}/vnc.html` to verify the desktop surface is live.
 
 ## Source Layout Highlights
-- Home bundle assets now live directly in the repo root (`bin/`, `streamlit_app/`, `vibestack/`, `fluxbox-*`, `Xresources`, etc.) and are copied into `/home/vibe/` during the image build.
+- Home bundle assets now live directly in the repo root (`bin/`, `streamlit_app/`, `vibestack/`, `xfce-startup`, `Xresources`, etc.) and are copied into `/home/vibe/` during the image build.
 - Python backend lives in `/home/vibe/vibestack` at runtime (populated from the repository `vibestack/` directory).
 - Streamlit front-end ships from the repository `streamlit_app/` directory and is copied to `/home/vibe/streamlit`.
 - Helper CLI scripts such as `bin/vibestack-ttyd-entry` and `bin/vibe` are linked into `/usr/local/bin` for convenience.

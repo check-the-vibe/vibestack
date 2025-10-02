@@ -74,22 +74,17 @@ def load_program_metadata() -> Dict[str, ProgramMetadata]:
 
 
 def fetch_supervisor_status() -> Tuple[Dict[str, Dict[str, str]], Optional[str]]:
+    from vibestack.scripts.supervisor_helper import run_supervisor_command
     try:
-        result = subprocess.run(
-            ["sudo", "supervisorctl", "status"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except subprocess.CalledProcessError as exc:  # pragma: no cover - surfaced in UI
-        error_output = exc.stderr or exc.stdout or str(exc)
-        return {}, f"supervisorctl failed: {error_output.strip()}"
+        rc, out, err = run_supervisor_command(["status"])
+        if rc != 0:
+            return {}, f"supervisor query failed: {err.strip() or out.strip()}"
+        output = out
     except Exception as exc:  # pylint: disable=broad-except
-        return {}, f"Unable to query supervisorctl: {exc}"
+        return {}, f"Unable to query supervisor: {exc}"
 
     status_map: Dict[str, Dict[str, str]] = {}
-    for raw_line in result.stdout.splitlines():
+    for raw_line in output.splitlines():
         line = raw_line.strip()
         if not line:
             continue

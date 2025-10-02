@@ -95,3 +95,17 @@ The script uses the `modelcontextprotocol/python-sdk` streamable HTTP client to 
 - Server implementation: `vibestack/mcp/server.py`
 - Connectivity helper: `examples/mcp_runner.py`
 - Architecture notes: `docs/mcp-session-integration.md`
+
+---
+
+## Complete Reference
+
+For comprehensive documentation covering:
+- All MCP tools with detailed examples and parameters
+- Session management workflows and best practices
+- Template configuration and prompt handling
+- Environment variables and service configuration
+- Troubleshooting guide with common issues
+- Container architecture and folder structure
+
+See **[VIBESTACK.md](../../VIBESTACK.md)** in the repository root.
