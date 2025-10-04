@@ -35,10 +35,6 @@ log.txt
 *~
 .claude/settings.local.json
 
-# OpenCode host-specific configs (plugin is in repo but .opencode session metadata is not)
-.opencode/
-!.opencode/plugin/
-
 # OS generated files
 .DS_Store
 .DS_Store?
