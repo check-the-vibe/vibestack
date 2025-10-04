@@ -24,13 +24,13 @@ with col1:
     
     1. **Download Extension Files**
        - Access at: `/extension/` endpoint
-       - Or use the chrome-extension folder from this repository
+       - Or use the vibestack-extension folder from this repository
     
     2. **Load in Chrome**
        - Navigate to `chrome://extensions/`
        - Enable **Developer mode** (top-right toggle)
        - Click **Load unpacked**
-       - Select the `chrome-extension` directory
+       - Select the `vibestack-extension` directory
     
     3. **Start Using**
        - Press `Ctrl+~` on any webpage
@@ -53,7 +53,7 @@ with col2:
 
 st.header("📋 Extension Information")
 
-extension_path = Path("/home/vibe/chrome-extension")
+extension_path = Path("/home/vibe/vibestack-extension")
 manifest_path = extension_path / "manifest.json"
 
 if manifest_path.exists():
@@ -130,4 +130,4 @@ with st.expander("🔧 Troubleshooting"):
     """)
 
 st.divider()
-st.caption("For detailed documentation, see chrome-extension/README.md")
+st.caption("For detailed documentation, see vibestack-extension/README.md")

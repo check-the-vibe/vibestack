@@ -216,14 +216,14 @@ Vibestack includes a Chrome extension for remote session management via terminal
    ```
 
 2. **Download the extension:**
-   - Option A: Clone this repository and use the `chrome-extension/` folder
+   - Option A: Clone this repository and use the `vibestack-extension/` folder
    - Option B: Download files from the `/extension/` endpoint
 
 3. **Load in Chrome:**
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable **Developer mode** (toggle in top-right)
    - Click **Load unpacked**
-   - Select the `chrome-extension` directory
+   - Select the `vibestack-extension` directory
 
 4. **Configure (if needed):**
    - Press `Ctrl+~` to open the terminal overlay
@@ -246,7 +246,7 @@ Vibestack includes a Chrome extension for remote session management via terminal
 3. Type commands and press Enter
 4. View real-time session output
 
-For detailed documentation, see [`chrome-extension/README.md`](chrome-extension/README.md)
+For detailed documentation, see [`vibestack-extension/README.md`](vibestack-extension/README.md)
 
 ## 🤝 Contributing
 
