@@ -1,0 +1,30 @@
+{
+  "name": "vibestack-chrome-extension",
+  "version": "0.1",
+  "manifest_version": 3,
+  "description": "AI-assisted Vibestack browsing extension.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "vibestack-chrome-extension",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["vibestack-config.js", "content-script.js", "terminal-overlay.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["vibestack-config.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

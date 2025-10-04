@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      margin: 0;
+      width: 300px;
+      height: 150px;
+      background: #0c0c0c;
+      color: #00ff00;
+      padding: 15px;
+      box-sizing: border-box;
+    }
+    .header {
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 20px;
+      color: #00ff00;
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+    }
+    .toggle-button {
+      width: 100%;
+      background: #1a1a1a;
+      border: 2px solid #00ff00;
+      color: #00ff00;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      transition: all 0.2s;
+    }
+    .toggle-button:hover {
+      background: #00ff00;
+      color: #0c0c0c;
+    }
+    .toggle-button:active {
+      transform: scale(0.98);
+    }
+    .instructions {
+      font-size: 10px;
+      color: #888;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .status {
+      font-size: 10px;
+      text-align: center;
+      margin-top: 10px;
+      padding: 5px;
+      border-radius: 3px;
+    }
+    .status.success {
+      background: #1a3d1a;
+      color: #44ff44;
+    }
+    .status.error {
+      background: #3d1a1a;
+      color: #ff4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    Vibestack Terminal
+  </div>
+  
+  <button id="toggleButton" class="toggle-button">
+    Toggle Terminal
+  </button>
+  
+  <div class="instructions">
+    Click above to show/hide the terminal at the bottom of the page.<br>
+    Or press <strong>Ctrl+~</strong> on any page.
+  </div>
+  
+  <div id="status" class="status" style="display: none;"></div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
