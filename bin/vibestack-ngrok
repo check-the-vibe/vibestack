@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PORT="${1:-3000}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "[ngrok] Starting ngrok tunnel for port ${PORT}..."
+
+if ! command -v ngrok &> /dev/null; then
+    echo "[ngrok] Error: ngrok is not installed"
+    echo "[ngrok] Install from: https://ngrok.com/download"
+    exit 1
+fi
+
+check_ngrok_running() {
+    curl -s http://127.0.0.1:4040/api/tunnels > /dev/null 2>&1
+}
+
+if check_ngrok_running; then
+    echo "[ngrok] ⚠ ngrok is already running"
+    echo "[ngrok] Checking for existing tunnel on port ${PORT}..."
+    
+    EXISTING_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | \
+        jq -r --arg port "${PORT}" '.tunnels[] | select(.config.addr | contains(":" + $port)) | .public_url' 2>/dev/null | \
+        grep '^https://' | head -1)
+    
+    if [[ -n "${EXISTING_URL}" ]]; then
+        echo "[ngrok] ✓ Found existing tunnel: ${EXISTING_URL}"
+        exit 0
+    else
+        echo "[ngrok] No tunnel found for port ${PORT}"
+        echo "[ngrok] Please stop existing ngrok or use a different port"
+        exit 1
+    fi
+fi
+
+ngrok http ${PORT} --log=stdout &
+NGROK_PID=$!
+
+echo "[ngrok] Waiting for tunnel to initialize..."
+sleep 3
+
+if ! check_ngrok_running; then
+    echo "[ngrok] Error: ngrok failed to start"
+    exit 1
+fi
+
+TUNNEL_URL=$(curl -s http://127.0.0.1:4040/api/tunnels 2>/dev/null | \
+    jq -r '.tunnels[0].public_url' 2>/dev/null | grep '^https://' | head -1)
+
+if [[ -n "${TUNNEL_URL}" ]]; then
+    echo "[ngrok] ✓ Tunnel active: ${TUNNEL_URL}"
+    echo "[ngrok] Inspect at: http://127.0.0.1:4040"
+    echo "[ngrok] ngrok PID: ${NGROK_PID}"
+    echo ""
+    echo "Press Ctrl+C to stop ngrok tunnel"
+    
+    trap "echo '[ngrok] Stopping...'; kill ${NGROK_PID} 2>/dev/null; exit 0" INT TERM
+    
+    wait ${NGROK_PID}
+else
+    echo "[ngrok] Error: Could not determine tunnel URL"
+    kill ${NGROK_PID} 2>/dev/null || true
+    exit 1
+fi

@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+EXTENSION_DIR="/home/vibe/chrome-extension"
+BASE_URL_CONF="/etc/vibestack/base_url.conf"
+EXTENSION_CONFIG="${EXTENSION_DIR}/vibestack-config.js"
+
+if [[ -f "${BASE_URL_CONF}" ]]; then
+    source "${BASE_URL_CONF}"
+fi
+
+BASE_URL="${VIBESTACK_PUBLIC_BASE_URL:-}"
+
+if [[ -z "${BASE_URL}" ]]; then
+    echo "// No base URL configured - using auto-detection" > "${EXTENSION_CONFIG}"
+else
+    cat > "${EXTENSION_CONFIG}" <<EOF
+// Auto-generated Vibestack configuration
+window.VIBESTACK_CONFIG = {
+    baseUrl: '${BASE_URL}',
+    apiUrl: '${BASE_URL}',
+    configured: true
+};
+EOF
+    echo "Configured extension with base URL: ${BASE_URL}"
+fi
+
+chmod 644 "${EXTENSION_CONFIG}"

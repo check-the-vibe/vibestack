@@ -30,10 +30,46 @@ VibeStack is a lightweight, full-featured development environment that runs in G
 git clone https://github.com/yourusername/vibestack.git
 cd vibestack
 
-# Build and run
+# Standard startup (auto-detects ngrok if running)
+./startup.sh follow
+
+# Or set a custom base URL manually
+./startup.sh --base-url=https://your-domain.ngrok.app
+
+# Or manually with docker
 docker build -t vibestack .
-docker run -p 80:80 -p 22:22 vibestack
+docker run -p 80:80 -p 22:22 \
+  -e VIBESTACK_PUBLIC_BASE_URL=https://your-domain.ngrok.app \
+  vibestack
 ```
+
+#### ngrok Integration
+
+Vibestack automatically detects and configures ngrok tunnels when available.
+
+**Prerequisites:**
+- `ngrok` installed ([download](https://ngrok.com/download))
+- `jq` installed (for JSON parsing)
+
+**Workflow:**
+
+```bash
+# Terminal 1: Start ngrok
+ngrok http 3000
+
+# Terminal 2: Start Vibestack (auto-detects ngrok URL)
+./startup.sh follow
+
+# Or use the helper script
+./bin/vibestack-with-ngrok
+```
+
+**What happens automatically:**
+1. `startup.sh` queries ngrok API at `http://127.0.0.1:4040/api/tunnels`
+2. Finds HTTPS tunnel for port 3000
+3. Configures all services with detected URL
+4. Chrome extension, REST API, MCP endpoints all auto-configure
+5. No manual URL configuration needed!
 
 ## 🖥️ Accessing VibeStack
 
@@ -97,6 +133,7 @@ Or run the menu manually anytime with:
 - `VIBE_PASSWORD` - Set vibe user password (default: "coding")
 - `RESOLUTION` - Desktop resolution (default: 1920x1200, optimized for tablets/high-DPI displays)
 - `CODEX_STATE_DIR` - Optional path that will be symlinked to `/home/vibe/.codex` for Codex tokens
+- `VIBESTACK_PUBLIC_BASE_URL` - Public-facing URL for session links, MCP endpoints, and chrome extension (e.g., `https://example.ngrok.app`)
 
 **Resolution Recommendations:**
 - Tablets/iPad Pro: 1920x1200 (default) or 2048x1536 for native resolution
@@ -166,6 +203,50 @@ Need a ready-to-use workspace? Launch a session with the `rest-api-lab` template
 ### Complete Container Reference
 
 For a comprehensive guide to the VibeStack container, installed software, folder structure, session management, and MCP integration, see **[VIBESTACK.md](./VIBESTACK.md)**.
+
+## 🧩 Chrome Extension
+
+Vibestack includes a Chrome extension for remote session management via terminal overlay.
+
+### Installation
+
+1. **Access the extension files:**
+   ```
+   https://your-vibestack-url/extension/
+   ```
+
+2. **Download the extension:**
+   - Option A: Clone this repository and use the `chrome-extension/` folder
+   - Option B: Download files from the `/extension/` endpoint
+
+3. **Load in Chrome:**
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable **Developer mode** (toggle in top-right)
+   - Click **Load unpacked**
+   - Select the `chrome-extension` directory
+
+4. **Configure (if needed):**
+   - Press `Ctrl+~` to open the terminal overlay
+   - The extension should auto-detect your Vibestack URL
+   - If not, manually enter: `https://your-vibestack-url`
+   - Click "Save URL"
+
+### Features
+
+- **Terminal Overlay**: Press `Ctrl+~` on any webpage to access Vibestack sessions
+- **Session Management**: Create, list, and switch between sessions
+- **Command Execution**: Send commands directly to remote sessions
+- **Real-time Logs**: Auto-polling session logs with 1-second refresh
+- **Auto-Configuration**: Automatically detects Vibestack API endpoint
+
+### Usage
+
+1. Open terminal overlay with `Ctrl+~`
+2. Select or create a session
+3. Type commands and press Enter
+4. View real-time session output
+
+For detailed documentation, see [`chrome-extension/README.md`](chrome-extension/README.md)
 
 ## 🤝 Contributing
 

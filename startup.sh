@@ -14,6 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_NAME="$(basename "$0")"
 
 FOLLOW_LOGS=false
+BASE_URL="${VIBESTACK_BASE_URL:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -21,12 +22,65 @@ while [[ $# -gt 0 ]]; do
       FOLLOW_LOGS=true
       shift
       ;;
+    --base-url)
+      BASE_URL="$2"
+      shift 2
+      ;;
+    --base-url=*)
+      BASE_URL="${1#*=}"
+      shift
+      ;;
     *)
       echo "[startup] Unknown argument: $1" >&2
+      echo "Usage: $SCRIPT_NAME [follow] [--base-url=<url>]" >&2
+      echo "  follow         - tail logs after starting" >&2
+      echo "  --base-url     - set public base URL (e.g., https://example.ngrok.app)" >&2
       exit 1
       ;;
   esac
 done
+
+detect_ngrok_url() {
+  local port="${1:-3000}"
+  
+  if ! command -v jq &> /dev/null; then
+    return 1
+  fi
+  
+  if ! command -v curl &> /dev/null; then
+    return 1
+  fi
+  
+  local ngrok_api="http://127.0.0.1:4040/api/tunnels"
+  local response
+  response=$(curl -s --connect-timeout 2 "${ngrok_api}" 2>/dev/null) || return 1
+  
+  if [[ -z "${response}" ]]; then
+    return 1
+  fi
+  
+  local url
+  url=$(echo "${response}" | jq -r --arg port "${port}" '.tunnels[] | select(.config.addr | contains(":" + $port)) | .public_url' 2>/dev/null | grep '^https://' | head -1)
+  
+  if [[ -n "${url}" ]]; then
+    echo "${url}"
+    return 0
+  fi
+  
+  return 1
+}
+
+if [[ -z "${BASE_URL}" ]]; then
+  echo "[startup] No base URL provided, attempting to detect ngrok tunnel..."
+  DETECTED_URL=$(detect_ngrok_url 3000)
+  if [[ -n "${DETECTED_URL}" ]]; then
+    BASE_URL="${DETECTED_URL}"
+    echo "[startup] ✓ Detected ngrok URL: ${BASE_URL}"
+  else
+    echo "[startup] ⚠ Could not detect ngrok tunnel (is ngrok running for port 3000?)"
+    echo "[startup] Continuing without base URL. Services will use defaults."
+  fi
+fi
 
 build_image() {
   echo "[startup] Building ${IMAGE_NAME} for ${PLATFORM}..."
@@ -46,18 +100,27 @@ stop_existing_container() {
 
 start_container() {
   echo "[startup] Starting ${CONTAINER_NAME} in detached mode..."
-  docker run -d \
-    --name "${CONTAINER_NAME}" \
-    --platform "${PLATFORM}" \
-    --security-opt seccomp=unconfined \
-    --memory-reservation "${MEMORY_RESERVATION}" \
-    --gpus=all \
-    -p 3000:80 \
-    -p 1455:1456 \
-    -v "${PROJECTS_MOUNT}" \
-    -v "${CODEX_STATE_MOUNT}" \
-    -e CODEX_STATE_DIR=/data/codex \
-    "${IMAGE_NAME}"
+  
+  local docker_args=(
+    -d
+    --name "${CONTAINER_NAME}"
+    --platform "${PLATFORM}"
+    --security-opt seccomp=unconfined
+    --memory-reservation "${MEMORY_RESERVATION}"
+    --gpus=all
+    -p 3000:80
+    -p 1455:1456
+    -v "${PROJECTS_MOUNT}"
+    -v "${CODEX_STATE_MOUNT}"
+    -e CODEX_STATE_DIR=/data/codex
+  )
+  
+  if [[ -n "${BASE_URL}" ]]; then
+    echo "[startup] Setting VIBESTACK_PUBLIC_BASE_URL=${BASE_URL}"
+    docker_args+=(-e "VIBESTACK_PUBLIC_BASE_URL=${BASE_URL}")
+  fi
+  
+  docker run "${docker_args[@]}" "${IMAGE_NAME}"
 }
 
 tail_logs() {

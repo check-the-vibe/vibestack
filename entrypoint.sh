@@ -72,18 +72,29 @@ mkdir -p "${VIBESTACK_HOME}/sessions"
 chown vibe:vibe "${VIBESTACK_HOME}/sessions"
 setup_codex_state
 
+# Create base URL configuration file for services
+configure_base_url() {
+    local base_url="${VIBESTACK_PUBLIC_BASE_URL:-}"
+    local config_file="/etc/vibestack/base_url.conf"
+    
+    mkdir -p /etc/vibestack
+    
+    if [[ -n "${base_url}" ]]; then
+        echo "export VIBESTACK_PUBLIC_BASE_URL='${base_url}'" > "${config_file}"
+        echo "[entrypoint] Configured public base URL: ${base_url}"
+    else
+        echo "# No base URL configured" > "${config_file}"
+    fi
+    
+    chmod 644 "${config_file}"
+}
 
-configure_codex_callback() {
-    local port
-    port="${CODEX_CALLBACK_PORT:-1455}"
-    mkdir -p /etc/nginx/conf.d
-    cat > /etc/nginx/conf.d/codex_callback_upstream.conf <<EOF
-upstream codex_callback {
-    server 127.0.0.1:${port};
-    keepalive 16;
-}
-EOF
-}
+configure_base_url
+
+# Configure chrome extension with base URL
+if [[ -x /home/vibe/bin/vibestack-configure-extension ]]; then
+    /home/vibe/bin/vibestack-configure-extension
+fi
 
 configure_codex_callback
 

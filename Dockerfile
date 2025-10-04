@@ -115,6 +115,7 @@ COPY --chown=vibe:vibe vibestack/ /home/vibe/vibestack/
 COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
 COPY --chown=vibe:vibe xfce-startup /home/vibe/xfce-startup
+COPY --chown=vibe:vibe chrome-extension/ /home/vibe/chrome-extension/
 
 # Final filesystem tweaks
 RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \
@@ -125,12 +126,14 @@ RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \
       /entrypoint.sh \
       /home/vibe/bin/vibe \
       /home/vibe/bin/vibestack-ttyd-entry \
-      /home/vibe/bin/vibestack-code-tunnel && \
+      /home/vibe/bin/vibestack-code-tunnel \
+      /home/vibe/bin/vibestack-configure-extension && \
     chmod +x \
       /entrypoint.sh \
       /home/vibe/bin/vibe \
       /home/vibe/bin/vibestack-ttyd-entry \
       /home/vibe/bin/vibestack-code-tunnel \
+      /home/vibe/bin/vibestack-configure-extension \
       /home/vibe/xfce-startup && \
     mkdir -p /var/log/supervisor /var/run && \
     chown -R vibe:vibe /home/vibe && \
