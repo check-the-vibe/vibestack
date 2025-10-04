@@ -28,8 +28,11 @@ RUN apt-get update && \
 RUN set -x && \
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
     apt-get update && apt-get install -y --no-install-recommends nodejs && \
-    npm install -g @anthropic-ai/claude-code @openai/codex && \
+    npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai@latest && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create global opencode plugin directory
+RUN mkdir -p /home/vibe/.config/opencode/plugin
 
 # Python CLI tooling
 RUN pip install --no-cache-dir \
@@ -66,6 +69,7 @@ COPY --chown=vibe:vibe docs/ /home/vibe/docs/
 COPY --chown=vibe:vibe streamlit_app/ /home/vibe/streamlit/
 COPY --chown=vibe:vibe vibestack/ /home/vibe/vibestack/
 COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
+COPY --chown=vibe:vibe .opencode/plugin/session-logger.js /home/vibe/.config/opencode/plugin/session-logger.js
 
 # Final filesystem tweaks
 RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \

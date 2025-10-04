@@ -96,6 +96,18 @@ if [[ -x /home/vibe/bin/vibestack-configure-extension ]]; then
     /home/vibe/bin/vibestack-configure-extension
 fi
 
+# Configure Codex callback upstream for nginx
+configure_codex_callback() {
+    local port="${CODEX_CALLBACK_PORT:-1455}"
+    mkdir -p /etc/nginx/conf.d
+    cat > /etc/nginx/conf.d/codex_callback_upstream.conf <<EOF
+upstream codex_callback {
+    server 127.0.0.1:${port};
+    keepalive 16;
+}
+EOF
+}
+
 configure_codex_callback
 
 # If no arguments provided, run supervisord (default behavior)

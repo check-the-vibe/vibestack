@@ -63,6 +63,9 @@ RUN set -x && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Create global opencode plugin directory
+RUN mkdir -p /home/vibe/.config/opencode/plugin
+
 # Visual Studio Code CLI for tunnel support
 RUN curl -fsSL "https://update.code.visualstudio.com/latest/cli-linux-x64/stable" -o /tmp/vscode-cli.tar.gz && \
     mkdir -p /opt/vscode-cli && \
@@ -116,6 +119,7 @@ COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
 COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
 COPY --chown=vibe:vibe xfce-startup /home/vibe/xfce-startup
 COPY --chown=vibe:vibe chrome-extension/ /home/vibe/chrome-extension/
+COPY --chown=vibe:vibe .opencode/plugin/session-logger.js /home/vibe/.config/opencode/plugin/session-logger.js
 
 # Final filesystem tweaks
 RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \

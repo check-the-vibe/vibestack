@@ -4,7 +4,7 @@
   "command": "opencode",
   "session_type": "long_running",
   "prompt_delay_ms": 2000,
-  "description": "OpenCode - Open source AI coding agent for the terminal",
+  "description": "OpenCode - Open source AI coding agent for the terminal with session logging plugin",
   "include_files": [
     {
       "source": "AGENTS.md",
