@@ -511,7 +511,7 @@ server = Server(
         "Home: /home/vibe (VIBESTACK_HOME)\n"
         "Installed CLIs: codex, claude, opencode, llm, git, tmux, python3, node\n"
         "Web UI: http://localhost/ui/ (Streamlit session manager)\n"
-        "REST API: http://localhost/api/docs (FastAPI with Swagger)\n\n"
+        "REST API: http://localhost:3000/admin/docs (external via Nginx) or http://127.0.0.1:9000/api/docs (direct)\n\n"
         
         "For complete documentation, see VIBESTACK.md in the repository or visit the Streamlit Docs page."
     ),

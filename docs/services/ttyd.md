@@ -10,10 +10,10 @@ Provides a browser-based terminal with tmux integration so agents can work insid
 - Logs: `/var/log/ttyd.log` (stdout) and `/var/log/ttyd.err` (stderr).
 
 ## Routing & Access
-- Internal port: `7681`.
-- Nginx proxy:
-  - `/terminal/` → primary terminal UI.
-  - `/` (fallback) → also points at ttyd so the root path drops you in the shell.
+- Internal listener: `http://localhost:7681` inside container.
+- Exposed paths (Nginx):
+  - Inside container: `http://localhost/terminal/` (and root `/` as fallback)
+  - From host with `./startup.sh`: `http://localhost:3000/terminal/` (root `/` also falls back to ttyd)
 
 ## Entry Script (`vibestack-ttyd-entry`)
 - Default action: launches an interactive login shell.

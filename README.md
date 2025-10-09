@@ -36,6 +36,9 @@ cd vibestack
 # Or set a custom base URL manually
 ./startup.sh --base-url=https://your-domain.ngrok.app
 
+# Optionally mount a host projects folder at /projects (relative/tilde ok)
+./startup.sh --projects ~/projects
+
 # Or manually with docker
 docker build -t vibestack .
 docker run -p 80:80 -p 22:22 \
@@ -78,8 +81,8 @@ ngrok http 3000
 - **Desktop Environment**: `http://localhost/` - Full Linux desktop via noVNC
 - **Terminal UI**: `http://localhost/ui/` - Streamlit app with embedded terminal
 - **Direct Terminal**: `http://localhost/terminal/` - Standalone web terminal
-- **REST API**: `http://localhost/api/` - FastAPI-powered HTTP endpoints (see below)
-- **MCP Session API**: `http://localhost/mcp/` - Streamable HTTP endpoint for Model Context Protocol clients
+- **REST API (external)**: `http://localhost:3000/admin/api/` - FastAPI-powered HTTP endpoints via Nginx (see below)
+- **MCP Session API**: `http://localhost:3000/mcp/` - Streamable HTTP endpoint for Model Context Protocol clients
 
 ### SSH Access
 
@@ -134,6 +137,7 @@ Or run the menu manually anytime with:
 - `RESOLUTION` - Desktop resolution (default: 1920x1200, optimized for tablets/high-DPI displays)
 - `CODEX_STATE_DIR` - Optional path that will be symlinked to `/home/vibe/.codex` for Codex tokens
 - `VIBESTACK_PUBLIC_BASE_URL` - Public-facing URL for session links, MCP endpoints, and chrome extension (e.g., `https://example.ngrok.app`)
+- `Projects mount (/projects)` - When started via `./startup.sh --projects <host-path>`, the specified host directory is bind-mounted to `/projects` inside the container so your source trees are available there.
 
 **Resolution Recommendations:**
 - Tablets/iPad Pro: 1920x1200 (default) or 2048x1536 for native resolution
@@ -172,26 +176,27 @@ python -m vibestack.scripts.supervisor_helper status
 
 ### REST API
 
-The FastAPI service exposes the `vibestack.api` helpers over HTTP at `/api/`. Interactive docs are available at `/api/docs`. A few common workflows:
+The FastAPI service exposes the `vibestack.api` helpers over HTTP. Externally, access through Nginx at `/admin/api/` (docs at `/admin/docs`). Internally (inside the container), the upstream listens on `http://127.0.0.1:9000/api/`. A few common workflows:
 
 ```bash
 # List sessions
-curl http://localhost/api/sessions
+curl http://localhost:3000/admin/api/sessions
 
 # Create a new session
-curl -X POST http://localhost/api/sessions \
+curl -X POST http://localhost:3000/admin/api/sessions \
   -H 'Content-Type: application/json' \
   -d '{"name": "demo", "template": "bash"}'
 
 # Tail the last 100 log lines
-curl 'http://localhost/api/sessions/demo/log?lines=100'
+curl 'http://localhost:3000/admin/api/sessions/demo/log?lines=100'
 ```
 
 Inside the container the service also listens directly on `http://127.0.0.1:9000`, which bypasses Nginx. For example:
 
 ```bash
 # Run from within the container shell
-curl http://127.0.0.1:9000/api/docs
+curl http://localhost:3000/admin/docs # external via Nginx
+curl http://127.0.0.1:9000/api/docs   # internal direct
 ```
 
 If you need to restart just the API without touching other services, run `python -m vibestack.scripts.supervisor_helper restart vibestack-api`.

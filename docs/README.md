@@ -2,6 +2,12 @@
 
 VibeStack bundles several long-lived services inside a single container image. Supervisor keeps them running, while Nginx is the public HTTP entrypoint that routes traffic to each upstream. Use this directory to orient new coding agents before they touch the system.
 
+## Quick Links
+- REST (external via Nginx): http://localhost:3000/admin/api (docs: http://localhost:3000/admin/docs)
+- REST (internal direct): http://127.0.0.1:9000/api
+- MCP (external): http://localhost:3000/mcp
+- Streamlit UI: http://localhost/ui/
+
 ## Service Map
 | Service | Role | Supervisor Program | Internal Port | External Path |
 | --- | --- | --- | --- | --- |

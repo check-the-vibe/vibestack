@@ -1,6 +1,6 @@
 # VibeStack REST Endpoint Reference
 
-The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints live beneath the `/api` prefix. This document captures request/response shapes and example curl invocations from inside the container (`http://127.0.0.1:9000`) and through the Nginx proxy (`http://localhost`).
+The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints live beneath the `/api` prefix. This document captures request/response shapes and example curl invocations from inside the container (`http://127.0.0.1:9000`) and through the Nginx proxy (`http://localhost:3000/admin/...`).
 
 > Tip: Pass `-H 'Content-Type: application/json'` on any request that sends a JSON body.
 
@@ -20,7 +20,7 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 - **Response**: `200 OK` with metadata or `404` if unknown
 - **Example**:
   ```bash
-  curl http://localhost/api/sessions/demo
+  curl http://localhost:3000/admin/api/sessions/demo
   ```
 
 ### Create Session
@@ -46,7 +46,7 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 - **Response**: `204 No Content`
 - **Example**:
   ```bash
-  curl -X DELETE http://localhost/api/sessions/demo
+  curl -X DELETE http://localhost:3000/admin/api/sessions/demo
   ```
 
 ### Send Session Input
@@ -72,7 +72,7 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 - **Response**: `200 OK` with `{ "log": "..." }`
 - **Example**:
   ```bash
-  curl 'http://localhost/api/sessions/demo/log?lines=100'
+  curl 'http://localhost:3000/admin/api/sessions/demo/log?lines=100'
   ```
 
 ## Jobs
@@ -98,7 +98,7 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 - **Response**: `201 Created` with session metadata
 - **Example**:
   ```bash
-  curl -X POST http://localhost/api/jobs \
+  curl -X POST http://localhost:3000/admin/api/jobs \
     -H 'Content-Type: application/json' \
     -d '{"name":"daily","command":"echo done"}'
   ```
@@ -128,7 +128,7 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 - **Response**: `201 Created` with `{ "path": "..." }`
 - **Example**:
   ```bash
-  curl -X POST http://localhost/api/templates \
+  curl -X POST http://localhost:3000/admin/api/templates \
     -H 'Content-Type: application/json' \
     -d '{"payload":{"name":"custom","command":"bash"}}'
   ```
@@ -143,9 +143,10 @@ The FastAPI service mirrors the public helpers in `vibestack.api`. All endpoints
 
 ## Health & Tooling
 
-- Interactive API docs (Swagger UI): `GET /api/docs`
+- Interactive API docs (Swagger UI): `GET /admin/docs` (external via Nginx); internal direct at `GET /api/docs`
   ```bash
-  curl http://localhost/api/docs
+  curl http://localhost:3000/admin/docs
+  curl http://127.0.0.1:9000/api/docs
   ```
 - ReDoc reference: `GET /api/redoc`
 - Supervisor log path: `/var/log/supervisor/vibestack-api.log`

@@ -81,6 +81,11 @@ render_onboarding_sidebar_controls()
 
 st.title("📚 VibeStack Documentation")
 
+st.info(
+    "Quick links: REST external http://localhost:3000/admin/docs · "
+    "REST internal http://127.0.0.1:9000/api/docs · MCP http://localhost:3000/mcp · UI http://localhost:3000/ui/"
+)
+
 sources = collect_documents()
 if not sources:
     st.info("No documentation sources were found. Add Markdown files under `.docs/` or `docs/`.")

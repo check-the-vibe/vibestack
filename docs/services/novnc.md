@@ -17,8 +17,10 @@ Managed via Supervisor:
    - Terminal emulator (xfce4-terminal)
 
 ## Routing & Access
-- Direct noVNC client: `http://localhost:6080/vnc.html` (used by the Docker health check).
-- Nginx exposes the experience at `/computer/`, including static assets under `/computer/<subpath>` and the WebSocket bridge at `/computer/websockify`.
+- Internal listener: `http://localhost:6080/` (e.g., `http://localhost:6080/vnc.html`).
+- Exposed paths (Nginx):
+  - Inside container: `http://localhost/computer/` (and `/computer/websockify` for WS).
+  - From host with `./startup.sh`: `http://localhost:3000/computer/`.
 
 ### NoVNC Client Parameters
 The default `/computer/` endpoint includes optimized parameters for high-DPI displays (iPad Pro, retina displays):

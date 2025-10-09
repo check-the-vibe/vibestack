@@ -10,8 +10,11 @@ Interactive dashboard for launching VibeStack sessions, queuing one-off jobs, an
 - Logs: `/var/log/supervisor/streamlit.log`.
 
 ## Routing & Access
-- Internal port: `8501`.
-- Nginx proxy: `/ui/` prefix (app expects this base URL via `--server.baseUrlPath` flag).
+- Internal listener: `http://localhost:8501` inside container.
+- Exposed path (Nginx):
+  - Inside container: `http://localhost/ui/`
+  - From host with `./startup.sh`: `http://localhost:3000/ui/`
+- The app reads its base path from `--server.baseUrlPath=ui`.
 
 ## Key UI Features
 - **Home dashboard:** Landing page that surfaces onboarding tasks, quick navigation links, and counts for sessions/templates.

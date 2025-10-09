@@ -2,7 +2,7 @@
 
 Endpoint | Method | Description
 --- | --- | ---
-`/api/docs` | GET | Interactive Swagger UI inside the container or via the proxy.
+`/admin/docs` | GET | Swagger UI via Nginx; internal direct at `/api/docs`.
 `/api/sessions` | GET/POST | List sessions or create a new one from a template.
 `/api/sessions/{name}` | GET/DELETE | Inspect or terminate a session by name.
 `/api/sessions/{name}/input` | POST | Send text to the backing tmux session.
@@ -17,7 +17,7 @@ Endpoint | Method | Description
 curl http://127.0.0.1:9000/api/jobs
 
 # Through Nginx from a forwarded port
-curl http://localhost/api/templates
+curl http://localhost:3000/admin/api/templates
 
 # Post a one-off job
 curl -X POST http://127.0.0.1:9000/api/jobs \

@@ -4,8 +4,10 @@
 Expose a handful of fixed HTTP pass-through routes so agents can surface ad-hoc development services (for example local web apps or API prototypes) running inside the container. Each proxy maps a URL path on Nginx to a corresponding localhost port.
 
 ## Routing & Access
-- External paths: `/services/3000/`, `/services/3001/`, `/services/3002/`, `/services/3003/`, `/services/3004/`.
-- Upstream targets: `http://localhost:PORT/` for each matching port.
+- Internal listeners: bind your app to `http://localhost:3000` … `3004` inside the container.
+- Exposed paths (Nginx): `/services/3000/` … `/services/3004/`.
+  - From host with `./startup.sh`: `http://localhost:3000/services/<port>/`.
+  - From inside container: `http://localhost/services/<port>/`.
 - Supported methods: any HTTP verbs supported by the upstream service (Nginx simply forwards the request).
 - WebSocket support: upgrade headers are forwarded so frameworks like Vite or Next.js hot reload work as expected.
 

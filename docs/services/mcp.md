@@ -10,10 +10,8 @@ Expose VibeStack's session manager over the Model Context Protocol (MCP) so IDEs
 - Logs: `/var/log/supervisor/vibestack-mcp.log`.
 
 ## Routing & Access
-- Internal port: `9100` (TCP).
-- Nginx proxy: `/mcp` → `http://localhost:9100/`.
-- Streamable HTTP endpoint (inside container): `http://localhost/mcp`.
-- Host mapping (via `startup.sh`): `http://localhost:90/mcp`.
+- Internal listener: `http://127.0.0.1:9100/` (TCP inside container).
+- Exposed path (via Nginx): `http://localhost/mcp` inside container; from host via `./startup.sh` mapping: `http://localhost:3000/mcp`.
 - The server exposes the full streamable HTTP handshake (`POST /mcp`, `GET /mcp`, `DELETE /mcp`) and emits the `Mcp-Session-Id` header for reconnection.
 - The Starlette app wires `_handle_streamable_http(scope, receive, send)` through a top-level `Mount` route so `StreamableHTTPSessionManager.handle_request(...)` receives the full ASGI triple; mounting keeps the raw ASGI callables intact, whereas the generic `Route` wrapper would coerce them into a `Request`/`Response` cycle and break the transport.
 
@@ -27,7 +25,7 @@ python3 examples/mcp_runner.py
 Environment variables:
 - `VIBESTACK_MCP_URL` (optional) – override the default streamable HTTP URL if the proxy is bound to a different host or port.
 
-> Tip: when running tools from the host machine (outside the container) point them at `http://localhost:90/mcp`; inside the container the same proxy is available at `http://localhost/mcp`.
+> Tip: when running tools from the host machine (outside the container) use `http://localhost:3000/mcp`; inside the container use `http://localhost/mcp`. If using ngrok, replace the host with your public HTTPS domain.
 
 The script uses the `modelcontextprotocol/python-sdk` streamable HTTP client to connect, list templates, create a demo session, and print the resulting metadata. The session is created with a random suffix and will show up in the Streamlit UI under **Sessions**.
 
@@ -48,7 +46,7 @@ The script uses the `modelcontextprotocol/python-sdk` streamable HTTP client to 
        {
          "name": "VibeStack",
          "type": "streamable-http",
-         "endpoint": "http://localhost:90/mcp"
+         "endpoint": "http://localhost:3000/mcp"
        }
      ]
    }
@@ -65,7 +63,7 @@ The script uses the `modelcontextprotocol/python-sdk` streamable HTTP client to 
        {
          "name": "vibestack",
          "type": "streamable-http",
-         "endpoint": "http://localhost:90/mcp"
+         "endpoint": "http://localhost:3000/mcp"
        }
      ]
    }
@@ -76,7 +74,7 @@ The script uses the `modelcontextprotocol/python-sdk` streamable HTTP client to 
 1. Open ChatGPT, switch to **Developer**.
 2. Under **My servers → Add server**, choose **Streamable HTTP**, supply:
    - Name: `VibeStack`
-   - URL: `http://localhost:90/mcp`
+   - URL: `http://localhost:3000/mcp`
 3. Save and connect. Run `list_sessions` or `create_session` from the in-app console to validate.
 
 ### Terminal Input

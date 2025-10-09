@@ -14,8 +14,8 @@ import mcp.types as types
 from mcp.client.streamable_http import streamablehttp_client
 
 # Nginx terminates MCP traffic; inside the container it lives on :80,
-# which the host maps to http://localhost:90/ when using startup.sh.
-DEFAULT_URL = "http://localhost/mcp"
+# externally reachable at http://localhost:3000/mcp when using startup.sh.
+DEFAULT_URL = "http://localhost:3000/mcp"
 MCP_URL = os.environ.get("VIBESTACK_MCP_URL", DEFAULT_URL)
 
 

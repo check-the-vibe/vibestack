@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE_NAME="vibestack-current"
 CONTAINER_NAME="vibestack-current-dev"
 PLATFORM="linux/amd64"
-PROJECTS_MOUNT="/Users/neal/Projects:/projects"
+PROJECTS_MOUNT="/Users/neal/Projects:/projects" # default; override with --projects <path>
 CODEX_STATE_HOST="/Users/neal/Projects/codex-state"
 CODEX_STATE_MOUNT="${CODEX_STATE_HOST}:/data/codex"
 # Reserve a minimum memory footprint unless overridden by env.
@@ -30,11 +30,20 @@ while [[ $# -gt 0 ]]; do
       BASE_URL="${1#*=}"
       shift
       ;;
+    --projects)
+      PROJECTS_ARG="$2"
+      shift 2
+      ;;
+    --projects=*)
+      PROJECTS_ARG="${1#*=}"
+      shift
+      ;;
     *)
       echo "[startup] Unknown argument: $1" >&2
-      echo "Usage: $SCRIPT_NAME [follow] [--base-url=<url>]" >&2
+      echo "Usage: $SCRIPT_NAME [follow] [--base-url=<url>] [--projects=<host-path>]" >&2
       echo "  follow         - tail logs after starting" >&2
       echo "  --base-url     - set public base URL (e.g., https://example.ngrok.app)" >&2
+      echo "  --projects     - host folder to mount at /projects (relative/tilde ok)" >&2
       exit 1
       ;;
   esac
@@ -80,6 +89,32 @@ if [[ -z "${BASE_URL}" ]]; then
     echo "[startup] ⚠ Could not detect ngrok tunnel (is ngrok running for port 3000?)"
     echo "[startup] Continuing without base URL. Services will use defaults."
   fi
+fi
+
+# Resolve path to absolute (supports ~ and relative)
+resolve_path() {
+  local input_path="$1"
+  # Expand tilde
+  if [[ "$input_path" == ~* ]]; then
+    input_path="${input_path/#~/$HOME}"
+  fi
+  # If not absolute, prefix with current working directory
+  if [[ "$input_path" != /* ]]; then
+    input_path="$(pwd)/$input_path"
+  fi
+  # Canonicalize if realpath exists
+  if command -v realpath >/dev/null 2>&1; then
+    realpath -m "$input_path"
+  else
+    echo "$input_path"
+  fi
+}
+
+# If user provided --projects, update PROJECTS_MOUNT accordingly
+if [[ -n "${PROJECTS_ARG:-}" ]]; then
+  HOST_PROJECTS_DIR="$(resolve_path "${PROJECTS_ARG}")"
+  PROJECTS_MOUNT="${HOST_PROJECTS_DIR}:/projects"
+  echo "[startup] Using host projects dir: ${HOST_PROJECTS_DIR} -> /projects"
 fi
 
 build_image() {

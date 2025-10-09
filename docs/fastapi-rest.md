@@ -42,7 +42,7 @@
 1. **FastAPI App**: new module `vibestack/rest/app.py` exporting `FastAPI` instance and Pydantic schemas. Include lifespan handler to reuse `SessionManager`.
 2. **Server Port**: run Uvicorn on `0.0.0.0:9000` (open port internally; proxied via Nginx).
 3. **Process Supervision**: add `program:vibestack-api` entry to `supervisord.conf` running `uvicorn vibestack.rest.app:app` as `vibe` user with `PYTHONPATH=/home/vibe`.
-4. **Nginx Proxy**: add `/api/` location block forwarding to `http://localhost:9000/` with standard headers.
+4. **Nginx Proxy**: add `/admin/` location block forwarding to `http://127.0.0.1:9000/` with standard headers (external endpoints appear as `/admin/api/...`, docs at `/admin/docs`).
 5. **Dependencies**: update Dockerfile to `pip install fastapi uvicorn[standard]` alongside existing Python packages.
 6. **Documentation**: extend `README.md` with REST usage overview and reference this document.
 
@@ -51,14 +51,14 @@
 - Introduced `vibestack/rest/__init__.py` so the app is importable as `vibestack.rest.app:app` for Uvicorn.
 - Docker image now installs `fastapi` and `uvicorn[standard]` so the REST service runs out-of-the-box.
 - Supervisor manages the API process via the new `program:vibestack-api` entry, logging to `/var/log/supervisor/vibestack-api.log` and starting before Nginx.
-- Nginx gained an `/api/` location proxying to the FastAPI service with buffering disabled to support streaming responses in the future.
+- Nginx gained an `/admin/` location proxying to the FastAPI service with buffering disabled to support streaming responses in the future.
 - README documents the API surface, quick curl examples, and points to these implementation notes.
-- Within the container you can reach the service either via Nginx (`http://localhost/api/...`) or directly on the upstream port (`http://127.0.0.1:9000/api/...`). The direct port is useful for smoke-testing before touching proxy configuration.
+- External access goes through Nginx at `http://localhost:3000/admin/api/...` (docs at `http://localhost:3000/admin/docs`). Inside the container you can also reach the upstream directly at `http://127.0.0.1:9000/api/...`. The direct port is useful for smoke-testing before touching proxy configuration.
 - A `rest-api-lab` template preloads `AGENTS.md` guidance and endpoint cheat-sheets so agents can curl the service immediately after the session starts.
 
 ## Verification Checklist
 - [ ] Run `uvicorn vibestack.rest.app:app --reload` locally (optional) to ensure the module imports cleanly.
-- [ ] `curl http://localhost/api/docs` once the container rebuilds to confirm the docs render as expected.
+- [ ] `curl http://localhost:3000/admin/docs` (via Nginx) and `curl http://127.0.0.1:9000/api/docs` (direct) once the container rebuilds to confirm the docs render as expected.
 - [ ] Exercise representative endpoints (`/sessions`, `/jobs`, `/templates`) after rebuilding the Docker image to ensure Supervisor and Nginx routing function together.
 
 ## Testing Strategy

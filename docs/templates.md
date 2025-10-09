@@ -76,9 +76,9 @@ User-defined templates can also bundle custom assets by passing `include_sources
      ```
    - **REST API:**
      ```bash
-     curl -sS -X POST http://localhost/admin/api/templates \
-       -H 'Content-Type: application/json' \
-       -d '{"payload": {"name": "pytest-session", "command": "poetry run pytest -q"}, "include_sources": ["/home/vibe/project/pytest.ini"]}'
+      curl -sS -X POST http://localhost:3000/admin/api/templates \
+        -H 'Content-Type: application/json' \
+        -d '{"payload": {"name": "pytest-session", "command": "poetry run pytest -q"}, "include_sources": ["/home/vibe/project/pytest.ini"]}'
      ```
 6. **Validate.** Reload the Streamlit page or call `vibe list` to ensure the new template appears with `"source": "user"`. Launch a fresh session from it to confirm the workspace assets and command run as expected.
 

@@ -243,7 +243,7 @@ All services run under **Supervisor** (`/etc/supervisor/conf.d/supervisord.conf`
 ├── TASKS.md                          # Task tracking (if exists)
 └── xfce-startup                      # XFCE4 desktop startup script
 
-/projects/                            # Optional persistent mount point
+/projects/                            # Optional persistent mount point (host folder via ./startup.sh --projects <path>)
 └── vibestack/                        # Repository (if bind-mounted)
     └── ...
 
@@ -381,7 +381,8 @@ vibe create my-session --template codex --description "Debug API"
 **List Sessions:**
 \`\`\`bash
 vibe list
-# OR: curl http://localhost/api/sessions
+# External via Nginx: curl http://localhost:3000/admin/api/sessions
+# Internal direct:  curl http://127.0.0.1:9000/api/sessions
 \`\`\`
 
 **Attach to Session:**
@@ -400,13 +401,15 @@ vibe send my-session "ls -la"
 **Tail Logs:**
 \`\`\`bash
 vibe tail my-session --lines 100
-# OR: curl 'http://localhost/api/sessions/my-session/log?lines=100'
+# External via Nginx: curl 'http://localhost:3000/admin/api/sessions/my-session/log?lines=100'
+# Internal direct:  curl 'http://127.0.0.1:9000/api/sessions/my-session/log?lines=100'
 \`\`\`
 
 **Kill Session:**
 \`\`\`bash
 vibe kill my-session
-# OR: curl -X DELETE http://localhost/api/sessions/my-session
+# External via Nginx: curl -X DELETE http://localhost:3000/admin/api/sessions/my-session
+# Internal direct:  curl -X DELETE http://127.0.0.1:9000/api/sessions/my-session
 \`\`\`
 
 ### Working Directory Behavior
@@ -442,7 +445,7 @@ The VibeStack MCP server (`/mcp/`) exposes session management as Model Context P
 ### Connection Details
 
 **Endpoint:** `http://localhost/mcp/` (inside container)  
-**External:** `http://localhost:90/mcp` (via docker port mapping)  
+**External:** `http://localhost:3000/mcp` (via docker port mapping)  
 **Protocol:** MCP Streamable HTTP  
 **Authentication:** None (local/trusted network only)
 
@@ -758,9 +761,9 @@ docker run -v $(pwd)/codex-data:/data/codex \
 | `/` | ttyd terminal | Web-based terminal interface |
 | `/ui/` | Streamlit | Session management UI |
 | `/terminal/` | ttyd terminal | Direct terminal access |
-| `/api/` | FastAPI REST | REST API endpoints |
-| `/api/docs` | Swagger UI | Interactive API documentation |
-| `/mcp/` | MCP server | Model Context Protocol endpoint |
+| `/admin/api/` | FastAPI REST | REST API endpoints |
+| `/admin/docs` | Swagger UI | Interactive API documentation |
+| `/mcp` and `/mcp/` | MCP server | Model Context Protocol endpoint |
 | `/computer/` | noVNC | Desktop environment (full/desktop variants) |
 | `/services/3000-3004/` | Dev proxy | HTTP passthrough for dev servers |
 
@@ -768,9 +771,9 @@ docker run -v $(pwd)/codex-data:/data/codex \
 
 | Port | Service | Usage |
 |------|---------|-------|
-| `9000` | FastAPI | `http://localhost:9000/api/` (bypasses Nginx) |
+| `9000` | FastAPI | `http://127.0.0.1:9000/api/` (bypasses Nginx) |
 | `8501` | Streamlit | `http://localhost:8501/` (direct access) |
-| `9100` | MCP server | `http://localhost:9100/` (direct access) |
+| `9100` | MCP server | `http://127.0.0.1:9100/` (direct access) |
 | `7681` | ttyd | `http://localhost:7681/` (web terminal) |
 | `6080` | noVNC | `http://localhost:6080/vnc.html` (desktop) |
 | `5900` | VNC | VNC protocol (use VNC client) |
@@ -919,23 +922,42 @@ tail -f ~/sessions/NAME/console.log
 
 ```bash
 # List sessions
-curl http://localhost/api/sessions
+# External via Nginx
+curl http://localhost:3000/admin/api/sessions
+# Internal direct
+curl http://127.0.0.1:9000/api/sessions
 
 # Create session
-curl -X POST http://localhost/api/sessions \
+# External via Nginx
+curl -X POST http://localhost:3000/admin/api/sessions \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"test","template":"bash"}'
+# Internal direct
+curl -X POST http://127.0.0.1:9000/api/sessions \
   -H 'Content-Type: application/json' \
   -d '{"name":"test","template":"bash"}'
 
 # Send input
-curl -X POST http://localhost/api/sessions/test/input \
+# External via Nginx
+curl -X POST http://localhost:3000/admin/api/sessions/test/input \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"ls -la","enter":true}'
+# Internal direct
+curl -X POST http://127.0.0.1:9000/api/sessions/test/input \
   -H 'Content-Type: application/json' \
   -d '{"text":"ls -la","enter":true}'
 
 # Tail log
-curl 'http://localhost/api/sessions/test/log?lines=100'
+# External via Nginx
+curl 'http://localhost:3000/admin/api/sessions/test/log?lines=100'
+# Internal direct
+curl 'http://127.0.0.1:9000/api/sessions/test/log?lines=100'
 
 # Kill session
-curl -X DELETE http://localhost/api/sessions/test
+# External via Nginx
+curl -X DELETE http://localhost:3000/admin/api/sessions/test
+# Internal direct
+curl -X DELETE http://127.0.0.1:9000/api/sessions/test
 ```
 
 ### File Locations
