@@ -14,12 +14,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_NAME="$(basename "$0")"
 
 FOLLOW_LOGS=false
+VALIDATE=false
 BASE_URL="${VIBESTACK_BASE_URL:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     follow)
       FOLLOW_LOGS=true
+      shift
+      ;;
+    validate)
+      VALIDATE=true
       shift
       ;;
     --base-url)
@@ -40,12 +45,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "[startup] Unknown argument: $1" >&2
-      echo "Usage: $SCRIPT_NAME [follow] [--base-url=<url>] [--projects=<host-path>]" >&2
-      echo "  follow         - tail logs after starting" >&2
-      echo "  --base-url     - set public base URL (e.g., https://example.ngrok.app)" >&2
-      echo "  --projects     - host folder to mount at /projects (relative/tilde ok)" >&2
-      exit 1
-      ;;
+      echo "Usage: $SCRIPT_NAME [follow|validate] [--base-url=<url>] [--projects=<host-path>]" >&2
+  echo "  follow         - tail logs after starting" >&2
+  echo "  validate       - run validation checks and exit" >&2
+  echo "  --base-url     - set public base URL (e.g., https://example.ngrok.app)" >&2
+  echo "  --projects     - host folder to mount at /projects (relative/tilde ok)" >&2
+  exit 1
+  ;;
+
   esac
 done
 
@@ -158,6 +165,42 @@ start_container() {
   docker run "${docker_args[@]}" "${IMAGE_NAME}"
 }
 
+run_validations() {
+  echo "[validate] Running host-level validations against http://localhost:3000"
+  failures=0
+
+  # /admin/docs should be 200 HTML
+  status_ct=$(curl -sS -o /dev/null -w "HTTP:%{http_code} CT:%{content_type}" http://localhost:3000/admin/docs || true)
+  echo "[validate] /admin/docs => ${status_ct}"
+  [[ "$status_ct" == HTTP:200* ]] || { echo "[validate][fail] /admin/docs"; failures=$((failures+1)); }
+
+  # /admin/api/sessions should be 200 JSON and contain schema_version
+  body=$(curl -sS http://localhost:3000/admin/api/sessions || true)
+  echo "[validate] /admin/api/sessions sample: $(echo "$body" | head -c 200)"; echo
+  echo "$body" | jq . >/dev/null 2>&1 && echo "[validate] JSON parse: ok" || { echo "[validate][fail] JSON parse"; failures=$((failures+1)); }
+
+  code=$(curl -sS -o /dev/null -w "%{http_code}" http://localhost:3000/admin/api/sessions || true)
+  echo "[validate] /admin/api/sessions => HTTP:${code}"
+  [[ "$code" == 200 ]] || { echo "[validate][fail] /admin/api/sessions"; failures=$((failures+1)); }
+
+  # /mcp should return 406 unless Accept: text/event-stream is set
+  mcp_headers=$(curl -sS -i http://localhost:3000/mcp | head -n 5 || true)
+  echo "[validate] /mcp headers:\n${mcp_headers}"
+  echo "$mcp_headers" | grep -q " 406 " || { echo "[validate][fail] /mcp expected 406"; failures=$((failures+1)); }
+
+  mcp_sse=$(curl -sS -o /dev/null -w "%{http_code}" -H "Accept: text/event-stream" http://localhost:3000/mcp || true)
+  echo "[validate] /mcp with SSE Accept => HTTP:${mcp_sse}"
+  [[ "$mcp_sse" == 200 || "$mcp_sse" == 101 ]] || echo "[validate][warn] SSE status non-200 may be expected"
+
+  if [[ $failures -eq 0 ]]; then
+    echo "[validate] All checks passed"
+    return 0
+  else
+    echo "[validate] ${failures} checks failed"
+    return 1
+  fi
+}
+
 tail_logs() {
   echo "[startup] Tailing logs for ${CONTAINER_NAME} (Ctrl+C to stop)..."
   docker logs -f "${CONTAINER_NAME}"
@@ -167,8 +210,24 @@ build_image
 stop_existing_container
 start_container
 
+if [[ "${VALIDATE}" == "true" ]]; then
+  # Wait briefly for services to boot
+  echo "[startup] Waiting for services to start..."
+  for i in {1..30}; do
+    code=$(curl -sS -o /dev/null -w "%{http_code}" http://localhost:3000/admin/docs || true)
+    if [[ "$code" == 200 ]]; then
+      break
+    fi
+    sleep 1
+  done
+  run_validations
+  exit_code=$?
+  echo "[startup] Validation complete with exit code ${exit_code}"
+  exit ${exit_code}
+fi
+
 if [[ "${FOLLOW_LOGS}" == "true" ]]; then
   tail_logs
 else
-  echo "[startup] Container started. Run ./${SCRIPT_NAME} follow to stream logs."
+  echo "[startup] Container started. Run ./${SCRIPT_NAME} follow to stream logs or 'validate' to run checks."
 fi

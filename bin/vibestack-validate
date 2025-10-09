@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+# Pass through optional flags we support
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --projects=*|--base-url=*) ARGS+=("$arg");; 
+    *) echo "[validate] ignoring unsupported arg: $arg";;
+  esac
+done
+
+"${REPO_ROOT}/startup.sh" validate ${ARGS[@]:-}
