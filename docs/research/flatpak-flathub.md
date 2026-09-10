@@ -171,6 +171,15 @@ Once `flatpak` is in saved setup state, every replacement must retain
 unsupported and the rollback-aware launcher refuses to discard the prior
 container.
 
+Ubuntu 24.04 adds a host-level AppArmor restriction for unprivileged user
+namespaces. On GitHub's Noble runner this produced `bwrap: setting up uid map:
+Permission denied` even after all three container-local policies above were
+relaxed. Release CI is therefore pinned to `ubuntu-24.04` and disables
+`kernel.apparmor_restrict_unprivileged_userns` only on its ephemeral,
+single-job VM immediately before acceptance. That host-wide switch is not part
+of VibeStack startup and is inappropriate as a silent default for a persistent
+multi-user host.
+
 ## Why no local graphical software center
 
 Upstream correctly notes that GNOME Software and KDE Discover can browse
@@ -241,4 +250,5 @@ added capabilities. Disposable image acceptance additionally:
 - [Flathub permissions guidance](https://docs.flathub.org/docs/for-users/permissions)
 - [GNOME Nightly applications](https://nightly.gnome.org/)
 - [Flatpak user-namespace requirements](https://github.com/flatpak/flatpak/wiki/User-namespace-requirements)
+- [Ubuntu 24.04 unprivileged user-namespace restrictions](https://documentation.ubuntu.com/release-notes/24.04/#unprivileged-user-namespace-restrictions)
 - [Docker default seccomp profile](https://docs.docker.com/engine/security/seccomp/)

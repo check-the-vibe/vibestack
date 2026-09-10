@@ -173,6 +173,19 @@ service-log diagnostics before cleanup.
 Project ownership is rechecked from container root after bootstrap secures the
 bind root, so this gate also works when the CI host UID differs from `vibe`.
 
+Release CI is pinned to GitHub's Ubuntu 24.04 runner. Noble restricts
+capabilities inside unprivileged user namespaces through AppArmor by default,
+which otherwise makes bubblewrap fail while writing its UID map even when the
+acceptance container has VibeStack's three explicit Flatpak options. Immediately
+before disposable acceptance, the workflow disables that one host sysctl for
+the lifetime of the ephemeral, single-job VM. This does not change the image,
+the production host, or the normal VibeStack launch; do not copy the CI sysctl
+to a persistent multi-user host without accepting the wider host-level kernel
+attack surface. See Ubuntu's
+[24.04 release notes](https://documentation.ubuntu.com/release-notes/24.04/#unprivileged-user-namespace-restrictions)
+and Flatpak's
+[user-namespace requirements](https://github.com/flatpak/flatpak/wiki/User-namespace-requirements).
+
 ## Start or replace the live container
 
 The normal launcher builds and replaces a container named `vibestack`, binds

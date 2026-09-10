@@ -676,7 +676,13 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn('--pids-limit="$PIDS_LIMIT"', startup)
         self.assertIn('--pids-limit="$PIDS_LIMIT"', helper)
         workflow = read(".github/workflows/publish-docker.yml")
+        self.assertIn("runs-on: ubuntu-24.04", workflow)
         self.assertNotIn("seccomp=unconfined", workflow)
+        self.assertIn(
+            "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0",
+            workflow,
+        )
+        self.assertNotIn("--privileged", workflow)
         self.assertIn("bin/vibestack-dev accept vibestack:test", workflow)
 
     def test_healthcheck_reads_one_complete_supervisor_snapshot(self) -> None:

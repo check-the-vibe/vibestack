@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -57,6 +57,14 @@ jobs:
           push: false
           tags: vibestack:test
           labels: ${{ steps.meta.outputs.labels }}
+
+      # Ubuntu 24.04 restricts capabilities inside unprivileged user
+      # namespaces by default. Flatpak's bubblewrap sandbox deliberately uses
+      # those namespaces, including inside our opt-in nested-sandbox container.
+      # This runner is an ephemeral, single-job VM; the production host and the
+      # normal VibeStack launch remain unchanged and confined.
+      - name: Permit nested Flatpak sandbox on disposable CI host
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Run disposable container, onboarding, app and browser acceptance
         run: |

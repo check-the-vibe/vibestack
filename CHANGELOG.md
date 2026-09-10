@@ -38,6 +38,9 @@ versioned release yet; changes below describe the next release from `main`.
 - Updated the release workflow to current Node 24-based GitHub Actions and made
   disposable acceptance portable across host UIDs, with bounded failure
   diagnostics before one clean CI retry.
+- Pinned release acceptance to Ubuntu 24.04 and scoped Noble's unprivileged
+  user-namespace relaxation to its ephemeral CI VM so real Flatpak sandbox
+  tests can run without weakening normal VibeStack hosts.
 
 ### Security
 
