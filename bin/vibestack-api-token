@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""Create, inspect, or rotate VibeStack's automation bearer token."""
+
+from __future__ import annotations
+
+import os
+import pwd
+import secrets
+import stat
+import sys
+import uuid
+
+
+DEFAULT_TOKEN_FILE = "/home/vibe/.vibestack/automation.token"
+PERSISTED_TOKEN_FILE = "/data/vibestack/automation.token"
+
+
+def usage() -> int:
+    print("usage: vibestack-api-token <ensure|show|rotate|path>", file=sys.stderr)
+    return 2
+
+
+def target_identity() -> tuple[int, int]:
+    if os.geteuid() == 0:
+        try:
+            account = pwd.getpwnam("vibe")
+        except KeyError:
+            pass
+        else:
+            return account.pw_uid, account.pw_gid
+    return os.getuid(), os.getgid()
+
+
+def canonical_token_path(path: str) -> str:
+    """Resolve only VibeStack's one intentional persistence symlink."""
+
+    if path == DEFAULT_TOKEN_FILE:
+        state_home = os.path.dirname(path)
+        try:
+            info = os.lstat(state_home)
+        except FileNotFoundError:
+            return path
+        if stat.S_ISLNK(info.st_mode):
+            # vibestack-persist creates this exact absolute target. Do not use
+            # realpath: as root it would turn any attacker-selected symlink
+            # into an implicitly trusted token directory.
+            if os.readlink(state_home) != "/data/vibestack":
+                raise RuntimeError("unexpected VibeStack state symlink")
+            return PERSISTED_TOKEN_FILE
+    return path
+
+
+def open_directory(path: str, uid: int, gid: int) -> int:
+    """Open/create an absolute directory one no-follow component at a time."""
+
+    normalized = os.path.normpath(path)
+    if (
+        not os.path.isabs(path)
+        or normalized != path
+        or path == "/"
+        or "\x00" in path
+    ):
+        raise RuntimeError("automation token directory is invalid")
+    components = normalized.split("/")[1:]
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    current = os.open("/", flags)
+    try:
+        for index, component in enumerate(components):
+            if not component or component in (".", ".."):
+                raise RuntimeError("automation token directory is invalid")
+            try:
+                next_fd = os.open(component, flags, dir_fd=current)
+            except FileNotFoundError:
+                os.mkdir(component, 0o700, dir_fd=current)
+                next_fd = os.open(component, flags, dir_fd=current)
+                if os.geteuid() == 0:
+                    os.fchown(next_fd, uid, gid)
+            os.close(current)
+            current = next_fd
+        info = os.fstat(current)
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != uid
+            or stat.S_IMODE(info.st_mode) & 0o022
+        ):
+            raise RuntimeError("automation token directory failed a safety check")
+        os.fchmod(current, 0o700)
+        return current
+    except BaseException:
+        os.close(current)
+        raise
+
+
+def read_token(directory_fd: int, leaf: str, uid: int) -> str:
+    flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(leaf, flags, dir_fd=directory_fd)
+    try:
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != uid
+            or info.st_nlink != 1
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or not 32 <= info.st_size <= 512
+        ):
+            raise RuntimeError("automation token failed a safety check")
+        raw = os.read(fd, 513)
+    finally:
+        os.close(fd)
+    try:
+        token = raw.decode("ascii").strip()
+    except UnicodeDecodeError as exc:
+        raise RuntimeError("automation token is invalid") from exc
+    if not 32 <= len(token) <= 512 or any(character.isspace() for character in token):
+        raise RuntimeError("automation token is invalid")
+    return token
+
+
+def write_token(directory_fd: int, leaf: str, uid: int, gid: int, *, replace: bool) -> str:
+    # 32 random bytes = a 256-bit bearer secret (43 URL-safe characters).
+    token = secrets.token_urlsafe(32)
+    temporary = ".automation-token-%s.tmp" % uuid.uuid4().hex
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(temporary, flags, 0o600, dir_fd=directory_fd)
+    temporary_exists = True
+    try:
+        if os.geteuid() == 0:
+            os.fchown(fd, uid, gid)
+        os.fchmod(fd, 0o600)
+        body = (token + "\n").encode("ascii")
+        offset = 0
+        while offset < len(body):
+            offset += os.write(fd, body[offset:])
+        os.fsync(fd)
+        os.close(fd)
+        fd = -1
+        if replace:
+            os.replace(temporary, leaf, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+            temporary_exists = False
+        else:
+            # link+unlink provides an atomic create-without-overwrite operation.
+            os.link(
+                temporary,
+                leaf,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+            os.unlink(temporary, dir_fd=directory_fd)
+            temporary_exists = False
+        os.fsync(directory_fd)
+        return token
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if temporary_exists:
+            try:
+                os.unlink(temporary, dir_fd=directory_fd)
+            except FileNotFoundError:
+                pass
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2 or argv[1] not in ("ensure", "show", "rotate", "path"):
+        return usage()
+    command = argv[1]
+    token_path = os.environ.get("AUTOMATION_TOKEN_FILE", DEFAULT_TOKEN_FILE)
+    if not os.path.isabs(token_path) or os.path.basename(token_path) in ("", ".", ".."):
+        print("AUTOMATION_TOKEN_FILE must be an absolute file path", file=sys.stderr)
+        return 2
+    if os.geteuid() == 0 and token_path not in (DEFAULT_TOKEN_FILE, PERSISTED_TOKEN_FILE):
+        print(
+            "root may create automation tokens only at VibeStack's fixed state paths",
+            file=sys.stderr,
+        )
+        return 2
+    if command == "path":
+        print(token_path)
+        return 0
+    uid, gid = target_identity()
+    directory_fd = -1
+    try:
+        canonical_path = canonical_token_path(token_path)
+        directory_fd = open_directory(os.path.dirname(canonical_path), uid, gid)
+        leaf = os.path.basename(canonical_path)
+        if command == "show":
+            print(read_token(directory_fd, leaf, uid))
+        elif command == "ensure":
+            try:
+                read_token(directory_fd, leaf, uid)
+            except FileNotFoundError:
+                try:
+                    write_token(directory_fd, leaf, uid, gid, replace=False)
+                except FileExistsError:
+                    read_token(directory_fd, leaf, uid)
+            print(token_path)
+        else:
+            try:
+                read_token(directory_fd, leaf, uid)
+            except FileNotFoundError:
+                pass
+            token = write_token(directory_fd, leaf, uid, gid, replace=True)
+            print(token)
+        return 0
+    except (OSError, RuntimeError) as exc:
+        print("vibestack-api-token: %s" % exc, file=sys.stderr)
+        return 1
+    finally:
+        if directory_fd >= 0:
+            os.close(directory_fd)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

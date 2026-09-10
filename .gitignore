@@ -1,33 +1,4 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# Docker
-.dockerignore
-docker-compose.override.yml
-
-# Logs
-*.log
-logs/
-/var/log/
-log.txt
-
-# IDE and Editor files
+# Editor / IDE
 .vscode/
 .idea/
 *.swp
@@ -35,58 +6,20 @@ log.txt
 *~
 .claude/settings.local.json
 
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Build artifacts
-*.tar
-*.tar.gz
-*.zip
+# Logs and local env
+*.log
+.env
+.env.*
+!.env.example
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Temporary files
-tmp/
-temp/
-.tmp/
-
-# Environment files (if containing secrets)
-.env.local
-.env.production
-.env.*.local
-
-# VNC specific
-.vnc/
-.Xauthority
-
-# Node.js / npm
+# Generated caches and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-.npm
-.eslintcache
-.node_repl_history
-*.tsbuildinfo
-
-# Node.js build output
-dist/
-build/
-out/
-
-# Vibestack menu specific
-vibestack-menu/node_modules/
-vibestack-menu/dist/
-vibestack-menu/build/
-vibestack-menu/.cache/
+test-results/
+playwright-report/

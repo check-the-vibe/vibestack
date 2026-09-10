@@ -1,0 +1,11 @@
+{
+  "ExtensionInstallForcelist": [
+    "fcoeoabgfenejglbffodgkkbkcdhcgfn;https://clients2.google.com/service/update2/crx",
+    "hehggadaopoacecdllhhajmbjkdcmajg;https://clients2.google.com/service/update2/crx"
+  ],
+  "DefaultBrowserSettingEnabled": false,
+  "MetricsReportingEnabled": false,
+  "PromotionalTabsEnabled": false,
+  "BrowserSignin": 0,
+  "PasswordManagerEnabled": false
+}

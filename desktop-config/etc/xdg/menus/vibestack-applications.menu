@@ -1,0 +1,147 @@
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN"
+  "http://www.freedesktop.org/standards/menu-spec/1.0/menu.dtd">
+
+<!--
+  Category-driven so applications installed by the setup catalog appear on
+  the next menu refresh. There are intentionally no run, logout, session,
+  workspace, mail-reader, about-XFCE, or generic web-browser root entries.
+-->
+<Menu>
+  <Name>VibeStackApplications</Name>
+  <DefaultAppDirs/>
+  <DefaultDirectoryDirs/>
+
+  <Menu>
+    <Name>VibeStack</Name>
+    <Directory>vibestack-actions.directory</Directory>
+    <Include>
+      <Category>X-VibeStack-Action</Category>
+    </Include>
+    <Layout>
+      <Filename>vibestack-projects.desktop</Filename>
+      <Filename>vibestack-desktop.desktop</Filename>
+      <Filename>vibestack-logs.desktop</Filename>
+      <Separator/>
+      <Filename>vibestack-setup.desktop</Filename>
+      <Filename>vibestack-agent-guide.desktop</Filename>
+      <Filename>vibestack-automation-guide.desktop</Filename>
+      <Filename>vibestack-service-status.desktop</Filename>
+      <Separator/>
+      <Filename>vibestack-flathub.desktop</Filename>
+      <Filename>vibestack-flatpak.desktop</Filename>
+      <Separator/>
+      <Filename>vibestack-screenshot.desktop</Filename>
+    </Layout>
+  </Menu>
+
+  <Menu>
+    <Name>Applications</Name>
+    <Directory>vibestack-apps.directory</Directory>
+    <Include>
+      <Or>
+        <Category>Network</Category>
+        <Category>Utility</Category>
+        <Category>Game</Category>
+        <Category>Education</Category>
+        <Category>Science</Category>
+      </Or>
+    </Include>
+    <Exclude>
+      <Or>
+        <Category>X-VibeStack-Action</Category>
+        <Category>X-VibeStack-System</Category>
+        <Filename>google-chrome.desktop</Filename>
+        <Filename>xfce4-about.desktop</Filename>
+        <Filename>xfce4-about-xfce.desktop</Filename>
+        <Filename>xfce4-run.desktop</Filename>
+        <Filename>xfce4-session-logout.desktop</Filename>
+        <Filename>xfce4-logout.desktop</Filename>
+        <Filename>xfce4-terminal.desktop</Filename>
+        <Filename>xfce4-terminal-emulator.desktop</Filename>
+        <Filename>thunar.desktop</Filename>
+        <Filename>xfce4-file-manager.desktop</Filename>
+      </Or>
+    </Exclude>
+  </Menu>
+
+  <Menu>
+    <Name>Coding</Name>
+    <Directory>vibestack-coding.directory</Directory>
+    <Include>
+      <Or>
+        <Category>Development</Category>
+        <Category>X-VibeStack-Coding</Category>
+        <Filename>google-chrome.desktop</Filename>
+      </Or>
+    </Include>
+    <Exclude>
+      <Or>
+        <Filename>org.gnome.Meld.desktop</Filename>
+        <Filename>meld.desktop</Filename>
+      </Or>
+    </Exclude>
+    <Layout>
+      <Filename>vibestack-claude-code.desktop</Filename>
+      <Filename>vibestack-codex.desktop</Filename>
+      <Filename>vibestack-opencode.desktop</Filename>
+      <Separator/>
+      <Merge type="all"/>
+    </Layout>
+  </Menu>
+
+  <Menu>
+    <Name>CreateAndReview</Name>
+    <Directory>vibestack-create-review.directory</Directory>
+    <Include>
+      <Or>
+        <Category>Graphics</Category>
+        <Category>Office</Category>
+        <Category>AudioVideo</Category>
+        <Filename>org.gnome.Meld.desktop</Filename>
+        <Filename>meld.desktop</Filename>
+        <Filename>org.xfce.mousepad.desktop</Filename>
+        <Filename>mousepad.desktop</Filename>
+      </Or>
+    </Include>
+  </Menu>
+
+  <Menu>
+    <Name>SystemAndSettings</Name>
+    <Directory>vibestack-system.directory</Directory>
+    <Include>
+      <Or>
+        <Category>X-VibeStack-System</Category>
+        <Category>Settings</Category>
+        <Category>System</Category>
+      </Or>
+    </Include>
+    <Exclude>
+      <Or>
+        <Filename>xfce4-about.desktop</Filename>
+        <Filename>xfce4-about-xfce.desktop</Filename>
+        <Filename>xfce4-run.desktop</Filename>
+        <Filename>xfce4-session-logout.desktop</Filename>
+        <Filename>xfce4-logout.desktop</Filename>
+        <Filename>xfce4-terminal.desktop</Filename>
+        <Filename>xfce4-terminal-emulator.desktop</Filename>
+        <Filename>thunar.desktop</Filename>
+        <Filename>xfce4-file-manager.desktop</Filename>
+      </Or>
+    </Exclude>
+    <Layout>
+      <Filename>vibestack-settings.desktop</Filename>
+      <Filename>vibestack-file-manager.desktop</Filename>
+      <Filename>vibestack-terminal.desktop</Filename>
+      <Separator/>
+      <Merge type="all"/>
+    </Layout>
+  </Menu>
+
+  <Layout>
+    <Menuname>VibeStack</Menuname>
+    <Menuname>Coding</Menuname>
+    <Menuname>CreateAndReview</Menuname>
+    <Menuname>Applications</Menuname>
+    <Menuname>SystemAndSettings</Menuname>
+  </Layout>
+</Menu>

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Manage Flatpak Apps
+Comment=Search, install, update, and remove persistent per-user applications
+Exec=/usr/local/bin/vibestack-desktop-action flatpak
+Icon=system-software-update
+Terminal=false
+StartupNotify=true
+Categories=System;PackageManager;X-VibeStack-Action;
+OnlyShowIn=XFCE;

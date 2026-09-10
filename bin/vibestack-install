@@ -1,0 +1,1243 @@
+#!/usr/bin/env bash
+# Install VibeStack components by catalog id. Must run as root.
+#   vibestack-install chrome claude-code
+# Dependencies are resolved and ordered by the catalog.
+set -uo pipefail
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LC_ALL=C
+export NPM_CONFIG_PREFIX=/usr/local
+
+CATALOG=/usr/share/vibestack/catalog.json
+POLICY_SRC=/usr/share/vibestack/chrome-policy.json
+CHROME_XFCE_HELPER_SRC=/usr/share/vibestack/google-chrome-xfce-helper.desktop
+DESKTOP_DIR=/home/vibe/Desktop
+LAUNCHER=/usr/local/bin/vibestack-app
+NODE_VERSION=22.23.2
+NODE_NPM_VERSION=10.9.8
+NODE_SHA256_X64=b294a556e639d64338823920e5866c21c02741742d2e1529ee1a225c1ec9252a
+NODE_SHA256_ARM64=013b59cfd2819703a6f4a14ab891fc46fc2a4e3f5bcd92de3fb4929b43e35b30
+GODOT_VERSION=4.7.2
+GODOT_SHA256_X64=cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+GODOT_SHA256_ARM64=5dd0d86405cf7e8adf79fb6377b38ba682a2846cb378ffe5364f38c01ad29b9d
+GODOT_COMMIT_PATH=/usr/local/bin/.vibestack-godot-${GODOT_VERSION}.complete
+CLAUDE_DESKTOP_KEY_FINGERPRINT=31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE
+NODE_INSTALL_PARENT=/opt/vibestack
+INSTALL_LOCK_PATH=/run/vibestack-install.lock
+
+if [[ $EUID -ne 0 ]]; then
+  echo "vibestack-install must run as root (try: sudo vibestack-install ...)" >&2
+  exit 1
+fi
+cd /
+[[ $# -ge 1 ]] || { echo "usage: vibestack-install <component-id>..." >&2; exit 1; }
+
+export DEBIAN_FRONTEND=noninteractive
+APT_REFRESHED=false
+INSTALL_TMPDIR=""
+NODE_STAGING_DIR=""
+NODE_LINK_TMPDIR=""
+NODE_CURRENT_TMPDIR=""
+INSTALL_LOCK_FD=""
+
+say() { echo "[install] $*"; }
+
+cleanup_install_tmp() {
+  if [[ -n "$NODE_STAGING_DIR" ]]; then
+    case "${NODE_STAGING_DIR##*/}" in
+      ".node-v${NODE_VERSION}-linux-x64.stage."*)
+        remove_private_directory "$NODE_STAGING_DIR" "$NODE_INSTALL_PARENT" \
+          ".node-v${NODE_VERSION}-linux-x64.stage." 0 0 || true
+        ;;
+      ".node-v${NODE_VERSION}-linux-arm64.stage."*)
+        remove_private_directory "$NODE_STAGING_DIR" "$NODE_INSTALL_PARENT" \
+          ".node-v${NODE_VERSION}-linux-arm64.stage." 0 0 || true
+        ;;
+      *) say "refusing unexpected Node.js staging cleanup path" ;;
+    esac
+    NODE_STAGING_DIR=""
+  fi
+  if [[ -n "$NODE_LINK_TMPDIR" ]]; then
+    remove_private_directory "$NODE_LINK_TMPDIR" /usr/local/bin \
+      .vibestack-node-links. 0 0 || true
+    NODE_LINK_TMPDIR=""
+  fi
+  if [[ -n "$NODE_CURRENT_TMPDIR" ]]; then
+    remove_private_directory "$NODE_CURRENT_TMPDIR" "$NODE_INSTALL_PARENT" \
+      .node-current. 0 0 || true
+    NODE_CURRENT_TMPDIR=""
+  fi
+  if [[ -n "$INSTALL_TMPDIR" ]]; then
+    remove_private_directory "$INSTALL_TMPDIR" /var/tmp \
+      vibestack-install. 0 0 || true
+    INSTALL_TMPDIR=""
+  fi
+}
+trap cleanup_install_tmp EXIT
+trap 'cleanup_install_tmp; exit 130' HUP INT TERM
+
+acquire_install_lock() {
+  local lock_path="${1:-$INSTALL_LOCK_PATH}" expected_uid="${2:-0}" expected_gid="${3:-0}"
+  local previous_umask metadata
+  previous_umask="$(umask)"
+  umask 077
+  # /run is root-owned and not writable by the desktop user. Opening the fixed
+  # leaf here gives web and CLI installers one common filesystem lease.
+  exec {INSTALL_LOCK_FD}<>"$lock_path" || {
+    umask "$previous_umask"
+    return 1
+  }
+  umask "$previous_umask"
+  metadata="$(stat -Lc '%F:%u:%g:%h' -- "/proc/self/fd/$INSTALL_LOCK_FD")" || return 1
+  [[ "$metadata" == "regular empty file:${expected_uid}:${expected_gid}:1" ]] || {
+    say "installer lock failed its ownership/type check"
+    return 1
+  }
+  chmod 0600 "/proc/self/fd/$INSTALL_LOCK_FD" || return 1
+  if ! flock -n "$INSTALL_LOCK_FD"; then
+    say "another VibeStack installer is already running"
+    return 1
+  fi
+}
+
+remove_private_directory() {
+  local path="$1" expected_parent="$2" expected_prefix="$3"
+  local expected_uid="$4" expected_gid="$5" basename suffix metadata
+  basename="${path##*/}"
+  suffix="${basename:${#expected_prefix}}"
+  if [[ "${path%/*}" != "$expected_parent" ||
+        "${basename:0:${#expected_prefix}}" != "$expected_prefix" ||
+        ! "$suffix" =~ ^[A-Za-z0-9]{10}$ ]]; then
+    say "refusing unexpected private cleanup path: ${path}"
+    return 1
+  fi
+  metadata="$(stat -c '%F:%u:%g:%a' -- "$path" 2>/dev/null)" || {
+    [[ ! -e "$path" && ! -L "$path" ]] && return 0
+    say "refusing unreadable private cleanup path: ${path}"
+    return 1
+  }
+  [[ "$metadata" == "directory:${expected_uid}:${expected_gid}:700" ]] || {
+    say "refusing unsafe private cleanup directory: ${path}"
+    return 1
+  }
+  rm -rf -- "$path"
+}
+
+create_install_tmpdir() {
+  [[ -z "$INSTALL_TMPDIR" ]] || return 0
+  local previous_umask
+  previous_umask="$(umask)"
+  umask 077
+  INSTALL_TMPDIR="$(mktemp -d /var/tmp/vibestack-install.XXXXXXXXXX)" || {
+    umask "$previous_umask"
+    return 1
+  }
+  umask "$previous_umask"
+  chmod 0700 "$INSTALL_TMPDIR"
+}
+
+download_private_file() {
+  local url="$1" name="$2" result_variable="$3"
+  local max_bytes="${4:-2147483648}" max_seconds="${5:-3600}"
+  local private_path metadata downloaded_size
+  [[ "$max_bytes" =~ ^[1-9][0-9]*$ && "$max_seconds" =~ ^[1-9][0-9]*$ ]] || {
+    say "invalid download bounds"
+    return 1
+  }
+  [[ "$name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+    say "refusing unsafe download filename"
+    return 1
+  }
+  create_install_tmpdir || return 1
+  private_path="$INSTALL_TMPDIR/$name"
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
+    --connect-timeout 30 --max-time "$max_seconds" --max-filesize "$max_bytes" -fsSL \
+    "$url" -o "$private_path" || return 1
+  [[ -s "$private_path" && -f "$private_path" && ! -L "$private_path" ]] || {
+    say "downloaded package is not a regular file"
+    return 1
+  }
+  metadata="$(stat -c '%u:%g:%h' -- "$private_path")" || return 1
+  [[ "$metadata" == "0:0:1" ]] || {
+    say "downloaded package failed its ownership/link check"
+    return 1
+  }
+  downloaded_size="$(stat -c '%s' -- "$private_path")" || return 1
+  (( downloaded_size <= max_bytes )) || {
+    say "downloaded package exceeded its size limit"
+    return 1
+  }
+  chmod 0600 "$private_path" || return 1
+  printf -v "$result_variable" '%s' "$private_path"
+}
+
+download_private_deb() {
+  local url="$1" name="$2" result_variable="$3"
+  local max_bytes="${4:-2147483648}" max_seconds="${5:-3600}" download_path
+  download_private_file \
+    "$url" "$name" download_path "$max_bytes" "$max_seconds" || return 1
+  dpkg-deb --info "$download_path" >/dev/null || {
+    say "downloaded package is not a valid Debian archive"
+    return 1
+  }
+  printf -v "$result_variable" '%s' "$download_path"
+}
+
+apt_refresh() {
+  if [[ "$APT_REFRESHED" == "false" ]]; then
+    say "refreshing package lists"
+    apt-get update -qq || return 1
+    APT_REFRESHED=true
+  fi
+}
+
+apt_install() {
+  apt_refresh || return 1
+  say "apt install $*"
+  apt-get install -y --no-install-recommends "$@"
+}
+
+# Route a Chromium/Electron desktop entry through the container launcher.
+patch_desktop_entry() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  grep -q "^Exec=${LAUNCHER}" "$file" && return 0
+  sed -i -E "s|^Exec=(/[^ ]+\|[a-z][a-z0-9._-]*)|Exec=${LAUNCHER} \1|" "$file"
+}
+
+# OAuth-capable desktop applications must hand ordinary web URLs to a real
+# browser. Some vendor packages advertise themselves as HTTP/HTTPS handlers,
+# which can route an external sign-in URL straight back into the originating
+# application. Keep app-specific schemes but remove those generic claims.
+remove_web_url_handlers() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  sed -i -E '/^MimeType=/ {
+    s|x-scheme-handler/http;||g
+    s|x-scheme-handler/https;||g
+  }' "$file" || return 1
+  update-desktop-database /usr/share/applications >/dev/null || return 1
+}
+
+configure_chrome_default_browser() {
+  local desktop_id=google-chrome.desktop
+  local -a desktop_env=(
+    HOME=/home/vibe
+    USER=vibe
+    LOGNAME=vibe
+    PATH=/usr/local/bin:/usr/bin:/bin
+    XDG_CONFIG_HOME=/home/vibe/.config
+    XDG_DATA_HOME=/home/vibe/.local/share
+    XDG_CONFIG_DIRS=/etc/xdg
+    XDG_DATA_DIRS=/usr/local/share:/usr/share
+    XDG_CURRENT_DESKTOP=XFCE
+  )
+  [[ -f "/usr/share/applications/$desktop_id" ]] || {
+    say "Chrome desktop entry is missing"
+    return 1
+  }
+  # XFCE does not execute the selected application's patched Exec line. Its
+  # preferred-app helper normally invokes google-chrome directly, bypassing
+  # the container flags supplied by vibestack-app. Install a deterministic
+  # helper which selects the wrapper as %B and passes the real Chrome binary
+  # as its first argument, including for external-auth URLs.
+  [[ -f "$CHROME_XFCE_HELPER_SRC" ]] || {
+    say "VibeStack Chrome XFCE helper is missing"
+    return 1
+  }
+  install -d -m 0755 /usr/share/xfce4/helpers || return 1
+  install -m 0644 "$CHROME_XFCE_HELPER_SRC" \
+    "/usr/share/xfce4/helpers/$desktop_id" || return 1
+  /usr/sbin/runuser -u vibe -- /usr/bin/env "${desktop_env[@]}" \
+    /usr/bin/xdg-settings set default-web-browser "$desktop_id" || return 1
+  /usr/sbin/runuser -u vibe -- /usr/bin/env "${desktop_env[@]}" \
+    /usr/bin/xdg-mime default "$desktop_id" \
+      x-scheme-handler/http x-scheme-handler/https text/html || return 1
+  for mime_type in x-scheme-handler/http x-scheme-handler/https text/html; do
+    [[ "$(/usr/sbin/runuser -u vibe -- /usr/bin/env "${desktop_env[@]}" \
+      /usr/bin/xdg-mime query default "$mime_type")" == "$desktop_id" ]] || {
+      say "Chrome default handler did not converge for ${mime_type}"
+      return 1
+    }
+  done
+  [[ "$(/usr/sbin/runuser -u vibe -- /usr/bin/env "${desktop_env[@]}" \
+    /usr/bin/xdg-settings get default-web-browser)" == "$desktop_id" ]] || {
+    say "XFCE default browser did not converge"
+    return 1
+  }
+  grep -Fxq 'X-XFCE-Binaries=vibestack-app;' \
+    "/usr/share/xfce4/helpers/$desktop_id" || return 1
+  grep -Fxq 'X-XFCE-Commands=%B /usr/bin/google-chrome-stable;' \
+    "/usr/share/xfce4/helpers/$desktop_id" || return 1
+  grep -Fxq 'X-XFCE-CommandsWithParameter=%B /usr/bin/google-chrome-stable "%s";' \
+    "/usr/share/xfce4/helpers/$desktop_id" || return 1
+}
+
+add_shortcut() {
+  local name="$1" src="/usr/share/applications/$1.desktop"
+  [[ -f "$src" ]] || return 0
+  # Desktop is persistent user-controlled state. Cross its complete ancestor
+  # chain only after dropping privileges, so a replaced directory or leaf can
+  # never redirect a root write.
+  /usr/sbin/runuser -u vibe -- \
+    /usr/bin/install -m 0755 "$src" "${DESKTOP_DIR}/$1.desktop"
+}
+
+refresh_desktop_database() {
+  update-desktop-database "$1" >/dev/null
+}
+
+npm_global() {
+  command -v npm >/dev/null 2>&1 || { say "node is required first"; return 1; }
+  local package="$1" expected_version="$2" package_manifest installed_version
+  say "npm install -g ${package}@${expected_version}"
+  npm install -g --no-audit --no-fund -- "${package}@${expected_version}" || return 1
+  package_manifest="$(npm root -g)/${package}/package.json" || return 1
+  installed_version="$(/usr/bin/python3 -I - "$package_manifest" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as stream:
+    value = json.load(stream).get("version")
+if not isinstance(value, str):
+    raise SystemExit("installed npm package has no string version")
+print(value)
+PY
+)" || return 1
+  [[ "$installed_version" == "$expected_version" ]] || {
+    say "${package} version mismatch: expected ${expected_version}, got ${installed_version}"
+    return 1
+  }
+}
+
+# -- component installers ---------------------------------------------------
+
+validate_node_archive() {
+  local archive_path="$1" archive_root="$2"
+  # The archive is in a root-owned 0700 directory, so it cannot change between
+  # validation and extraction.
+  /usr/bin/python3 -I - "$archive_path" "$archive_root" <<'PY'
+# NODE_ARCHIVE_VALIDATOR_BEGIN
+import posixpath
+import sys
+import tarfile
+
+
+archive_path, expected_root = sys.argv[1:]
+
+
+def reject(reason):
+    raise SystemExit(f"unsafe Node.js archive: {reason}")
+
+
+def is_within_root(path):
+    return path == expected_root or path.startswith(expected_root + "/")
+
+
+def strip_archive_root(path):
+    if path == expected_root:
+        return "."
+    prefix = expected_root + "/"
+    if not path.startswith(prefix):
+        reject(f"member escapes expected root: {path!r}")
+    stripped = path[len(prefix):]
+    if not stripped or stripped == ".." or stripped.startswith("../"):
+        reject(f"member escapes post-strip root: {path!r}")
+    return stripped
+
+
+def is_within_post_strip_root(path):
+    return path == "." or (
+        bool(path) and not path.startswith("/") and path != ".." and not path.startswith("../")
+    )
+
+
+if not expected_root or "/" in expected_root or expected_root in {".", ".."}:
+    reject("invalid expected root")
+
+with tarfile.open(archive_path, mode="r:gz") as archive:
+    members = archive.getmembers()
+    if not members:
+        reject("archive is empty")
+
+    names = set()
+    entries = {}
+    links = {}
+    for member in members:
+        raw_name = member.name
+        if not raw_name or raw_name.startswith("/"):
+            reject(f"absolute or empty member path: {raw_name!r}")
+        name = posixpath.normpath(raw_name)
+        if name != raw_name.rstrip("/") or not is_within_root(name):
+            reject(f"member escapes expected root: {raw_name!r}")
+        if name in names:
+            reject(f"duplicate member path: {name!r}")
+        names.add(name)
+        post_name = strip_archive_root(name)
+        if post_name in entries:
+            reject(f"duplicate post-strip member path: {post_name!r}")
+        if member.mode & 0o6000:
+            reject(f"set-id member mode: {name!r}")
+        if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
+            reject(f"unsupported member type: {name!r}")
+        if member.isfile():
+            kind = "file"
+        elif member.isdir():
+            kind = "directory"
+        elif member.issym():
+            kind = "symlink"
+        else:
+            kind = "hardlink"
+        entries[post_name] = kind
+        if member.issym() or member.islnk():
+            link_name = member.linkname
+            if not link_name or link_name.startswith("/"):
+                reject(f"absolute or empty link target: {name!r}")
+            normalized_link = posixpath.normpath(link_name)
+            # Canonical link text avoids a mismatch between lexical validation
+            # and filesystem resolution when a symlink component precedes '..'.
+            if normalized_link != link_name:
+                reject(f"non-canonical link target: {name!r}")
+            if member.issym():
+                post_target = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(post_name), link_name)
+                )
+            else:
+                # POSIX tar hard-link targets are archive member names.
+                if not is_within_root(normalized_link):
+                    reject(f"hard-link target escapes expected root: {name!r}")
+                post_target = strip_archive_root(normalized_link)
+            if not is_within_post_strip_root(post_target):
+                reject(f"link target escapes post-strip root: {name!r}")
+            links[post_name] = (kind, post_target)
+
+    if expected_root not in names:
+        reject("expected root directory is absent")
+    if entries.get(".") != "directory":
+        reject("expected root member is not a directory")
+
+    # Extraction must never encounter a file or link as an ancestor of another
+    # archive member. That would make the result depend on member ordering and
+    # could redirect a later write through a previously extracted symlink.
+    for name in entries:
+        if name == ".":
+            continue
+        parts = name.split("/")
+        for index in range(1, len(parts)):
+            ancestor = "/".join(parts[:index])
+            if ancestor in entries and entries[ancestor] != "directory":
+                reject(f"non-directory member is an ancestor: {ancestor!r}")
+
+    for name, (_, target) in links.items():
+        if target not in entries:
+            reject(f"post-strip link target is not an archive member: {name!r}")
+
+    resolved_links = {}
+    resolving = set()
+
+    def terminal_kind(name):
+        if name in resolved_links:
+            return resolved_links[name]
+        kind = entries[name]
+        if kind not in {"symlink", "hardlink"}:
+            return kind
+        if name in resolving:
+            reject(f"link cycle after stripping: {name!r}")
+        resolving.add(name)
+        link_kind, target = links[name]
+        target_kind = entries[target]
+        if link_kind == "hardlink" and target_kind not in {"file", "hardlink"}:
+            reject(f"hard link does not target a regular file: {name!r}")
+        result = terminal_kind(target)
+        resolving.remove(name)
+        if link_kind == "hardlink" and result != "file":
+            reject(f"hard link does not resolve to a regular file: {name!r}")
+        resolved_links[name] = result
+        return result
+
+    for name in links:
+        terminal_kind(name)
+# NODE_ARCHIVE_VALIDATOR_END
+PY
+}
+
+extract_godot_archive() {
+  local archive_path="$1" expected_member="$2" expected_machine="$3"
+  local result_variable="$4" extracted_path
+  create_install_tmpdir || return 1
+  extracted_path="$INSTALL_TMPDIR/godot"
+  # The pinned archive is private and immutable during this validation and
+  # extraction. Accept exactly one bounded regular 64-bit little-endian ELF.
+  /usr/bin/python3 -I - \
+    "$archive_path" "$expected_member" "$expected_machine" "$extracted_path" <<'PY' || return 1
+# GODOT_ARCHIVE_EXTRACTOR_BEGIN
+import os
+import shutil
+import stat
+import sys
+import zipfile
+
+
+archive_path, expected_member, expected_machine_text, output_path = sys.argv[1:]
+expected_machine = int(expected_machine_text)
+maximum_size = 256 * 1024 * 1024
+
+
+def reject(reason):
+    raise SystemExit(f"unsafe Godot archive: {reason}")
+
+
+if (
+    not expected_member
+    or expected_member in {".", ".."}
+    or "/" in expected_member
+    or "\\" in expected_member
+):
+    reject("invalid expected member name")
+if os.path.lexists(output_path):
+    reject("output path already exists")
+
+try:
+    with zipfile.ZipFile(archive_path, mode="r") as archive:
+        members = archive.infolist()
+        if len(members) != 1:
+            reject("archive must contain exactly one member")
+        member = members[0]
+        if member.filename != expected_member:
+            reject(f"unexpected member name: {member.filename!r}")
+        member_type = stat.S_IFMT(member.external_attr >> 16)
+        if member.is_dir() or member_type not in {0, stat.S_IFREG}:
+            reject("member is not a regular file")
+        if member.flag_bits & 0x1:
+            reject("encrypted archives are unsupported")
+        if member.file_size < 20 or member.file_size > maximum_size:
+            reject("member size is outside the allowed range")
+
+        with archive.open(member, mode="r") as source, open(
+            output_path, mode="xb"
+        ) as destination:
+            header = source.read(20)
+            if header[:6] != b"\x7fELF\x02\x01":
+                reject("member is not a 64-bit little-endian ELF")
+            machine = int.from_bytes(header[18:20], byteorder="little")
+            if machine != expected_machine:
+                reject("ELF architecture does not match the selected artifact")
+            destination.write(header)
+            shutil.copyfileobj(source, destination, length=1024 * 1024)
+            destination.flush()
+            os.fsync(destination.fileno())
+            if destination.tell() != member.file_size:
+                reject("extracted size does not match ZIP metadata")
+except (OSError, RuntimeError, zipfile.BadZipFile) as error:
+    reject(f"cannot extract archive: {error}")
+
+os.chmod(output_path, 0o700)
+# GODOT_ARCHIVE_EXTRACTOR_END
+PY
+  printf -v "$result_variable" '%s' "$extracted_path"
+}
+
+ensure_safe_owned_directory() {
+  local destination="$1" expected_uid="$2" expected_gid="$3"
+  local create="${4:-false}" harden_mode="${5:-false}" metadata mode
+  [[ "$create" == true || "$create" == false ]] || return 1
+  [[ "$harden_mode" == true || "$harden_mode" == false ]] || return 1
+  if [[ ! -e "$destination" && ! -L "$destination" ]]; then
+    [[ "$create" == true ]] || {
+      say "required directory is absent: ${destination}"
+      return 1
+    }
+    install -d -o "$expected_uid" -g "$expected_gid" -m 0755 "$destination" || return 1
+  fi
+  metadata="$(stat -c '%F:%u:%g:%a' -- "$destination")" || return 1
+  IFS=: read -r kind owner group mode <<<"$metadata"
+  [[ "$kind" == directory && "$owner" == "$expected_uid" &&
+     "$group" == "$expected_gid" ]] || {
+    say "directory must be real, correctly owned, and not group/world writable: ${destination}"
+    return 1
+  }
+  if (( (8#$mode & 8#022) != 0 )); then
+    [[ "$harden_mode" == true ]] || {
+      say "directory must be real, correctly owned, and not group/world writable: ${destination}"
+      return 1
+    }
+    # Ubuntu ships /usr/share/applications as root:root 0775. It is safe to
+    # tighten this exact, already-verified directory before publication; never
+    # chmod an unverified or symlinked path.
+    chmod go-w -- "$destination" || return 1
+    metadata="$(stat -c '%F:%u:%g:%a' -- "$destination")" || return 1
+    IFS=: read -r kind owner group mode <<<"$metadata"
+    [[ "$kind" == directory && "$owner" == "$expected_uid" &&
+       "$group" == "$expected_gid" && $((8#$mode & 8#022)) -eq 0 ]] || return 1
+  fi
+}
+
+validate_node_tree() {
+  local tree="$1" expected_uid="${2:-0}" expected_gid="${3:-0}"
+  local installed_node installed_npm
+  /usr/bin/python3 -I - "$tree" "$expected_uid" "$expected_gid" <<'PY' || return 1
+# NODE_TREE_VALIDATOR_BEGIN
+import os
+import stat
+import sys
+
+
+root, expected_uid_text, expected_gid_text = sys.argv[1:]
+expected_uid = int(expected_uid_text)
+expected_gid = int(expected_gid_text)
+
+
+def reject(reason):
+    raise SystemExit(f"unsafe installed Node.js tree: {reason}")
+
+
+try:
+    root_stat = os.lstat(root)
+except OSError as error:
+    reject(f"cannot inspect root: {error}")
+if not stat.S_ISDIR(root_stat.st_mode) or stat.S_ISLNK(root_stat.st_mode):
+    reject("root is not a real directory")
+if root_stat.st_uid != expected_uid or root_stat.st_gid != expected_gid:
+    reject("root ownership mismatch")
+if stat.S_IMODE(root_stat.st_mode) & 0o022:
+    reject("root is group/world writable")
+
+canonical_root = os.path.realpath(root)
+root_device = root_stat.st_dev
+regular_inodes = {}
+stack = [root]
+while stack:
+    directory = stack.pop()
+    try:
+        entries = list(os.scandir(directory))
+    except OSError as error:
+        reject(f"cannot scan {directory!r}: {error}")
+    for entry in entries:
+        path = entry.path
+        try:
+            info = entry.stat(follow_symlinks=False)
+        except OSError as error:
+            reject(f"cannot inspect {path!r}: {error}")
+        if info.st_uid != expected_uid or info.st_gid != expected_gid:
+            reject(f"ownership mismatch: {path!r}")
+        mode = info.st_mode
+        if stat.S_ISLNK(mode):
+            resolved = os.path.realpath(path)
+            try:
+                inside = os.path.commonpath((canonical_root, resolved)) == canonical_root
+            except ValueError:
+                inside = False
+            if not inside or not os.path.exists(resolved):
+                reject(f"escaping or dangling symlink: {path!r}")
+            continue
+        if info.st_dev != root_device:
+            reject(f"filesystem crossing: {path!r}")
+        if stat.S_IMODE(mode) & 0o6022:
+            reject(f"set-id or group/world-writable entry: {path!r}")
+        if stat.S_ISDIR(mode):
+            stack.append(path)
+        elif stat.S_ISREG(mode):
+            key = (info.st_dev, info.st_ino)
+            count, links = regular_inodes.get(key, (0, info.st_nlink))
+            regular_inodes[key] = (count + 1, links)
+        else:
+            reject(f"unsupported filesystem entry: {path!r}")
+
+for count, links in regular_inodes.values():
+    if count != links:
+        reject("regular file has a hard link outside the Node.js tree")
+# NODE_TREE_VALIDATOR_END
+PY
+  [[ -f "$tree/bin/node" && ! -L "$tree/bin/node" && -x "$tree/bin/node" ]] || {
+    say "Node.js tree has no real executable bin/node"
+    return 1
+  }
+  for command_name in npm npx corepack; do
+    [[ -e "$tree/bin/$command_name" && ! -d "$tree/bin/$command_name" ]] || {
+      say "Node.js tree is missing bin/${command_name}"
+      return 1
+    }
+  done
+  installed_node="$("$tree/bin/node" --version)" || return 1
+  # npm's launcher uses `#!/usr/bin/env node`.  During pre-activation tree
+  # validation there may deliberately be no public node command yet, so put
+  # this candidate tree first without changing the caller's environment.
+  installed_npm="$(PATH="$tree/bin:$PATH" "$tree/bin/npm" --version)" || return 1
+  [[ "$installed_node" == "v${NODE_VERSION}" ]] || {
+    say "Node.js tree version mismatch: expected v${NODE_VERSION}, got ${installed_node}"
+    return 1
+  }
+  [[ "$installed_npm" == "$NODE_NPM_VERSION" ]] || {
+    say "npm tree version mismatch: expected ${NODE_NPM_VERSION}, got ${installed_npm}"
+    return 1
+  }
+}
+
+validate_published_node_tree() {
+  local tree="$1" expected_uid="${2:-0}" expected_gid="${3:-0}" metadata
+  validate_node_tree "$tree" "$expected_uid" "$expected_gid" || return 1
+  metadata="$(stat -c '%F:%u:%g:%a' -- "$tree")" || return 1
+  [[ "$metadata" == "directory:${expected_uid}:${expected_gid}:755" ]] || {
+    say "published Node.js tree must be a root-owned mode-0755 real directory"
+    return 1
+  }
+}
+
+validate_public_node_entry() {
+  local path="$1" expected_uid="$2" expected_gid="$3" metadata kind owner group mode links
+  [[ -e "$path" || -L "$path" ]] || return 0
+  metadata="$(stat -c '%F:%u:%g:%a:%h' -- "$path")" || return 1
+  IFS=: read -r kind owner group mode links <<<"$metadata"
+  [[ "$owner" == "$expected_uid" && "$group" == "$expected_gid" ]] || {
+    say "public Node.js entry ownership mismatch: ${path}"
+    return 1
+  }
+  case "$kind" in
+    "symbolic link") return 0 ;;
+    "regular file")
+      [[ $((8#$mode & 8#6022)) -eq 0 && "$links" == 1 ]] || {
+        say "public Node.js file is writable, set-id, or hard-linked: ${path}"
+        return 1
+      }
+      ;;
+    *)
+      say "refusing unsupported public Node.js entry: ${path}"
+      return 1
+      ;;
+  esac
+}
+
+cleanup_node_link_directories() {
+  local public_bin="$1" current_parent="$2" expected_uid="$3" expected_gid="$4"
+  local result=0
+  if [[ -n "$NODE_LINK_TMPDIR" ]]; then
+    remove_private_directory "$NODE_LINK_TMPDIR" "$public_bin" \
+      .vibestack-node-links. "$expected_uid" "$expected_gid" || result=1
+    NODE_LINK_TMPDIR=""
+  fi
+  if [[ -n "$NODE_CURRENT_TMPDIR" ]]; then
+    remove_private_directory "$NODE_CURRENT_TMPDIR" "$current_parent" \
+      .node-current. "$expected_uid" "$expected_gid" || result=1
+    NODE_CURRENT_TMPDIR=""
+  fi
+  return "$result"
+}
+
+publish_node_links() {
+  local tree="$1" public_bin="${2:-/usr/local/bin}"
+  local current_link="${3:-$NODE_INSTALL_PARENT/node-current}"
+  local expected_uid="${4:-0}" expected_gid="${5:-0}" fail_after="${6:-0}"
+  local current_parent current_had_old=0 published=0 failed=0
+  local command_name destination installed_node installed_npm
+  local -a commands=(node npm npx corepack) had_old=()
+
+  current_parent="${current_link%/*}"
+  ensure_safe_owned_directory "$public_bin" "$expected_uid" "$expected_gid" || return 1
+  ensure_safe_owned_directory "$current_parent" "$expected_uid" "$expected_gid" || return 1
+  validate_node_tree "$tree" "$expected_uid" "$expected_gid" || return 1
+
+  if [[ -e "$current_link" || -L "$current_link" ]]; then
+    validate_public_node_entry "$current_link" "$expected_uid" "$expected_gid" || return 1
+    [[ -L "$current_link" ]] || {
+      say "refusing non-symlink Node.js current pointer"
+      return 1
+    }
+    current_had_old=1
+  fi
+  for command_name in "${commands[@]}"; do
+    destination="$public_bin/$command_name"
+    validate_public_node_entry "$destination" "$expected_uid" "$expected_gid" || return 1
+  done
+
+  local previous_umask
+  previous_umask="$(umask)"
+  umask 077
+  NODE_LINK_TMPDIR="$(mktemp -d "$public_bin/.vibestack-node-links.XXXXXXXXXX")" || {
+    umask "$previous_umask"
+    return 1
+  }
+  NODE_CURRENT_TMPDIR="$(mktemp -d "$current_parent/.node-current.XXXXXXXXXX")" || {
+    umask "$previous_umask"
+    remove_private_directory "$NODE_LINK_TMPDIR" "$public_bin" \
+      .vibestack-node-links. "$expected_uid" "$expected_gid" || true
+    NODE_LINK_TMPDIR=""
+    return 1
+  }
+  umask "$previous_umask"
+
+  if (( current_had_old )); then
+    cp -a --no-dereference -- "$current_link" "$NODE_CURRENT_TMPDIR/old" || failed=1
+  fi
+  ln -s -- "$tree" "$NODE_CURRENT_TMPDIR/new" || failed=1
+  for command_name in "${commands[@]}"; do
+    destination="$public_bin/$command_name"
+    if [[ -e "$destination" || -L "$destination" ]]; then
+      had_old+=(1)
+      cp -a --no-dereference -- "$destination" \
+        "$NODE_LINK_TMPDIR/old-$command_name" || failed=1
+    else
+      had_old+=(0)
+    fi
+    ln -s -- "$current_link/bin/$command_name" \
+      "$NODE_LINK_TMPDIR/new-$command_name" || failed=1
+  done
+  if (( failed )); then
+    say "could not prepare atomic Node.js links"
+    cleanup_node_link_directories \
+      "$public_bin" "$current_parent" "$expected_uid" "$expected_gid" || true
+    return 1
+  fi
+
+  if ! mv -Tf -- "$NODE_CURRENT_TMPDIR/new" "$current_link"; then
+    say "could not publish Node.js current pointer"
+    cleanup_node_link_directories \
+      "$public_bin" "$current_parent" "$expected_uid" "$expected_gid" || true
+    return 1
+  fi
+  for index in "${!commands[@]}"; do
+    command_name="${commands[$index]}"
+    destination="$public_bin/$command_name"
+    if ! mv -Tf -- "$NODE_LINK_TMPDIR/new-$command_name" "$destination"; then
+      failed=1
+      break
+    fi
+    published=$((published + 1))
+    if (( fail_after > 0 && published == fail_after )); then
+      say "injected Node.js link publication failure"
+      failed=1
+      break
+    fi
+  done
+
+  if (( ! failed )); then
+    hash -r
+    installed_node="$("$public_bin/node" --version)" || failed=1
+    installed_npm="$("$public_bin/npm" --version)" || failed=1
+    [[ "$installed_node" == "v${NODE_VERSION}" &&
+       "$installed_npm" == "$NODE_NPM_VERSION" ]] || failed=1
+  fi
+
+  if (( failed )); then
+    local rollback_failed=0
+    while (( published > 0 )); do
+      published=$((published - 1))
+      command_name="${commands[$published]}"
+      destination="$public_bin/$command_name"
+      if (( had_old[$published] )); then
+        mv -Tf -- "$NODE_LINK_TMPDIR/old-$command_name" "$destination" || rollback_failed=1
+      else
+        rm -f -- "$destination" || rollback_failed=1
+      fi
+    done
+    if (( current_had_old )); then
+      mv -Tf -- "$NODE_CURRENT_TMPDIR/old" "$current_link" || rollback_failed=1
+    else
+      rm -f -- "$current_link" || rollback_failed=1
+    fi
+    hash -r
+    cleanup_node_link_directories \
+      "$public_bin" "$current_parent" "$expected_uid" "$expected_gid" || rollback_failed=1
+    if (( rollback_failed )); then
+      say "CRITICAL: Node.js activation and rollback both failed"
+    else
+      say "Node.js activation failed; prior command links were restored"
+    fi
+    return 1
+  fi
+
+  cleanup_node_link_directories \
+    "$public_bin" "$current_parent" "$expected_uid" "$expected_gid"
+}
+
+install_node() {
+  local architecture node_arch expected_sha archive_name archive_path
+  local archive_root final_tree previous_umask
+
+  architecture="$(dpkg --print-architecture)" || return 1
+  case "$architecture" in
+    amd64) node_arch=x64; expected_sha="$NODE_SHA256_X64" ;;
+    arm64) node_arch=arm64; expected_sha="$NODE_SHA256_ARM64" ;;
+    *)
+      say "Node.js ${NODE_VERSION} is unsupported on architecture: ${architecture}"
+      return 1
+      ;;
+  esac
+
+  archive_root="node-v${NODE_VERSION}-linux-${node_arch}"
+  archive_name="${archive_root}.tar.gz"
+  final_tree="$NODE_INSTALL_PARENT/$archive_root"
+  ensure_safe_owned_directory / 0 0 || return 1
+  ensure_safe_owned_directory /opt 0 0 || return 1
+  ensure_safe_owned_directory "$NODE_INSTALL_PARENT" 0 0 true || return 1
+  ensure_safe_owned_directory /usr 0 0 || return 1
+  ensure_safe_owned_directory /usr/local 0 0 || return 1
+  ensure_safe_owned_directory /usr/local/bin 0 0 || return 1
+
+  if [[ -e "$final_tree" || -L "$final_tree" ]]; then
+    say "validating existing Node.js ${NODE_VERSION} tree"
+    validate_published_node_tree "$final_tree" 0 0 || return 1
+  else
+    say "downloading pinned Node.js ${NODE_VERSION} for ${architecture}"
+    download_private_file \
+      "https://nodejs.org/dist/v${NODE_VERSION}/${archive_name}" \
+      "$archive_name" archive_path 134217728 600 || return 1
+    printf '%s  %s\n' "$expected_sha" "$archive_path" | sha256sum -c - || {
+      say "Node.js archive checksum did not match; aborting"
+      return 1
+    }
+    validate_node_archive "$archive_path" "$archive_root" || return 1
+
+    previous_umask="$(umask)"
+    umask 077
+    NODE_STAGING_DIR="$(mktemp -d \
+      "$NODE_INSTALL_PARENT/.${archive_root}.stage.XXXXXXXXXX")" || {
+      umask "$previous_umask"
+      return 1
+    }
+    umask "$previous_umask"
+    tar -xzf "$archive_path" -C "$NODE_STAGING_DIR" --strip-components=1 \
+      --no-same-owner || return 1
+    validate_node_tree "$NODE_STAGING_DIR" 0 0 || return 1
+    mv -Tn -- "$NODE_STAGING_DIR" "$final_tree" || return 1
+    if [[ -e "$NODE_STAGING_DIR" || -L "$NODE_STAGING_DIR" ]]; then
+      say "Node.js final tree appeared during publication; refusing to replace it"
+      return 1
+    fi
+    NODE_STAGING_DIR=""
+    chmod 0755 "$final_tree" || return 1
+    validate_published_node_tree "$final_tree" 0 0 || return 1
+  fi
+
+  publish_node_links "$final_tree" /usr/local/bin \
+    "$NODE_INSTALL_PARENT/node-current" 0 0 || return 1
+}
+
+install_claude_code() { npm_global @anthropic-ai/claude-code 2.1.263; }
+install_codex_cli()   { npm_global @openai/codex 0.153.4; }
+install_opencode()    { npm_global opencode-ai 1.18.29; }
+
+require_amd64() {
+  local component="$1" architecture
+  architecture="$(dpkg --print-architecture)" || return 1
+  [[ "$architecture" == amd64 ]] || {
+    say "${component} download supports amd64 only (detected ${architecture})"
+    return 1
+  }
+}
+
+verify_primary_key_fingerprint() {
+  local key_file="$1" expected_fingerprint="$2" listing primary_fingerprints gpg_home
+  [[ -n "$INSTALL_TMPDIR" ]] || {
+    say "private install directory is unavailable for key verification"
+    return 1
+  }
+  gpg_home="$(mktemp -d "$INSTALL_TMPDIR/gnupg.XXXXXXXXXX")" || return 1
+  chmod 0700 "$gpg_home" || return 1
+  listing="$(gpg --batch --no-options --homedir "$gpg_home" \
+    --with-colons --show-keys -- "$key_file")" || return 1
+  primary_fingerprints="$(awk -F: '
+    $1 == "pub" { need_fingerprint = 1; next }
+    need_fingerprint && $1 == "fpr" { print $10; need_fingerprint = 0 }
+  ' <<<"$listing")" || return 1
+  [[ "$primary_fingerprints" == "$expected_fingerprint" ]] || {
+    say "signing key primary fingerprint did not match exactly; aborting"
+    return 1
+  }
+}
+
+install_chrome() {
+  local package
+  require_amd64 "Google Chrome" || return 1
+  say "downloading Google Chrome"
+  download_private_deb \
+    https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    chrome.deb package 268435456 1200 || return 1
+  apt_install "$package" || return 1
+  rm -f -- "$package" || return 1
+  say "applying extension policy (Claude in Chrome, Codex)"
+  install -d /etc/opt/chrome/policies/managed || return 1
+  install -m 644 "$POLICY_SRC" \
+    /etc/opt/chrome/policies/managed/vibestack.json || return 1
+  patch_desktop_entry /usr/share/applications/google-chrome.desktop || return 1
+  patch_desktop_entry /usr/share/applications/com.google.Chrome.desktop || return 1
+  configure_chrome_default_browser || return 1
+  add_shortcut google-chrome
+}
+
+install_claude_desktop() {
+  local key_download
+  say "adding Anthropic apt repository"
+  download_private_file https://downloads.claude.ai/claude-desktop/key.asc \
+    claude-desktop-key.asc key_download 1048576 60 || return 1
+  verify_primary_key_fingerprint \
+    "$key_download" "$CLAUDE_DESKTOP_KEY_FINGERPRINT" || return 1
+  install -m 0644 "$key_download" \
+    /usr/share/keyrings/claude-desktop-archive-keyring.asc || return 1
+  printf '%s\n' \
+    "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" \
+    > /etc/apt/sources.list.d/claude-desktop.list || return 1
+  APT_REFRESHED=false
+  # Recommends pull the QEMU stack for Cowork, which cannot run in a container.
+  apt_install claude-desktop || return 1
+  patch_desktop_entry /usr/share/applications/com.anthropic.Claude.desktop || return 1
+  add_shortcut com.anthropic.Claude
+}
+
+install_chatgpt() {
+  local package
+  require_amd64 "ChatGPT desktop" || return 1
+  say "downloading the ChatGPT desktop app (large)"
+  download_private_deb \
+    https://persistent.oaistatic.com/codex-app-prod/linux/deb/latest/chatgpt_amd64.deb \
+    chatgpt.deb package 2147483648 3600 || return 1
+  apt_install "$package" || return 1
+  rm -f -- "$package" || return 1
+  patch_desktop_entry /usr/share/applications/chatgpt.desktop || return 1
+  remove_web_url_handlers /usr/share/applications/chatgpt.desktop || return 1
+  configure_chrome_default_browser || return 1
+  add_shortcut chatgpt
+}
+
+# Publish Godot as a repairable transaction. The catalog's convergence marker
+# is removed before any public artifact changes and is atomically restored only
+# after the binary, desktop entry, desktop database, and user shortcut all
+# succeed. A crash or late failure can leave repairable artifacts behind, but
+# it can never leave a state that the setup service mistakes for convergence.
+publish_godot_install() {
+  local source_binary="$1" source_desktop_entry="$2"
+  local binary_destination="${3:-/usr/local/bin/godot}"
+  local desktop_entry_destination="${4:-/usr/share/applications/org.godotengine.Godot.desktop}"
+  local commit_path="${5:-$GODOT_COMMIT_PATH}"
+  local expected_uid="${6:-0}" expected_gid="${7:-0}"
+  local inject_late_failure="${8:-0}"
+  local binary_parent desktop_entry_parent commit_parent marker_tmp previous_umask
+
+  [[ "$inject_late_failure" == 0 || "$inject_late_failure" == 1 ]] || {
+    say "invalid Godot publication failure-injection value"
+    return 1
+  }
+  binary_parent="${binary_destination%/*}"
+  desktop_entry_parent="${desktop_entry_destination%/*}"
+  commit_parent="${commit_path%/*}"
+  ensure_safe_owned_directory "$binary_parent" "$expected_uid" "$expected_gid" || return 1
+  ensure_safe_owned_directory "$desktop_entry_parent" "$expected_uid" "$expected_gid" false true || return 1
+  ensure_safe_owned_directory "$commit_parent" "$expected_uid" "$expected_gid" || return 1
+
+  # An earlier successful marker must not survive a failed repair/reinstall.
+  rm -f -- "$commit_path" || return 1
+  [[ ! -e "$commit_path" && ! -L "$commit_path" ]] || return 1
+
+  install -m 0755 "$source_binary" "$binary_destination" || return 1
+  [[ "$(HOME="$INSTALL_TMPDIR" "$binary_destination" --version)" == \
+     "${GODOT_VERSION}.stable.official."* ]] || return 1
+  install -m 0644 "$source_desktop_entry" "$desktop_entry_destination" || return 1
+  cmp -s -- "$source_desktop_entry" "$desktop_entry_destination" || return 1
+  refresh_desktop_database "$desktop_entry_parent" || return 1
+  add_shortcut org.godotengine.Godot || return 1
+
+  if [[ "$inject_late_failure" == 1 ]]; then
+    say "injected Godot late publication failure"
+    return 1
+  fi
+
+  previous_umask="$(umask)"
+  umask 077
+  marker_tmp="$(mktemp "$commit_parent/.vibestack-godot-commit.XXXXXXXXXX")" || {
+    umask "$previous_umask"
+    return 1
+  }
+  umask "$previous_umask"
+  if ! printf 'godot %s\n' "$GODOT_VERSION" > "$marker_tmp" ||
+     ! chmod 0644 "$marker_tmp" ||
+     ! mv -Tf -- "$marker_tmp" "$commit_path"; then
+    rm -f -- "$marker_tmp"
+    return 1
+  fi
+  [[ "$(stat -c '%F:%u:%g:%a' -- "$commit_path")" == \
+     "regular file:${expected_uid}:${expected_gid}:644" ]] || {
+    rm -f -- "$commit_path"
+    return 1
+  }
+  [[ "$(cat -- "$commit_path")" == "godot ${GODOT_VERSION}" ]] || {
+    rm -f -- "$commit_path"
+    return 1
+  }
+}
+
+install_godot() {
+  local architecture godot_arch expected_sha expected_machine
+  local archive_name archive_path binary_name binary_path installed_version
+  local desktop_entry
+
+  architecture="$(dpkg --print-architecture)" || return 1
+  case "$architecture" in
+    amd64)
+      godot_arch=x86_64
+      expected_sha="$GODOT_SHA256_X64"
+      expected_machine=62
+      ;;
+    arm64)
+      godot_arch=arm64
+      expected_sha="$GODOT_SHA256_ARM64"
+      expected_machine=183
+      ;;
+    *)
+      say "Godot ${GODOT_VERSION} is unsupported on architecture: ${architecture}"
+      return 1
+      ;;
+  esac
+
+  archive_name="Godot_v${GODOT_VERSION}-stable_linux.${godot_arch}.zip"
+  binary_name="${archive_name%.zip}"
+  say "downloading pinned Godot ${GODOT_VERSION} for ${architecture}"
+  download_private_file \
+    "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${archive_name}" \
+    "$archive_name" archive_path 134217728 1200 || return 1
+  printf '%s  %s\n' "$expected_sha" "$archive_path" | sha256sum -c - || {
+    say "Godot archive checksum did not match; aborting"
+    return 1
+  }
+  extract_godot_archive \
+    "$archive_path" "$binary_name" "$expected_machine" binary_path || return 1
+  installed_version="$(HOME="$INSTALL_TMPDIR" "$binary_path" --version)" || return 1
+  [[ "$installed_version" == "${GODOT_VERSION}.stable.official."* ]] || {
+    say "Godot version mismatch: expected ${GODOT_VERSION}.stable.official, got ${installed_version}"
+    return 1
+  }
+
+  desktop_entry="$INSTALL_TMPDIR/org.godotengine.Godot.desktop"
+  printf '%s\n' \
+    '[Desktop Entry]' \
+    'Version=1.0' \
+    'Type=Application' \
+    'Name=Godot Engine' \
+    'GenericName=Libre game engine' \
+    'Comment=Multi-platform 2D and 3D game engine with a feature-rich editor' \
+    'Keywords=game development;development;IDE;game engine;' \
+    'Exec=/usr/local/bin/godot --rendering-method gl_compatibility --audio-driver Dummy %f' \
+    'TryExec=/usr/local/bin/godot' \
+    'Icon=applications-development' \
+    'Terminal=false' \
+    'MimeType=application/x-godot-project;' \
+    'Categories=Development;IDE;' \
+    'StartupNotify=true' \
+    'StartupWMClass=Godot' \
+    'OnlyShowIn=XFCE;' > "$desktop_entry" || return 1
+  desktop-file-validate "$desktop_entry" || return 1
+  publish_godot_install "$binary_path" "$desktop_entry"
+}
+
+install_flatpak() {
+  local -a flatpak_env=(
+    HOME=/home/vibe
+    USER=vibe
+    LOGNAME=vibe
+    PATH=/usr/local/bin:/usr/bin:/bin
+    XDG_DATA_HOME=/home/vibe/.local/share
+    XDG_RUNTIME_DIR=/run/vibestack/runtime
+  )
+  local marker_metadata
+  marker_metadata="$(
+    stat -c '%u:%g:%a:%h' -- \
+      /run/vibestack/host/flatpak-enabled 2>/dev/null || true
+  )"
+  if [[ ! -f /run/vibestack/host/flatpak-enabled ||
+        -L /run/vibestack/host/flatpak-enabled ||
+        "$marker_metadata" != '0:0:444:1' ]]; then
+    say "Flatpak requires a container started with ./startup.sh --flatpak"
+    return 1
+  fi
+  apt_install flatpak xdg-desktop-portal xdg-desktop-portal-xapp || return 1
+  /usr/sbin/runuser -u vibe -- /usr/bin/env "${flatpak_env[@]}" \
+    /usr/local/bin/vibestack-flatpak check >/dev/null || {
+      say "nested Flatpak sandbox preflight failed; verify the --flatpak Docker mode"
+      return 1
+    }
+  /usr/sbin/runuser -u vibe -- /usr/bin/env "${flatpak_env[@]}" \
+    /usr/local/bin/vibestack-flatpak _ensure-flathub || return 1
+  add_shortcut vibestack-flathub || return 1
+  add_shortcut vibestack-flatpak
+}
+
+install_build_essential() {
+  apt_install build-essential || return 1
+}
+
+install_editors() {
+  apt_install mousepad geany meld vim || return 1
+  su - vibe -c 'git config --global diff.tool meld;
+                git config --global merge.tool meld;
+                git config --global difftool.prompt false' || return 1
+  add_shortcut geany || return 1
+  add_shortcut org.gnome.Meld
+}
+
+install_images() {
+  apt_install gimp drawing flameshot || return 1
+  add_shortcut gimp || return 1
+}
+
+dispatch() {
+  case "$1" in
+    node)           install_node ;;
+    claude-code)    install_claude_code ;;
+    codex-cli)      install_codex_cli ;;
+    opencode)       install_opencode ;;
+    chrome)         install_chrome ;;
+    claude-desktop) install_claude_desktop ;;
+    chatgpt)        install_chatgpt ;;
+    godot)          install_godot ;;
+    flatpak)        install_flatpak ;;
+    build-essential) install_build_essential ;;
+    editors)        install_editors ;;
+    images)         install_images ;;
+    *) say "unknown component: $1"; return 1 ;;
+  esac
+}
+
+# Expand requires and order the work using the catalog.
+acquire_install_lock "$INSTALL_LOCK_PATH" 0 0 || exit 1
+if ! ORDERED="$(VIBESTACK_CATALOG="$CATALOG" /usr/bin/python3 -I - "$@" <<'PY'
+# COMPONENT_RESOLVER_BEGIN
+import sys
+sys.path.insert(0, "/usr/share/vibestack")
+import setuplib as lib
+catalog = lib.load_catalog()
+requested = sys.argv[1:]
+known = {component["id"] for component in catalog["components"]}
+unknown = [component_id for component_id in requested if component_id not in known]
+if unknown:
+    print("unknown component(s): " + " ".join(unknown), file=sys.stderr)
+    raise SystemExit(2)
+print(" ".join(lib.resolve(catalog, requested)))
+# COMPONENT_RESOLVER_END
+PY
+)"; then
+  say "component resolution failed"
+  exit 1
+fi
+[[ -n "$ORDERED" ]] || { say "nothing to do"; exit 0; }
+read -r -a ordered_ids <<<"$ORDERED"
+
+failed=()
+for id in "${ordered_ids[@]}"; do
+  case "$id" in
+    node|claude-code|codex-cli|opencode|chrome|claude-desktop|chatgpt|godot|flatpak|build-essential|editors|images) ;;
+    *) say "resolver returned unknown privileged component: $id"; exit 1 ;;
+  esac
+  say "=== $id ==="
+  if dispatch "$id"; then
+    say "$id ok"
+  else
+    say "$id FAILED"
+    failed+=("$id")
+  fi
+done
+
+apt-get clean; rm -rf /var/lib/apt/lists/*
+
+if ((${#failed[@]})); then
+  say "failed: ${failed[*]}"
+  exit 1
+fi
+say "all components installed"

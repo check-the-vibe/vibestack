@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Fixed-surface privileged helper for the VibeStack control service.
+
+This program is intended to be invoked through a narrowly-scoped sudo rule:
+
+    vibestack-control status  <desktop|vnc|terminal|setup>
+    vibestack-control restart <desktop|vnc|terminal|setup>
+    vibestack-control logs    <desktop|vnc|terminal|setup> [--cursor N] [--limit N]
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+CONTROL_LIB = Path("/usr/share/vibestack-control")
+# Allow this checked-in launcher to be tested before it is installed.  The
+# fallback is derived only from the launcher's own path, never the environment.
+if not (CONTROL_LIB / "controllib.py").is_file():
+    CONTROL_LIB = Path(__file__).resolve().parents[1] / "control"
+sys.path.insert(0, str(CONTROL_LIB))
+import controllib as lib  # noqa: E402
+
+
+def _non_negative(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be an integer")
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be non-negative")
+    return parsed
+
+
+def _log_limit(value: str) -> int:
+    parsed = _non_negative(value)
+    if not 1 <= parsed <= lib.MAX_LOG_LIMIT:
+        raise argparse.ArgumentTypeError(
+            "must be between 1 and %d" % lib.MAX_LOG_LIMIT
+        )
+    return parsed
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    choices = tuple(lib.SERVICE_PROGRAMS)
+    for command in ("status", "restart"):
+        subparser = commands.add_parser(command)
+        subparser.add_argument("service", choices=choices)
+    logs = commands.add_parser("logs")
+    logs.add_argument("service", choices=choices)
+    logs.add_argument("--cursor", type=_non_negative)
+    logs.add_argument("--limit", type=_log_limit, default=lib.DEFAULT_LOG_LIMIT)
+    return parser
+
+
+def _emit(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = build_parser().parse_args(argv)
+    try:
+        if arguments.command == "status":
+            payload = lib.helper_status(arguments.service)
+        elif arguments.command == "restart":
+            payload = lib.helper_restart(arguments.service)
+        else:
+            payload = lib.helper_logs(
+                arguments.service, arguments.cursor, arguments.limit
+            )
+        _emit(payload)
+        return 0
+    except lib.ControlError as exc:
+        _emit({"code": exc.code, "message": exc.message})
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">VibeStack</title>
+  <desc id="desc">Three rising bars on a warm orange tile</desc>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="40" x2="438" y2="474" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F29A78"/>
+      <stop offset="1" stop-color="#B84E32"/>
+    </linearGradient>
+  </defs>
+  <rect x="36" y="36" width="440" height="440" rx="112" fill="url(#bg)"/>
+  <rect x="132" y="276" width="54" height="104" rx="27" fill="#28130D" opacity=".9"/>
+  <rect x="229" y="172" width="54" height="208" rx="27" fill="#28130D" opacity=".9"/>
+  <rect x="326" y="224" width="54" height="156" rx="27" fill="#28130D" opacity=".9"/>
+</svg>

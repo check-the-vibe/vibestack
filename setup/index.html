@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VibeStack setup</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="mark" aria-hidden="true"></div>
+    <div>
+      <h1>VibeStack</h1>
+      <p class="sub" id="subtitle">Choose what to install on this machine.</p>
+    </div>
+    <nav class="links">
+      <a href="/terminal/" target="_blank" rel="noopener">Terminal</a>
+      <a href="/vnc/" target="_blank" rel="noopener">Desktop</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Step 1: Linux password -->
+    <section id="step-password" hidden>
+      <div class="password-card">
+        <p class="eyebrow" id="password-eyebrow">Required first step</p>
+        <h2 id="password-title">Create your Linux password</h2>
+        <p class="dim" id="password-description">
+          Use this password when <code>sudo</code> prompts in either the desktop
+          terminal or browser terminal. VibeStack stores only a salted password
+          hash in its private persistent state.
+        </p>
+        <form id="password-form" novalidate>
+          <label class="field" for="linux-password">
+            <span>New password</span>
+            <input id="linux-password" name="password" type="password"
+                   autocomplete="new-password" minlength="12" maxlength="256"
+                   required spellcheck="false">
+          </label>
+          <label class="field" for="linux-password-confirmation">
+            <span>Confirm password</span>
+            <input id="linux-password-confirmation" name="confirmation"
+                   type="password" autocomplete="new-password" minlength="12"
+                   maxlength="256" required spellcheck="false">
+          </label>
+          <p class="field-note">12–256 UTF-8 bytes. Control characters are not accepted.</p>
+          <p class="form-error" id="password-error" role="alert" hidden></p>
+          <div class="bar password-actions">
+            <div class="summary dim" id="password-trust-note">
+              This private setup page can replace the password without asking for the old one.
+            </div>
+            <div class="actions">
+              <button class="ghost" id="btn-password-cancel" type="button" hidden>Cancel</button>
+              <button class="primary" id="btn-password-save" type="submit">Save password</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Step 2: choose -->
+    <section id="step-choose" hidden>
+      <div class="security-row">
+        <div>
+          <strong>Linux password configured</strong>
+          <span class="dim">Required by normal <code>sudo</code> commands in both terminals.</span>
+        </div>
+        <button class="ghost" id="btn-change-password" type="button">Change password</button>
+      </div>
+      <div class="presets" id="presets"></div>
+      <div class="groups" id="groups"></div>
+      <div class="bar">
+        <div class="summary"><span id="count">0 selected</span><span id="size" class="dim"></span></div>
+        <div class="actions">
+          <button class="ghost" id="btn-skip">Skip for now</button>
+          <button class="primary" id="btn-install">Install</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: install -->
+    <section id="step-install" hidden>
+      <h2 id="install-title">Installing</h2>
+      <p class="dim" id="install-note">This runs apt and npm inside the container. It can take several minutes.</p>
+      <pre id="log" class="log" aria-live="polite"></pre>
+    </section>
+
+    <!-- Step 4: next steps -->
+    <section id="step-done" hidden>
+      <h2 id="done-title">Ready</h2>
+      <ul class="next" id="next-steps"></ul>
+      <div class="bar">
+        <div class="summary dim">You can reopen this page any time to add components.</div>
+        <div class="actions">
+          <button class="ghost" id="btn-more">Add more</button>
+          <a class="primary button" href="/">Choose a workspace</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="step-error" hidden>
+      <h2>Something went wrong</h2>
+      <p class="dim" id="error-text"></p>
+    </section>
+  </main>
+
+  <footer class="dim">
+    State lives in <code>~/.vibestack/setup.json</code>. Reset it with <code>vibestack-setup reset</code>.
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

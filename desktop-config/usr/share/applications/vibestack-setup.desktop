@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Setup & Onboarding
+Comment=Choose VibeStack tools and review first-run guidance
+Exec=/usr/local/bin/vibestack-desktop-action setup
+Icon=vibestack
+Terminal=false
+StartupNotify=true
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

@@ -2,6 +2,7 @@ name: Publish Docker image
 
 on:
   workflow_dispatch:  # Manual trigger from GitHub UI
+  pull_request:
   push:
     tags:
       - 'v*'          # Auto-run on version tags like v1.0.0
@@ -20,12 +21,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Set up Node for browser tests
+        uses: actions/setup-node@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 22
+          cache: npm
+
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
 
       - name: Extract Docker metadata
         id: meta
@@ -36,14 +41,39 @@ jobs:
             type=sha
             type=ref,event=branch
             type=semver,pattern={{version}}
-            # Add 'latest' tag if we're on main
           flavor: |
             latest=true
 
-      - name: Build and push Docker image
+      - name: Run unit and source-contract tests
+        run: bin/vibestack-dev test
+
+      - name: Build acceptance image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          load: true
+          push: false
+          tags: vibestack:test
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Run disposable container, onboarding, app and browser acceptance
+        run: bin/vibestack-dev accept vibestack:test
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push the tested image
+        if: github.event_name != 'pull_request'
+        env:
+          VIBESTACK_PUBLISH_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag vibestack:test "$tag"
+            docker push "$tag"
+          done <<< "$VIBESTACK_PUBLISH_TAGS"

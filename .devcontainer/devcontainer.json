@@ -1,21 +1,23 @@
 {
-  "name": "Vibestack DevContainer",
-  "build": {
-    "dockerfile": "../Dockerfile",
-    "context": ".."
-  },
-  "forwardPorts": [80],
-  "portsAttributes": {
-    "80": {
-      "label": "Web Server",
-      "onAutoForward": "openPreview",
-      "requireLocalPort": false,
-      "protocol": "http",
-      "visibility": "public"
+  "name": "VibeStack Development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
     }
   },
-  "overrideCommand": false,
-  "init": true,
-  "postStartCommand": "echo 'Container ready!'",
-  "remoteUser": "vibe"
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "VibeStack (private)",
+      "onAutoForward": "notify",
+      "requireLocalPort": false,
+      "protocol": "http",
+      "visibility": "private"
+    }
+  },
+  "runArgs": ["--shm-size=1g"],
+  "postCreateCommand": "npm ci && npx playwright install --with-deps chromium",
+  "remoteUser": "vscode"
 }

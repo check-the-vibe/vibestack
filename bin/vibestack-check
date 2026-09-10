@@ -1,0 +1,354 @@
+#!/usr/bin/env bash
+# Acceptance checks for docs/SPEC.md. Run inside the container as vibe.
+#   vibestack-check             checks that do not change what is installed
+#   vibestack-check --display   also exercise and restore every display preset
+#   vibestack-check --restart   also exercise all four allowlisted restarts
+#   vibestack-check --install   also install a component to prove the flow works
+#   vibestack-check --automation run reversible full automation API checks
+#   vibestack-check --live      allow optional components in an existing instance
+set -uo pipefail
+DO_INSTALL=false
+DO_DISPLAY=false
+DO_RESTART=false
+DO_AUTOMATION=false
+LIVE_INSTANCE=false
+for option in "$@"; do
+  case "$option" in
+    --install) DO_INSTALL=true ;;
+    --display) DO_DISPLAY=true ;;
+    --restart) DO_RESTART=true ;;
+    --automation) DO_AUTOMATION=true ;;
+    --live) LIVE_INSTANCE=true ;;
+    *) echo "usage: vibestack-check [--display] [--restart] [--install] [--automation] [--live]" >&2; exit 2 ;;
+  esac
+done
+export DISPLAY=:0
+export XAUTHORITY=/run/vibestack/Xauthority
+[[ -f /run/vibestack/session.env ]] && source /run/vibestack/session.env
+
+pass=0; fail=0
+ok()   { echo "PASS  $1"; pass=$((pass+1)); }
+bad()  { echo "FAIL  $1  ($2)"; fail=$((fail+1)); }
+check(){ local id="$1"; shift; if "$@" >/dev/null 2>&1; then ok "$id"; else bad "$id" "$*"; fi; }
+code() { curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@"; }
+loc()  { curl -s -o /dev/null -w '%{redirect_url}' --max-time 10 "$@"; }
+ws_code(){ curl -s -o /dev/null -w '%{http_code}' --max-time 5 -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+          -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H "Sec-WebSocket-Protocol: $2" \
+          -H "Origin: ${3:-http://localhost}" "$1" || true; }
+ws()   { [[ "$(ws_code "$1" "$2")" == 101 ]]; }
+ws_cross_origin_rejected() {
+  [[ "$(ws_code "$1" "$2" https://attacker.example)" == 403 ]]
+}
+direct_ws_result() {
+  local url="$1" protocol="$2"
+  shift 2
+  local response curl_status
+  local curl_args=(
+    -s -o /dev/null -w '%{http_code}' --max-time 5
+    -H 'Connection: Upgrade' -H 'Upgrade: websocket'
+    -H 'Sec-WebSocket-Version: 13'
+    -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ=='
+    -H "Sec-WebSocket-Protocol: $protocol"
+    -H "Origin: ${url%/*}"
+  )
+  if (( $# )); then
+    curl_args+=(-H "X-VibeStack-Proxy: $1")
+  fi
+  response="$(curl "${curl_args[@]}" "$url")"
+  curl_status=$?
+  printf '%s:%s' "$response" "$curl_status"
+}
+direct_ws_forbidden() {
+  local protocol="$2" result
+  result="$(direct_ws_result "$@")"
+  # websockify returns an explicit 403. ttyd/libwebsockets 4.3 denies the
+  # header check by closing before an HTTP response, which curl reports as
+  # exactly 000/52. Both are positive rejection signals, not broad failures.
+  [[ "$result" == "403:0" || ( "$protocol" == "tty" && "$result" == "000:52" ) ]]
+}
+STATE=~/.vibestack/setup.json
+
+echo "== Interfaces"
+check "AC-1 terminal page"      bash -c 'curl -fs http://localhost/terminal/ | grep -qi ttyd'
+check "AC-1 terminal websocket" ws http://localhost/terminal/ws tty
+check "AC-2 VibeStack desktop shell" bash -c 'curl -fs http://localhost/vnc/ | grep -q "VibeStack"'
+check "AC-2 noVNC RFB module"        bash -c 'curl -fs http://localhost/novnc/core/rfb.js | grep -q "class RFB"'
+check "AC-2 vnc rfb banner"          bash -c 'curl -s -i --max-time 3 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Protocol: binary" -H "Origin: http://localhost" http://localhost/vnc/websockify | grep -aq "RFB 003"'
+check "AC-2 PWA manifest"             bash -c 'curl -fs http://localhost/manifest.webmanifest | python3 -c "import json,sys; d=json.load(sys.stdin); assert d[\"start_url\"] == \"/\" and d[\"display\"] == \"standalone\""'
+check "AC-2 service worker"           bash -c 'curl -fs http://localhost/service-worker.js | grep -q "addEventListener"'
+check "AC-18 isolated worker cache"   bash -c 'curl -fs http://localhost/service-worker.js | grep -Eq "vibestack-desktop-[0-9a-f]{16}" && ! curl -fs http://localhost/service-worker.js | grep -q __VIBESTACK_SHELL_CACHE_VERSION__'
+check "AC-4 install icons"             bash -c 'curl -fs http://localhost/icons/icon-192.png | python3 -c "import struct,sys; d=sys.stdin.buffer.read(); assert d[:8] == b\"\\x89PNG\\r\\n\\x1a\\n\" and struct.unpack(\">II\", d[16:24]) == (192,192)" && curl -fs http://localhost/icons/icon-512.png | python3 -c "import struct,sys; d=sys.stdin.buffer.read(); assert struct.unpack(\">II\", d[16:24]) == (512,512)"'
+check "AC-4 content security policy"   bash -c 'curl -s -D - -o /dev/null http://localhost/vnc/ | grep -qi "^content-security-policy:"'
+check "AC-40 compressed shell assets"  bash -c 'curl -s -H "Accept-Encoding: gzip" -D - -o /dev/null http://localhost/vnc/app.js | grep -qi "^content-encoding: gzip"'
+check "AC-5 stock UI not linked"       bash -c '! curl -fs http://localhost/vnc/ | grep -q "vnc.html"'
+check "AC-5 stock UI blocked"           bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" http://localhost/novnc/vnc.html) == 404 ]]'
+check "AC-3 / serves workspace launcher" bash -c 'curl -fs http://localhost/ | grep -F "Where do you want to start" >/dev/null'
+check "AC-48 external agent guide matches image" bash -c '
+  curl -fs http://localhost/AGENTS.md | cmp - /usr/share/doc/vibestack/AGENTS.md
+'
+check "AC-48 external automation guide matches image" bash -c '
+  curl -fs http://localhost/AUTOMATION.md | cmp - /usr/share/doc/vibestack/AUTOMATION.md
+'
+check "AC-48 markdown guide content type" bash -c '
+  curl -s -D - -o /dev/null http://localhost/AGENTS.md |
+    grep -qi "^content-type: text/markdown; charset=utf-8"
+'
+check "AC-48 canonical internal agent guide" bash -c '
+  [[ -L /AGENTS.md && $(readlink /AGENTS.md) == /usr/share/doc/vibestack/AGENTS.md &&
+     -L /home/vibe/AGENTS.md && $(readlink /home/vibe/AGENTS.md) == /usr/share/doc/vibestack/AGENTS.md ]]
+'
+check "AC-4 relative redirects"   bash -c 'curl -s -D - -o /dev/null -H "Host: vibe.tailnet.ts.net:9999" http://localhost/vnc | grep -qi "^location: /vnc/"'
+check "AC-41 unknown Host rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Host: attacker.example" http://127.0.0.1/) == 421 ]]'
+check "AC-41 terminal cross-origin WS rejected" ws_cross_origin_rejected http://localhost/terminal/ws tty
+check "AC-41 VNC cross-origin WS rejected" ws_cross_origin_rejected http://localhost/vnc/websockify binary
+check "AC-41 cross-origin static rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Origin: https://attacker.example" http://localhost/vnc/) == 403 ]]'
+check "AC-41 cross-site setup rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: http://localhost" -H "Sec-Fetch-Site: same-site" --data "{}" http://localhost/setup/api/install) == 403 ]]'
+check "AC-44 direct websockify missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary
+check "AC-44 direct websockify wrong proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary wrong
+check "AC-44 direct ttyd missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:7681/ws tty
+for p in /ui/ /admin/ /mcp; do
+  check "AC-5 $p is 404" bash -c "[[ \$(curl -s -o /dev/null -w '%{http_code}' http://localhost$p) == 404 ]]"
+done
+
+echo "== Desktop automation API"
+if $DO_AUTOMATION; then
+  check "AC-33 through AC-39 full automation" vibestack-automation-check --mutating
+else
+  check "AC-33 through AC-39 automation surface" vibestack-automation-check
+fi
+
+echo "== Desktop control API"
+check "AC-11 status contract" bash -c 'curl -fs http://localhost/api/v1/status | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+assert d[\"apiVersion\"] == \"1\"
+assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"terminal\",\"setup\"}
+assert {\"uptimeSeconds\",\"disk\",\"display\"} <= set(d)
+"'
+check "AC-11 API no-store" bash -c 'curl -s -D - -o /dev/null http://localhost/api/v1/status | grep -qi "^cache-control: no-store"'
+check "AC-16 bounded logs" bash -c 'curl -fs "http://localhost/api/v1/logs/vnc?limit=2" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+assert d[\"service\"] == \"vnc\" and len(d[\"lines\"]) <= 2
+assert isinstance(d[\"nextCursor\"], int) and isinstance(d[\"reset\"], bool)
+"'
+check "AC-13 unknown service rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/logs/nginx) == 404 ]]'
+check "AC-14 cross-origin mutation rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://example.invalid" --data "{}" http://localhost/api/v1/services/vnc/restart) == 403 ]]'
+check "AC-17 out-of-bounds resolution rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X PUT -H "Content-Type: application/json" --data "{\"resolution\":\"632x480\"}" http://localhost/api/v1/display) == 400 ]]'
+
+restart_service() {
+  local service="$1" response
+  response="$(curl -fs -X POST -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data '{}' "http://localhost/api/v1/services/${service}/restart")" || return 1
+  python3 -c 'import json,sys; expected=sys.argv[1]; data=json.load(sys.stdin); assert data["service"] == expected and data["state"] == "RUNNING" and data["restarted"] is True' "$service" <<<"$response"
+}
+
+if $DO_RESTART; then
+  for service in vnc terminal setup desktop; do
+    check "AC-10 restart ${service}" restart_service "$service"
+  done
+fi
+
+set_resolution() {
+  local mode="$1" response
+  response="$(curl -fs -X PUT -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data "{\"resolution\":\"${mode}\"}" http://localhost/api/v1/display)" || return 1
+  python3 -c 'import json,sys; expected=sys.argv[1]; assert json.load(sys.stdin)["resolution"] == expected' "$mode" <<<"$response"
+}
+
+if $DO_DISPLAY; then
+  initial_resolution="$(curl -fs http://localhost/api/v1/display | python3 -c 'import json,sys; print(json.load(sys.stdin)["resolution"])')"
+  for mode in 1280x800 1368x768 1440x900 1600x900 1600x1200 1920x1200; do
+    check "AC-17 display ${mode}" set_resolution "$mode"
+  done
+  check "AC-17 restore ${initial_resolution}" set_resolution "$initial_resolution"
+fi
+
+if [[ "$LIVE_INSTANCE" == "false" ]]; then
+  echo "== Slim base"
+  # Every optional component must be absent from a fresh image. Driven by the
+  # catalog probes so a new component is covered without editing this script.
+  check "AC-22 no components preinstalled" bash -c 'python3 -c "
+import subprocess, sys
+sys.path.insert(0, \"/usr/share/vibestack\")
+import setuplib as lib
+present = lib.installed_ids(lib.load_catalog())
+assert not present, \"preinstalled: \" + \" \".join(present)
+"'
+  check "AC-22 no npm in base"      bash -c '! command -v npm'
+  check "AC-22 desktop automation"  bash -c 'command -v scrot && command -v xauth && command -v xclip && command -v xdotool && command -v xprop && command -v wmctrl && command -v xrandr'
+else
+  echo "== Slim base"
+  echo "SKIP  AC-22 fresh-image package assertions (--live)"
+fi
+
+echo "== Setup service"
+check "AC-23 supervisor program"  bash -c 'supervisorctl -c /etc/supervisor/supervisord.conf status vibestack-setup 2>/dev/null | grep -q RUNNING || pgrep -f "vibestack/server.py" >/dev/null'
+check "AC-23 wizard served"       bash -c 'curl -fs "http://localhost/setup/?force=1" | grep -q "VibeStack"'
+check "AC-23 assets served"       bash -c 'curl -fs http://localhost/setup/style.css >/dev/null && curl -fs http://localhost/setup/app.js >/dev/null'
+check "AC-23 state api"           bash -c 'curl -fs http://localhost/setup/api/state | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+assert d[\"catalog\"][\"components\"], \"no components\"
+assert isinstance(d[\"catalog\"][\"runtime_capabilities\"], list)
+for c in d[\"catalog\"][\"components\"]:
+    for k in (\"id\",\"name\",\"description\",\"probe\",\"group\",\"requires\"): assert k in c, (c.get(\"id\"),k)
+assert isinstance(d[\"installed\"], list) and \"state\" in d and \"job\" in d
+assert set(d[\"authentication\"]) == {\"password_configured\", \"sudo_password_required\"}
+assert isinstance(d[\"authentication\"][\"password_configured\"], bool)
+assert d[\"authentication\"][\"sudo_password_required\"] is True
+"'
+check "AC-47 password status agrees with root helper" bash -c '
+api=$(curl -fs http://localhost/setup/api/state)
+helper=$(sudo -n /usr/local/bin/vibestack-password status)
+python3 -c "import json,sys; api=json.loads(sys.argv[1]); helper=json.loads(sys.argv[2]); assert api[\"authentication\"][\"password_configured\"] == helper[\"password_configured\"]" "$api" "$helper"
+'
+check "AC-47 account lock follows password state" bash -c '
+configured=$(sudo -n /usr/local/bin/vibestack-password status | python3 -c "import json,sys; print(str(json.load(sys.stdin)[\"password_configured\"]).lower())")
+set -- $(passwd --status vibe)
+shadow_state=$2
+if [[ "$configured" == true ]]; then [[ "$shadow_state" == P ]]; else [[ "$shadow_state" == L ]]; fi
+'
+check "AC-24 catalog matches installer" bash -c '
+ids=$(python3 -c "
+import json;print(\" \".join(c[\"id\"] for c in json.load(open(\"/usr/share/vibestack/catalog.json\"))[\"components\"]))")
+for id in $ids; do grep -qE "^\s+${id}\)" /usr/local/bin/vibestack-install || { echo "no installer for $id"; exit 1; }; done'
+check "AC-24 presets reference real ids" bash -c 'python3 -c "
+import json
+d=json.load(open(\"/usr/share/vibestack/catalog.json\"))
+ids={c[\"id\"] for c in d[\"components\"]}
+for p in d[\"presets\"]:
+    missing=[c for c in p[\"components\"] if c not in ids]
+    assert not missing, (p[\"id\"], missing)
+for c in d[\"components\"]:
+    assert all(r in ids for r in c[\"requires\"]), c[\"id\"]
+"'
+check "AC-24 dependency resolution" bash -c 'python3 -c "
+import sys; sys.path.insert(0,\"/usr/share/vibestack\")
+import setuplib as lib
+order=lib.resolve(lib.load_catalog(), [\"claude-code\"])
+assert order.index(\"node\") < order.index(\"claude-code\"), order
+"'
+check "AC-49 Flatpak runtime gate is fail-closed" bash -c 'python3 -c "
+import os, sys
+sys.path.insert(0, \"/usr/share/vibestack\")
+import setuplib as lib
+catalog=lib.catalog_for_runtime(lib.load_catalog())
+flatpak=lib.by_id(catalog)[\"flatpak\"]
+marked=os.path.isfile(\"/run/vibestack/host/flatpak-enabled\")
+assert flatpak[\"supported\"] is marked
+assert (\"nested-sandbox\" in catalog[\"runtime_capabilities\"]) is marked
+"'
+if command -v flatpak >/dev/null 2>&1; then
+  check "AC-49 Flatpak reference and URL handlers" bash -c '
+    [[ $(xdg-mime query default application/vnd.flatpak.ref) == vibestack-flatpakref.desktop ]] &&
+    grep -Fxq "MimeType=application/vnd.flatpak.ref;" /usr/share/applications/vibestack-flatpakref.desktop &&
+    grep -Fq "flatpak-ref %f" /usr/share/applications/vibestack-flatpakref.desktop &&
+    [[ $(xdg-mime query default x-scheme-handler/flatpak+https) == vibestack-flatpak-url.desktop ]] &&
+    grep -Fxq "MimeType=x-scheme-handler/flatpak+https;" /usr/share/applications/vibestack-flatpak-url.desktop &&
+    grep -Fq "flatpak-url %u" /usr/share/applications/vibestack-flatpak-url.desktop
+  '
+fi
+
+echo "== Setup CLI and state"
+check "AC-25 cli status"   vibestack-setup status
+check "AC-25 cli list"     bash -c 'vibestack-setup list | grep -q claude-code'
+check "AC-25 rejects junk" bash -c '! vibestack-setup install not-a-component'
+if [[ "$LIVE_INSTANCE" == "true" ]]; then
+  echo "SKIP  AC-26 setup state mutation (--live)"
+elif [[ -f "$STATE" ]]; then
+  echo "SKIP  AC-13 setup already complete; not exercising skip/reset"
+else
+  check "AC-26 skip writes state" bash -c 'vibestack-setup skip >/dev/null && grep -q "\"completed\": true" '"$STATE"
+  check "AC-26 state in user root" bash -c '[[ -f "$HOME/.vibestack/setup.json" ]]'
+  if [[ "$(sudo -n /usr/local/bin/vibestack-password status | python3 -c 'import json,sys; print(str(json.load(sys.stdin)["password_configured"]).lower())')" == true ]]; then
+    check "AC-26 configured setup redirects to launcher" bash -c 'curl -s -D - -o /dev/null http://localhost/setup/ | grep -qiE "^location: /\r?$"'
+  else
+    check "AC-26 locked account stays in onboarding" bash -c 'curl -fs http://localhost/setup/ | grep -q "Create your Linux password"'
+  fi
+  check "AC-26 force shows wizard" bash -c 'curl -fs "http://localhost/setup/?force=1" | grep -q VibeStack'
+  check "AC-26 reset restores wizard" bash -c 'vibestack-setup reset >/dev/null && [[ ! -f '"$STATE"' ]] && curl -fs http://localhost/setup/ | grep -q VibeStack'
+fi
+
+echo "== Persistence"
+if mountpoint -q /data; then
+  for entry in \
+    .vibestack:vibestack \
+    .claude:claude \
+    .claude.json:claude.json \
+    .codex:codex \
+    .config/opencode:opencode-config \
+    .local/share/opencode:opencode \
+    .config/google-chrome:chrome \
+    .config/Claude:claude-desktop \
+    .config/Codex:chatgpt \
+    .local/share/flatpak:flatpak \
+    .var/app:flatpak-apps \
+    .config/godot:godot-config \
+    .local/share/godot:godot-data \
+    .local/share/keyrings:keyrings \
+    .gitconfig:gitconfig \
+    .bash_history:bash_history; do
+    home_path="${entry%%:*}"
+    data_path="${entry#*:}"
+    check "AC-27 ~/${home_path} -> /data/${data_path}" bash -c "[[ -L ~/${home_path} && \$(readlink ~/${home_path}) == /data/${data_path} ]]"
+  done
+else
+  echo "SKIP  AC-27 /data not mounted"
+fi
+
+if command -v google-chrome-stable >/dev/null 2>&1; then
+  check "AC-45 HTTP opens in Chrome" bash -c '[[ $(xdg-mime query default x-scheme-handler/http) == google-chrome.desktop ]]'
+  check "AC-45 HTTPS opens in Chrome" bash -c '[[ $(xdg-mime query default x-scheme-handler/https) == google-chrome.desktop ]]'
+  check "AC-45 HTML opens in Chrome" bash -c '[[ $(xdg-mime query default text/html) == google-chrome.desktop ]]'
+  check "AC-45 XFCE browser is Chrome" bash -c '[[ $(XDG_CURRENT_DESKTOP=XFCE xdg-settings get default-web-browser) == google-chrome.desktop ]]'
+  check "AC-45 Chrome launchers are wrapped" bash -c '
+    grep -q "^Exec=/usr/local/bin/vibestack-app " /usr/share/applications/google-chrome.desktop &&
+    { [[ ! -f /usr/share/applications/com.google.Chrome.desktop ]] ||
+      grep -q "^Exec=/usr/local/bin/vibestack-app " /usr/share/applications/com.google.Chrome.desktop; }
+  '
+  check "AC-45 XFCE Chrome helper is wrapped" bash -c '
+    helper=/usr/share/xfce4/helpers/google-chrome.desktop
+    grep -Fxq "X-XFCE-Binaries=vibestack-app;" "$helper" &&
+    grep -Fxq "X-XFCE-Commands=%B /usr/bin/google-chrome-stable;" "$helper" &&
+    grep -Fxq "X-XFCE-CommandsWithParameter=%B /usr/bin/google-chrome-stable \"%s\";" "$helper"
+  '
+fi
+if command -v chatgpt >/dev/null 2>&1; then
+  check "AC-45 ChatGPT keeps its callback handler" bash -c 'grep -Eq "^MimeType=([^;]*;)*x-scheme-handler/codex(;|$)" /usr/share/applications/chatgpt.desktop'
+  check "AC-45 ChatGPT is not a web handler" bash -c '! grep -Eq "x-scheme-handler/https?(;|$)" /usr/share/applications/chatgpt.desktop'
+fi
+
+echo "== Session"
+# A tested desktop restart creates a fresh D-Bus/keyring session. Use the
+# environment written by that new session rather than the one sourced above.
+[[ -f /run/vibestack/session.env ]] && source /run/vibestack/session.env
+check "AC-29 keyring running"  pgrep -u vibe -x gnome-keyring-d
+if [[ "$LIVE_INSTANCE" == "true" ]]; then
+  echo "SKIP  AC-29 persistent keyring write probe (--live)"
+else
+  check "AC-29 keyring unlocked" timeout 15 bash -c 'echo -n x | secret-tool store --label=vibestack-probe vibestack probe && secret-tool lookup vibestack probe | grep -q x'
+fi
+check "AC-29 window manager"   pgrep -x xfwm4
+check "AC-29 desktop running"  pgrep -x xfdesktop
+check "AC-29 welcome banner"   bash -c 'vibestack-welcome | grep -q "/setup/"'
+
+if $DO_INSTALL; then
+  echo "== Install flow (mutates the container)"
+  check "AC-30 install editors" vibestack-setup install editors
+  check "AC-30 probe flips"     bash -c 'command -v geany && command -v meld'
+  check "AC-30 difftool set"    bash -c '[[ $(git config --global diff.tool) == meld ]]'
+  check "AC-30 shortcut added"  test -x ~/Desktop/geany.desktop
+  check "AC-30 state records it" bash -c 'curl -fs http://localhost/setup/api/state | grep -q editors'
+fi
+
+echo "== Auto-restore"
+check "AC-30 no missing components" bash -c 'python3 -c "
+import sys; sys.path.insert(0, \"/usr/share/vibestack\")
+import setuplib as lib
+cat = lib.load_catalog(); state = lib.load_state()
+missing = lib.missing_for_state(cat, state)
+assert not missing, \"still missing: \" + \" \".join(missing)
+"'
+
+echo
+echo "passed=$pass failed=$fail"
+[[ $fail -eq 0 ]]

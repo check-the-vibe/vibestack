@@ -1,129 +1,50 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd /
 
-# Ensure script is running as root
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Error: entrypoint.sh must be run as root to set user passwords. Exiting."
-    exit 1
+# Establish root-owned persistent log boundaries and fresh per-boot X11 state
+# before any unprivileged process starts. The helper fails closed on symlinks,
+# hard links, mount crossings, special files, or raced path components.
+/usr/local/bin/vibestack-bootstrap
+
+# Publish host-selected container capabilities through a fresh root-owned
+# marker. The parent runtime tree is recreated on every boot, so an
+# unprivileged process cannot make setup mistake a shell environment override
+# for the Docker security policy selected by startup.sh.
+if [[ "${VIBESTACK_FLATPAK_ENABLED:-0}" == "1" ]]; then
+  /usr/bin/install -d -o root -g root -m 0755 /run/vibestack/host
+  /usr/bin/install -o root -g root -m 0444 /dev/null \
+    /run/vibestack/host/flatpak-enabled
 fi
 
-# Set up passwords at startup
-setup_passwords() {
-    # Set root password (randomize if not provided via environment)
-    if [ -z "$ROOT_PASSWORD" ]; then
-        # Optionally generate a random password here if desired
-        echo "Warning: ROOT_PASSWORD not set. Using default 'root'."
-        ROOT_PASSWORD="root"
-    fi
-    echo "root:$ROOT_PASSWORD" | chpasswd
-    
-    # Set vibe user password (use environment variable or default to 'coding')
-    if [ -z "$VIBE_PASSWORD" ]; then
-        VIBE_PASSWORD="coding"
-    fi
-    echo "vibe:$VIBE_PASSWORD" | chpasswd
-    echo "Set vibe user password"
-}
+# A new image starts with the desktop account locked. Reapply only the
+# root-owned salted hash from persistent state; when none exists, explicitly
+# keep the account locked so arbitrary sudo cannot be used before onboarding.
+/usr/local/bin/vibestack-password restore >/dev/null
 
-# Set up passwords on first run
-setup_passwords
+# Everything beneath the user's persistent state roots is managed only after
+# dropping privileges. In particular, never recursively chown /data or the
+# separately mounted /projects tree.
+/usr/sbin/runuser -u vibe -- /usr/local/bin/vibestack-persist
 
-touch /home/vibe/.sudo_as_admin_successful
+# X11 is reachable only through its per-boot MIT-MAGIC-COOKIE. Keep all
+# session-discovery state under /run so stale credentials never survive a boot.
+runtime_dir=/run/vibestack
+xauthority_file="$runtime_dir/Xauthority"
+x_cookie="$(/usr/bin/od -An -N16 -tx1 /dev/urandom | /usr/bin/tr -d ' \n')"
+/usr/bin/xauth -f "$xauthority_file" add :0 MIT-MAGIC-COOKIE-1 "$x_cookie"
+unset x_cookie
+/usr/bin/chown root:vibe "$xauthority_file"
+/usr/bin/chmod 0640 "$xauthority_file"
 
-# Ensure Python tooling can import the vibestack package
-export VIBESTACK_HOME="${VIBESTACK_HOME:-/home/vibe}"
-if [[ -z "${PYTHONPATH:-}" ]]; then
-    export PYTHONPATH="${VIBESTACK_HOME}"
-else
-    export PYTHONPATH="${VIBESTACK_HOME}:${PYTHONPATH}"
+# The API token lives inside the already-persistent ~/.vibestack directory.
+# The no-follow helper runs as vibe, and its routine output (the path only) is
+# suppressed so startup never discloses credential material.
+/usr/sbin/runuser -u vibe -- /usr/local/bin/vibestack-api-token ensure >/dev/null
+
+# Unattended boots (CI, rebuilds of a known-good image) can bypass the wizard.
+if [[ "${VIBESTACK_SKIP_SETUP:-}" == "1" ]]; then
+  /usr/sbin/runuser -u vibe -- /usr/local/bin/vibestack-setup skip >/dev/null 2>&1 || true
 fi
 
-# Configure optional Codex state directory
-setup_codex_state() {
-    local candidate_dirs=()
-    if [[ -n "${CODEX_STATE_DIR:-}" ]]; then
-        candidate_dirs+=("${CODEX_STATE_DIR}")
-    fi
-    candidate_dirs+=("/projects/codex" "${VIBESTACK_HOME}/codex")
-
-    local source_dir=""
-    for dir in "${candidate_dirs[@]}"; do
-        if [[ -n "${dir}" && -d "${dir}" ]]; then
-            source_dir="${dir}"
-            break
-        fi
-    done
-
-    if [[ -n "${source_dir}" ]]; then
-        mkdir -p "${source_dir}"
-        if [[ -e /home/vibe/.codex && ! -L /home/vibe/.codex ]]; then
-            rm -rf /home/vibe/.codex
-        fi
-        ln -snf "${source_dir}" /home/vibe/.codex
-        chown -h vibe:vibe /home/vibe/.codex
-        echo "Using Codex state directory: ${source_dir}"
-    else
-        mkdir -p /home/vibe/.codex
-        chown vibe:vibe /home/vibe/.codex
-    fi
-}
-
-# Prepare session workspace
-mkdir -p "${VIBESTACK_HOME}/sessions"
-chown vibe:vibe "${VIBESTACK_HOME}/sessions"
-setup_codex_state
-
-# Create base URL configuration file for services
-configure_base_url() {
-    local base_url="${VIBESTACK_PUBLIC_BASE_URL:-}"
-    local config_file="/etc/vibestack/base_url.conf"
-    
-    mkdir -p /etc/vibestack
-    
-    if [[ -n "${base_url}" ]]; then
-        echo "export VIBESTACK_PUBLIC_BASE_URL='${base_url}'" > "${config_file}"
-        echo "[entrypoint] Configured public base URL: ${base_url}"
-    else
-        echo "# No base URL configured" > "${config_file}"
-    fi
-    
-    chmod 644 "${config_file}"
-}
-
-configure_base_url
-
-# Configure chrome extension with base URL
-if [[ -x /home/vibe/bin/vibestack-configure-extension ]]; then
-    /home/vibe/bin/vibestack-configure-extension
-fi
-
-# Configure Codex callback upstream for nginx
-configure_codex_callback() {
-    local port="${CODEX_CALLBACK_PORT:-1455}"
-    mkdir -p /etc/nginx/conf.d
-    cat > /etc/nginx/conf.d/codex_callback_upstream.conf <<EOF
-upstream codex_callback {
-    server 127.0.0.1:${port};
-    keepalive 16;
-}
-EOF
-}
-
-configure_codex_callback
-
-# If no arguments provided, run supervisord (default behavior)
-if [ $# -eq 0 ]; then
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
-fi
-
-# If 'claude' is the argument, run it as vibe user
-if [ "$1" = "claude" ]; then
-    exec su - vibe -c "claude"
-fi
-
-# If 'bash' is the argument, run interactive shell as vibe user
-if [ "$1" = "bash" ]; then
-    exec su - vibe
-fi
-
-# Otherwise, execute the provided command
 exec "$@"

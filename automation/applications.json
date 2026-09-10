@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "applications": [
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "argv": ["/usr/bin/xfce4-terminal"],
+      "requires": ["/usr/bin/xfce4-terminal"],
+      "wm_classes": ["xfce4-terminal.Xfce4-terminal"]
+    },
+    {
+      "id": "files",
+      "name": "Files",
+      "argv": ["/usr/bin/thunar"],
+      "requires": ["/usr/bin/thunar"],
+      "wm_classes": ["thunar.Thunar"]
+    },
+    {
+      "id": "settings",
+      "name": "Settings",
+      "argv": ["/usr/bin/xfce4-settings-manager"],
+      "requires": ["/usr/bin/xfce4-settings-manager"],
+      "wm_classes": ["xfce4-settings-manager.Xfce4-settings-manager"]
+    },
+    {
+      "id": "chrome",
+      "name": "Google Chrome",
+      "argv": ["/usr/local/bin/vibestack-app", "/usr/bin/google-chrome-stable"],
+      "requires": ["/usr/local/bin/vibestack-app", "/usr/bin/google-chrome-stable"],
+      "wm_classes": ["google-chrome.Google-chrome", "google-chrome-stable.Google-chrome"]
+    },
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "argv": ["/usr/local/bin/vibestack-app", "/usr/bin/claude-desktop"],
+      "requires": ["/usr/local/bin/vibestack-app", "/usr/bin/claude-desktop"],
+      "wm_classes": [
+        "claude-desktop.com.anthropic.Claude",
+        "claude-desktop.Claude",
+        "claude.com.anthropic.Claude"
+      ]
+    },
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "argv": ["/usr/local/bin/vibestack-app", "/usr/bin/chatgpt"],
+      "requires": ["/usr/local/bin/vibestack-app", "/usr/bin/chatgpt"],
+      "wm_classes": [
+        "chatgpt (/home/vibe/.config/Codex).Chatgpt",
+        "chatgpt.Chatgpt"
+      ]
+    },
+    {
+      "id": "mousepad",
+      "name": "Mousepad",
+      "argv": ["/usr/bin/mousepad"],
+      "requires": ["/usr/bin/mousepad"],
+      "wm_classes": ["mousepad.Mousepad"]
+    },
+    {
+      "id": "geany",
+      "name": "Geany",
+      "argv": ["/usr/bin/geany"],
+      "requires": ["/usr/bin/geany"],
+      "wm_classes": ["geany.Geany"]
+    }
+  ]
+}

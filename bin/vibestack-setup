@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Terminal control for the VibeStack setup wizard.
+
+  vibestack-setup status              show state and what is installed
+  vibestack-setup install <id>...     install components now
+  vibestack-setup skip                mark setup done, install nothing
+  vibestack-setup reset               run the wizard again on next visit
+  vibestack-setup list                print catalog ids
+"""
+
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, "/usr/share/vibestack")
+import setuplib as lib  # noqa: E402
+
+
+def cmd_status():
+    catalog = lib.catalog_for_runtime(lib.load_catalog())
+    state = lib.load_state()
+    installed = lib.installed_ids(catalog)
+    missing = lib.missing_for_state(catalog, state)
+    print("setup:     %s" % ("complete" if state["completed"] else "pending"))
+    if state["completed"]:
+        print("completed: %s%s" % (state.get("completed_at") or "unknown",
+                                   " (skipped)" if state.get("skipped") else ""))
+    print("state file: %s" % lib.STATE_PATH)
+    print("selected:  %s" % (" ".join(state.get("selected") or []) or "none"))
+    print("installed: %s" % (" ".join(installed) or "none"))
+    if missing:
+        print("missing:   %s" % " ".join(missing))
+    print()
+    for component in catalog["components"]:
+        mark = "x" if component["id"] in installed else " "
+        print("  [%s] %-15s %s" % (mark, component["id"], component["name"]))
+    return 0
+
+
+def cmd_install(ids):
+    if not ids:
+        print("usage: vibestack-setup install <id>...", file=sys.stderr)
+        return 2
+    try:
+        job_lock_fd = lib.acquire_install_job_lock(blocking=False)
+    except lib.StateError as exc:
+        print("setup: %s" % exc.message, file=sys.stderr)
+        return 1
+    try:
+        catalog = lib.catalog_for_runtime(lib.load_catalog())
+        known = {c["id"] for c in catalog["components"]}
+        unknown = [i for i in ids if i not in known]
+        if unknown:
+            print("unknown component(s): %s" % " ".join(unknown), file=sys.stderr)
+            return 2
+        ordered = lib.resolve(catalog, ids)
+        index = lib.by_id(catalog)
+        unsupported = [
+            component
+            for component in ordered
+            if not lib.component_supported(index[component])
+        ]
+        if unsupported:
+            print(
+                "unavailable in this VibeStack runtime (%s): %s"
+                % (catalog["architecture"], " ".join(unsupported)),
+                file=sys.stderr,
+            )
+            return 2
+        argv = ["/usr/local/bin/vibestack-install"] + ordered
+        if os.geteuid() != 0:
+            argv = ["sudo", "-n"] + argv
+        try:
+            rc = subprocess.call(argv)
+        except OSError as exc:
+            print("installer could not start: %s" % exc, file=sys.stderr)
+            rc = 1
+        installed = lib.installed_ids(catalog)
+        _state, converged = lib.record_install_outcome(ordered, installed, rc == 0)
+    finally:
+        lib.release_install_job_lock(job_lock_fd)
+    return rc if rc != 0 else (0 if converged else 1)
+
+
+def cmd_skip():
+    try:
+        with lib.install_job_lock(blocking=False):
+            state = lib.mark_complete([], skipped=True)
+    except lib.StateError as exc:
+        print("setup: %s" % exc.message, file=sys.stderr)
+        return 1
+    print("setup marked complete; nothing installed")
+    print("state file: %s" % lib.STATE_PATH)
+    return 0 if state["completed"] else 1
+
+
+def cmd_reset():
+    try:
+        with lib.install_job_lock(blocking=False):
+            lib.clear_state()
+    except lib.StateError as exc:
+        print("setup: %s" % exc.message, file=sys.stderr)
+        return 1
+    print("state cleared; the wizard runs again at /setup/")
+    return 0
+
+
+def cmd_list():
+    catalog = lib.catalog_for_runtime(lib.load_catalog())
+    for component in catalog["components"]:
+        suffix = "" if component["supported"] else " [unavailable in this runtime]"
+        print("%-15s %s%s" % (component["id"], component["name"], suffix))
+    return 0
+
+
+def main(argv):
+    command = argv[0] if argv else "status"
+    if command in ("-h", "--help", "help"):
+        print(__doc__.strip())
+        return 0
+    handlers = {
+        "status": lambda: cmd_status(),
+        "install": lambda: cmd_install(argv[1:]),
+        "skip": lambda: cmd_skip(),
+        "reset": lambda: cmd_reset(),
+        "list": lambda: cmd_list(),
+    }
+    if command not in handlers:
+        print("unknown command: %s\n" % command, file=sys.stderr)
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+    return handlers[command]()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

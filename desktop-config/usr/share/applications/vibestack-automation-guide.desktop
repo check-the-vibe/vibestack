@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Automation Guide
+Comment=Read how local and remote agents can automate this desktop
+Exec=/usr/local/bin/vibestack-desktop-action automation-guide
+Icon=help-browser
+Terminal=false
+StartupNotify=true
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

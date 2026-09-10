@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Cheap container health probe: ask Supervisor once instead of polling every
+# HTTP surface. A process in STARTING, BACKOFF, EXITED, or FATAL is unhealthy.
+set -euo pipefail
+
+readonly SUPERVISORCTL=/usr/bin/supervisorctl
+readonly SUPERVISOR_CONFIG=/etc/supervisor/supervisord.conf
+readonly -a REQUIRED_PROGRAMS=(
+  dbus-system
+  xvfb
+  x11vnc
+  novnc
+  xfce4
+  ttyd
+  vibestack-setup
+  vibestack-control
+  vibestack-automation
+  nginx
+)
+
+if ! status="$(${SUPERVISORCTL} -c "${SUPERVISOR_CONFIG}" status "${REQUIRED_PROGRAMS[@]}" 2>&1)"; then
+  printf '%s\n' "$status" >&2
+  exit 1
+fi
+
+failed=false
+seen=0
+while read -r program state _; do
+  ((seen += 1))
+  if [[ "$state" != "RUNNING" ]]; then
+    printf '%s is %s\n' "$program" "$state" >&2
+    failed=true
+  fi
+done <<<"$status"
+
+if (( seen != ${#REQUIRED_PROGRAMS[@]} )); then
+  echo "Supervisor returned an incomplete service list" >&2
+  exit 1
+fi
+
+[[ "$failed" == "false" ]]

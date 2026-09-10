@@ -1,25 +1,108 @@
-# Repository Guidelines
+# VibeStack repository instructions
 
-## Project Structure & Module Organization
-The Python application lives in `vibestack/`, with `api.py` exposing session helpers, `rest/` wrapping the FastAPI gateway, `mcp/` enabling Model Context Protocol adapters, and `sessions/` managing tmux-backed jobs. The Streamlit control surface sits in `streamlit_app/` (`app.py`, shared utilities in `common.py`, feature pages under `pages/`). Operational scripts reside in `bin/`, documentation in `docs/`, reusable examples in `examples/`, and automated checks in `tests/`—use `tests/test_api_functional.py` as the reference layout when adding suites.
+VibeStack is a single-user, Docker-hosted Ubuntu/XFCE desktop for coding agents.
+The browser-facing entrypoint is nginx on container port 80. It routes the
+custom noVNC shell, ttyd terminal, setup wizard, and versioned control API. A
+separate bearer-authenticated automation API has the full command authority of
+the `vibe` account.
 
-## Build, Test & Development Commands
-- `./startup.sh [follow]` rebuilds the Docker image, restarts supervised services, and optionally tails logs.
-- `python -m streamlit run streamlit_app/app.py` launches the UI locally without the rest of the stack.
-- `bin/vibe list|create|attach` executes the session CLI against the in-repo code without installing a package.
-- `pytest -q` runs all automated tests; add `-k pattern` or `tests/<file>.py::test_case` for focused runs.
+Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
+that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,
+runtime path, dependency, security boundary, or operator workflow changes.
 
-## Coding Style & Naming Conventions
-Target Python 3.10 with four-space indentation, docstrings for public helpers, and type hints on new code (mirroring `vibestack/api.py`). Modules, functions, and files stay snake_case; classes use PascalCase; CLI flags use kebab-case. Format Python with a PEP 8–compatible tool (Black or Ruff-format) before sending a review.
+## Source map
 
-## Testing Guidelines
-Place new tests in `tests/` using `test_<feature>.py`; prefer descriptive function names such as `test_queue_job__returns_metadata`. Pair functional additions to the REST or Streamlit layers with at least one integration assertion, and capture edge cases with unit tests near the helper you touched. Document any manual verification steps in `TASKS.md` when automation is not feasible.
+- `Dockerfile`, `entrypoint.sh`, `supervisord.conf`, `nginx.conf`: image and
+  long-running service topology.
+- `desktop/`: dependency-free browser shell using upstream noVNC RFB modules.
+- `control/`: Python standard-library API and its OS-facing backend.
+- `automation/`: privileged REST API, Desktop file boundary, and job runner.
+- `desktop-config/`: curated XFCE menu and fixed desktop actions.
+- `runtime/`: default global guidance seeded for in-container coding agents.
+- `setup/`: setup wizard and catalog state.
+- `bin/`: in-image helpers plus the host-only `vibestack-dev` workflow helper.
+- `xfce-startup`: X11, D-Bus, keyring, display-mode, and XFCE session setup.
+- `tests/`: Python contract/unit tests and Playwright browser tests.
+- `docs/architecture/`, `docs/research/`: design contracts and evidence.
 
-## Commit & Pull Request Guidelines
-Write concise, imperative commit subjects (`add streamlit session filter`). In pull requests, describe the user-facing impact, list validation commands (e.g., `pytest -q`), and attach screenshots or log excerpts for UI or service changes. Link related TASKS.md items or external issues so handoffs stay traceable, and update docs (`docs/README.md`, `docs/services/...`) whenever defaults, ports, or env vars move.
+## Required workflow
 
-## Configuration & Security Tips
-Never commit real credentials; add new settings to `.env.example` and mention them in the README. After editing `configure-user.sh` or `supervisord.conf`, confirm ports still match `nginx.conf`. Keep persistent state under `/projects` or `/data/codex` so container rebuilds do not discard it.
+1. Inspect `git status --short`; this repository may contain intentional
+   in-progress changes. Never discard or overwrite unrelated work.
+2. Run `bin/vibestack-dev test` before and after source changes.
+3. Build a tagged candidate with `bin/vibestack-dev build vibestack:<tag>`.
+4. Validate it without touching the live container using
+   `bin/vibestack-dev accept vibestack:<tag>`.
+5. Only replace the live `vibestack` container after the candidate passes.
+   Reuse the existing `/data` and `/projects` mounts; inspect them first.
+6. Run `bin/vibestack-dev check` and the Tailscale HTTPS browser path after
+   deployment. Record any physical-device-only verification explicitly.
 
-## Codex MCP Servers
-See `.docs/codex-mcp-servers.md` for the workflow that adds STDIO MCP servers (including the default Playwright integration) to session-scoped `config.toml` files. Configure the public base URL exposed to MCP via the Streamlit **MCP** page when tunnels or hostnames change.
+The live service normally binds to host loopback port 8080 and is shared
+privately with Tailscale Serve. Do not change it to `0.0.0.0`, use Funnel, or
+publish it to the public internet without explicit authorization. The
+terminal, setup, desktop stream, and narrow control API rely on that private
+network boundary. Automation additionally requires its persistent bearer
+token. The setup surface can set or replace `vibe`'s Linux password without the
+old value; ordinary sudo is password-authenticated, while only the three fixed
+VibeStack helpers are `NOPASSWD`.
+
+## Implementation rules
+
+- Target Ubuntu 24.04 and Python 3.12 from the image; use only the Python
+  standard library in the setup/control services unless the image contract is
+  deliberately changed.
+- Keep browser/HTTP input out of shell strings. Prefer fixed executable paths,
+  argv arrays, strict schemas, bounded bodies/output, timeouts, and explicit
+  allowlists or scoped roots.
+- Run desktop commands as `vibe` after sourcing
+  `/run/vibestack/session.env`; it provides `DISPLAY=:0`, Xauthority, D-Bus,
+  keyring, and the established XDG runtime directory.
+- Preserve the loopback nginx boundary and same-origin checks. Treat any new
+  automation endpoint as privileged remote code execution and document its
+  trust model before exposing it.
+- Never recursively change ownership of `/data`; `/data/projects` may be a
+  host source tree with ownership that must remain unchanged.
+- Keep logs and API responses bounded. Avoid credentials, clipboard/file
+  contents, command text/output, and request bodies in shared logs; render
+  remote text with text-safe DOM APIs. The canonical persistent log tree is
+  `/data/logs/vibestack`.
+- Never add a default password or pass one through an environment variable,
+  argv, log, agent prompt, or source fixture. The user sets it through the
+  same-origin setup body; only the root-private hash below
+  `/data/.vibestack-auth-v1` may persist. Live validation is status-only.
+- Keep the shell dependency-free and use only public noVNC APIs. Do not expose
+  upstream `vnc.html` or enable noVNC `resizeSession` without revisiting the
+  architecture contract.
+- Keep `/usr/share/doc/vibestack/AGENTS.md`, the root `/AGENTS.md` HTTP route,
+  and `docs/AUTOMATION.md` aligned whenever the web, menu, automation, logging,
+  package-install, or persistence contract changes. Default local-agent files
+  should link to the immutable packaged guide so new images cannot leave stale
+  instructions in persistent state; never replace an existing user override.
+- Flatpak support is an explicit runtime policy, not a base-container default.
+  Stable Flathub is the only automatically configured remote. The setup
+  catalog and privileged installer must require the fresh root-owned marker at
+  `/run/vibestack/host/flatpak-enabled`; an environment variable alone is not
+  authority. Keep the default launcher confined, and keep `--flatpak` free of
+  `--privileged` and added Linux capabilities.
+
+## Validation
+
+Fast checks:
+
+```bash
+bin/vibestack-dev test
+```
+
+Full disposable image checks:
+
+```bash
+npm ci
+npx playwright install chromium
+bin/vibestack-dev build vibestack:dev
+bin/vibestack-dev accept vibestack:dev
+```
+
+Use focused tests while iterating, but finish with the full commands above.
+For UI work, verify both desktop and iPad-sized Playwright projects and inspect
+the real custom shell through the private HTTPS Tailscale URL.

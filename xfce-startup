@@ -1,42 +1,90 @@
 #!/bin/bash
-# XFCE4 startup for VibeStack - supports interactive and programmatic usage
+# XFCE4 session for the VibeStack browser desktop.
 export DISPLAY=:0
+export XDG_CURRENT_DESKTOP=XFCE
+export XDG_SESSION_TYPE=x11
+export XDG_CONFIG_HOME="$HOME/.config" XDG_CACHE_HOME="$HOME/.cache" XDG_DATA_HOME="$HOME/.local/share"
+export XDG_DATA_DIRS="$XDG_DATA_HOME/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+mkdir -p "$XDG_CONFIG_HOME/xfce4" "$XDG_CACHE_HOME" "$XDG_DATA_HOME"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/vibestack/runtime}"
+export XAUTHORITY="${XAUTHORITY:-/run/vibestack/Xauthority}"
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
 
-# Start D-Bus session for desktop services
-if ! pgrep -u "$USER" dbus-daemon >/dev/null 2>&1; then
-  eval $(dbus-launch --sh-syntax)
-  echo "$DBUS_SESSION_BUS_ADDRESS" > /tmp/dbus-session-address
+# D-Bus session for desktop services
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+  eval "$(dbus-launch --sh-syntax)"
 fi
 
-# Load X resources
-xrdb -merge ~/.Xresources 2>/dev/null || true
+# Keyring with an empty password so Chrome and Electron apps can store
+# credentials through libsecret. There is no login manager to unlock it, and
+# the daemon does not create the login keyring on its own, so seed it.
+KEYRINGS="$XDG_DATA_HOME/keyrings"
+mkdir -p "$KEYRINGS"
+if [[ ! -f "$KEYRINGS/login.keyring" ]]; then
+  printf '[keyring]\ndisplay-name=Login\nctime=0\nmtime=0\nlock-on-idle=false\nlock-after=false\n' > "$KEYRINGS/login.keyring"
+  chmod 600 "$KEYRINGS/login.keyring"
+fi
+[[ -f "$KEYRINGS/default" ]] || printf 'login' > "$KEYRINGS/default"
+eval "$(printf '' | gnome-keyring-daemon --unlock --replace --components=secrets --daemonize 2>/dev/null)"
+export GNOME_KEYRING_CONTROL
 
-# Start XFCE4 settings daemon (for theme, fonts, keyboard)
-/usr/lib/x86_64-linux-gnu/xfce4/xfconf/xfconfd &
+# Desktop automation and launchers consume one canonical, private snapshot of
+# the live X11/D-Bus session. Write it atomically so readers never source a
+# partially updated file.
+SESSION_ENV_FILE=/run/vibestack/session.env
+session_env_tmp="${SESSION_ENV_FILE}.$$"
+{
+  printf 'export DISPLAY=%q\n' "$DISPLAY"
+  printf 'export XAUTHORITY=%q\n' "$XAUTHORITY"
+  printf 'export XDG_RUNTIME_DIR=%q\n' "$XDG_RUNTIME_DIR"
+  printf 'export XDG_CURRENT_DESKTOP=%q\n' "$XDG_CURRENT_DESKTOP"
+  printf 'export XDG_SESSION_TYPE=%q\n' "$XDG_SESSION_TYPE"
+  printf 'export XDG_CONFIG_HOME=%q\n' "$XDG_CONFIG_HOME"
+  printf 'export XDG_CACHE_HOME=%q\n' "$XDG_CACHE_HOME"
+  printf 'export XDG_DATA_HOME=%q\n' "$XDG_DATA_HOME"
+  printf 'export XDG_DATA_DIRS=%q\n' "$XDG_DATA_DIRS"
+  printf 'export DBUS_SESSION_BUS_ADDRESS=%q\n' "$DBUS_SESSION_BUS_ADDRESS"
+  printf 'export GNOME_KEYRING_CONTROL=%q\n' "${GNOME_KEYRING_CONTROL:-}"
+} > "$session_env_tmp"
+chmod 600 "$session_env_tmp"
+mv -f "$session_env_tmp" "$SESSION_ENV_FILE"
 
-# Disable screensaver/power management (important for automation)
+# No screensaver or power management on a virtual display
 xset s off
 xset -dpms
 xset s noblank
 
-# Start panel (taskbar)
+# Give the browser shell a small, predictable resolution allowlist. Xvfb only
+# advertises its boot mode by default; x11vnc watches these RandR modes and
+# publishes framebuffer changes to connected clients.
+display_output="$(xrandr --query 2>/dev/null | awk '/ connected/{print $1; exit}')"
+add_display_mode() {
+  local mode="$1" width="${1%x*}" height="${1#*x}"
+  local generated
+  local -a timing=()
+  [[ -n "$display_output" ]] || return 0
+  if xrandr --query | awk -v wanted="$mode" '$1 == wanted { found=1 } END { exit !found }'; then
+    return 0
+  fi
+  generated="$(cvt "$width" "$height" 60 2>/dev/null | awk '/^Modeline / {$1=""; $2=""; sub(/^  */, ""); print; exit}')"
+  [[ -n "$generated" ]] || return 0
+  read -r -a timing <<<"$generated"
+  xrandr --newmode "$mode" "${timing[@]}" 2>/dev/null || true
+  xrandr --addmode "$display_output" "$mode" 2>/dev/null || true
+}
+for display_mode in 1280x800 1368x768 1440x900 1600x900 1600x1200 1920x1200; do
+  add_display_mode "$display_mode"
+done
+
+xfsettingsd --daemon 2>/dev/null || true
+xfconf-query --channel xfwm4 --property /general/use_compositing \
+  --create --type bool --set false 2>/dev/null || true
+xfwm4 --compositor=off --replace &
+sleep 1
 xfce4-panel --disable-wm-check &
-
-# Start desktop manager (icons, wallpaper)
 xfdesktop --disable-wm-check &
+# The first-run banner comes from ~/.bashrc, so a plain interactive terminal
+# shows it exactly once.
+xfce4-terminal --hide-menubar --hide-scrollbar --geometry=100x30 &
 
-# Start window manager (compositor disabled for performance)
-xfwm4 --compositor=off --daemon --replace &
-
-# Start terminal emulator (useful for debugging)
-xfce4-terminal --hide-menubar --hide-scrollbar --geometry=80x24 &
-
-# For MCP/Playwright automation: ensure accessibility is enabled
-export GTK_MODULES=gail:atk-bridge
-export NO_AT_BRIDGE=0
-
-# Wait for window manager
-sleep 2
-
-# Keep session alive
 wait

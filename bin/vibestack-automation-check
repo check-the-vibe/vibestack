@@ -1,0 +1,505 @@
+#!/usr/bin/env python3
+"""End-to-end checks for VibeStack's authenticated desktop automation API.
+
+The default probe is safe for a running workspace: it discovers capabilities,
+lists applications/windows, and captures a transient screenshot.  ``--mutating``
+adds reversible command, file, clipboard, application, and window exercises and
+is intended for the disposable acceptance container.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import http.client
+import json
+import os
+import stat
+import struct
+import sys
+import time
+import uuid
+from pathlib import Path
+from urllib.parse import quote, urlsplit
+
+
+API_PREFIX = "/api/v1/automation"
+TOKEN_PATH = Path("/home/vibe/.vibestack/automation.token")
+DESKTOP = Path("/home/vibe/Desktop")
+AUDIT_LOG = Path("/data/logs/vibestack/automation-audit.jsonl")
+ACCESS_LOG = Path("/data/logs/vibestack/nginx/access.jsonl")
+TERMINAL_JOB_STATES = {"succeeded", "failed", "timed_out", "cancelled", "interrupted"}
+
+
+class CheckFailure(RuntimeError):
+    pass
+
+
+class Client:
+    def __init__(self, base_url: str, token: str):
+        parsed = urlsplit(base_url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise CheckFailure("VIBESTACK_AUTOMATION_URL must be an HTTP(S) origin")
+        if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+            raise CheckFailure("VIBESTACK_AUTOMATION_URL must not include a path")
+        self.scheme = parsed.scheme
+        self.host = parsed.hostname
+        self.port = parsed.port
+        self.token = token
+
+    def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        body: bytes | None = None,
+        content_type: str | None = None,
+        headers: dict[str, str] | None = None,
+        authenticated: bool = True,
+    ) -> tuple[int, dict[str, str], bytes]:
+        connection_type = (
+            http.client.HTTPSConnection if self.scheme == "https" else http.client.HTTPConnection
+        )
+        connection = connection_type(self.host, self.port, timeout=30)
+        request_headers = dict(headers or {})
+        if authenticated:
+            request_headers["Authorization"] = "Bearer " + self.token
+        if content_type is not None:
+            request_headers["Content-Type"] = content_type
+        try:
+            connection.request(method, path, body=body, headers=request_headers)
+            response = connection.getresponse()
+            response_body = response.read()
+            response_headers = {name.lower(): value for name, value in response.getheaders()}
+            return response.status, response_headers, response_body
+        finally:
+            connection.close()
+
+    def json(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: object | None = None,
+        expected: tuple[int, ...] = (200,),
+        headers: dict[str, str] | None = None,
+        authenticated: bool = True,
+    ) -> tuple[dict[str, object], dict[str, str]]:
+        body = None
+        content_type = None
+        if payload is not None:
+            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+            content_type = "application/json"
+        status, response_headers, response_body = self.request(
+            method,
+            path,
+            body=body,
+            content_type=content_type,
+            headers=headers,
+            authenticated=authenticated,
+        )
+        if status not in expected:
+            raise CheckFailure(
+                "%s %s returned %d: %s"
+                % (method, path, status, response_body[:300].decode("utf-8", "replace"))
+            )
+        try:
+            value = json.loads(response_body)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise CheckFailure("%s %s did not return JSON" % (method, path)) from exc
+        if not isinstance(value, dict):
+            raise CheckFailure("%s %s returned a non-object JSON value" % (method, path))
+        return value, response_headers
+
+
+def require(condition: object, message: str) -> None:
+    if not condition:
+        raise CheckFailure(message)
+
+
+def read_token(path: Path) -> str:
+    info = path.stat()
+    require(stat.S_ISREG(info.st_mode), "automation token is not a regular file")
+    require(info.st_nlink == 1, "automation token has multiple hard links")
+    require(stat.S_IMODE(info.st_mode) == 0o600, "automation token mode is not 0600")
+    token = path.read_text(encoding="ascii").strip()
+    require(32 <= len(token) <= 512 and not any(char.isspace() for char in token), "invalid token")
+    return token
+
+
+def check_headers(headers: dict[str, str]) -> str:
+    require(headers.get("cache-control") == "no-store", "response is not marked no-store")
+    request_id = headers.get("x-request-id", "")
+    require(bool(request_id), "response has no X-Request-ID")
+    return request_id
+
+
+def wait_for_job(client: Client, job_id: str) -> dict[str, object]:
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        payload, _ = client.json("GET", "%s/jobs/%s" % (API_PREFIX, job_id))
+        job = payload.get("job")
+        require(isinstance(job, dict), "job response is malformed")
+        if job.get("status") in TERMINAL_JOB_STATES:
+            return job
+        time.sleep(0.1)
+    raise CheckFailure("automation job did not finish")
+
+
+def wait_for_running_job(client: Client, job_id: str) -> dict[str, object]:
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        payload, _ = client.json("GET", "%s/jobs/%s" % (API_PREFIX, job_id))
+        job = payload.get("job")
+        require(isinstance(job, dict), "job response is malformed")
+        status = job.get("status")
+        if status == "running":
+            return job
+        if status in TERMINAL_JOB_STATES:
+            raise CheckFailure("cancel job finished before it was observed running")
+        require(status == "queued", "cancel job has an unknown status")
+        time.sleep(0.1)
+    raise CheckFailure("cancel job was not observed running")
+
+
+def run_job(client: Client, route: str, payload: dict[str, object], expected_output: bytes) -> None:
+    created, headers = client.json("POST", API_PREFIX + route, payload=payload, expected=(202,))
+    check_headers(headers)
+    job = created.get("job")
+    require(isinstance(job, dict) and isinstance(job.get("id"), str), "job creation is malformed")
+    job_id = str(job["id"])
+    finished = wait_for_job(client, job_id)
+    require(finished.get("status") == "succeeded", "job did not succeed: %r" % finished)
+    output, _ = client.json(
+        "GET", "%s/jobs/%s/output?stream=stdout&cursor=0&limit=65536" % (API_PREFIX, job_id)
+    )
+    require(output.get("encoding") == "base64", "job output encoding is not base64")
+    try:
+        decoded = base64.b64decode(str(output.get("data", "")), validate=True)
+    except (ValueError, TypeError) as exc:
+        raise CheckFailure("job output is not valid base64") from exc
+    require(decoded == expected_output, "job output did not match")
+    require(output.get("eof") is True, "job output is not complete")
+
+
+def log_contains(path: Path, request_id: str, key: str) -> bool:
+    candidates = [path] + [Path(str(path) + ".%d" % index) for index in range(1, 5)]
+    for candidate in candidates:
+        try:
+            with candidate.open("rb") as source:
+                size = source.seek(0, os.SEEK_END)
+                source.seek(max(0, size - 256 * 1024))
+                if source.tell():
+                    source.readline()
+                for raw_line in source:
+                    try:
+                        record = json.loads(raw_line)
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        continue
+                    if isinstance(record, dict) and record.get(key) == request_id:
+                        return True
+        except (FileNotFoundError, PermissionError):
+            continue
+    return False
+
+
+def wait_for_logs(request_id: str) -> None:
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if log_contains(AUDIT_LOG, request_id, "request_id") and log_contains(
+            ACCESS_LOG, request_id, "requestId"
+        ):
+            return
+        time.sleep(0.25)
+    raise CheckFailure("request ID was not correlated in automation and nginx logs")
+
+
+def check_read_only(client: Client) -> None:
+    unauthorized, _, body = client.request("GET", API_PREFIX, authenticated=False)
+    require(unauthorized == 401, "automation discovery is not bearer protected")
+    error = json.loads(body)
+    require(error.get("code") == "unauthorized", "unauthorized error contract is malformed")
+
+    real_token = client.token
+    try:
+        client.token = "invalid-automation-token"
+        unauthorized, _, _ = client.request("GET", API_PREFIX)
+        require(unauthorized == 401, "an incorrect bearer token was accepted")
+    finally:
+        client.token = real_token
+
+    forbidden, _, _ = client.request(
+        "POST",
+        API_PREFIX + "/screenshot",
+        body=b"{}",
+        content_type="application/json",
+        headers={"Origin": "https://example.invalid"},
+    )
+    require(forbidden == 403, "cross-origin automation request was accepted")
+
+    capabilities, headers = client.json("GET", API_PREFIX)
+    request_id = check_headers(headers)
+    require(capabilities.get("api_version") == "1", "unexpected automation API version")
+    routes = capabilities.get("routes")
+    require(isinstance(routes, dict) and len(routes) >= 9, "capability routes are incomplete")
+
+    applications, _ = client.json("GET", API_PREFIX + "/applications")
+    require(isinstance(applications.get("applications"), list), "applications list is malformed")
+    windows, _ = client.json("GET", API_PREFIX + "/windows")
+    require(isinstance(windows.get("windows"), list), "windows list is malformed")
+
+    status, screenshot_headers, screenshot = client.request(
+        "POST",
+        API_PREFIX + "/screenshot",
+        body=b"{}",
+        content_type="application/json",
+    )
+    require(status == 200, "transient screenshot failed with status %d" % status)
+    require(screenshot_headers.get("content-type", "").startswith("image/png"), "screenshot is not PNG")
+    require(screenshot[:8] == b"\x89PNG\r\n\x1a\n" and len(screenshot) >= 24, "invalid PNG signature")
+    width, height = struct.unpack(">II", screenshot[16:24])
+    require(width >= 640 and height >= 480, "screenshot dimensions are unexpectedly small")
+    wait_for_logs(request_id)
+
+
+def check_files(client: Client, stem: str) -> None:
+    name = stem + ".bin"
+    encoded = quote(name, safe="")
+    path = API_PREFIX + "/files/" + encoded
+    expected = b"VibeStack\x00automation\xffbinary\r\n"
+    local_path = DESKTOP / name
+    symlink_path = DESKTOP / (stem + ".link")
+    try:
+        status, headers, body = client.request(
+            "PUT",
+            path,
+            body=expected,
+            content_type="application/octet-stream",
+            headers={"If-None-Match": "*"},
+        )
+        require(status == 201, "new Desktop file did not return 201")
+        metadata = json.loads(body).get("file")
+        require(isinstance(metadata, dict) and metadata.get("size") == len(expected), "file metadata is wrong")
+        etag = str(metadata.get("etag", ""))
+        require(bool(etag), "file response omitted ETag metadata")
+        request_id = check_headers(headers)
+
+        status, get_headers, received = client.request("GET", path)
+        require(status == 200 and received == expected, "binary Desktop file did not round-trip")
+        require(get_headers.get("etag") == etag, "file ETag changed unexpectedly")
+
+        status, head_headers, head_body = client.request("HEAD", path)
+        require(status == 200 and head_body == b"", "Desktop HEAD contract failed")
+        require(int(head_headers.get("content-length", "-1")) == len(expected), "HEAD length is wrong")
+
+        status, range_headers, selected = client.request("GET", path, headers={"Range": "bytes=2-7"})
+        require(status == 206 and selected == expected[2:8], "Desktop byte range is wrong")
+        require(range_headers.get("content-range") == "bytes 2-7/%d" % len(expected), "range metadata is wrong")
+
+        status, _, _ = client.request("GET", path, headers={"If-None-Match": etag})
+        require(status == 304, "If-None-Match did not return 304")
+        status, _, _ = client.request(
+            "PUT",
+            path,
+            body=b"should-not-replace",
+            content_type="application/octet-stream",
+            headers={"If-None-Match": "*"},
+        )
+        require(status == 412 and local_path.read_bytes() == expected, "write precondition was not enforced")
+
+        symlink_path.symlink_to("/etc/passwd")
+        symlink_api_path = API_PREFIX + "/files/" + quote(symlink_path.name, safe="")
+        status, _, _ = client.request("GET", symlink_api_path)
+        require(status == 403, "Desktop file endpoint followed a symbolic link")
+        status, _, _ = client.request("GET", API_PREFIX + "/files/%2e%2e/etc/passwd")
+        require(400 <= status < 500, "Desktop file endpoint accepted traversal")
+        wait_for_logs(request_id)
+    finally:
+        for cleanup_path in (local_path, symlink_path):
+            try:
+                cleanup_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def check_saved_screenshot(client: Client, stem: str) -> None:
+    name = stem + ".png"
+    path = DESKTOP / name
+    try:
+        response, _ = client.json(
+            "POST", API_PREFIX + "/screenshot", payload={"filename": name}, expected=(201,)
+        )
+        metadata = response.get("file")
+        require(isinstance(metadata, dict) and metadata.get("path") == name, "saved screenshot metadata is wrong")
+        require(path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", "saved screenshot is not PNG")
+    finally:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def check_clipboard(client: Client) -> None:
+    status, _, original = client.request("GET", API_PREFIX + "/clipboard")
+    had_original = status == 200
+    require(status in (200, 409), "unexpected initial clipboard status")
+    sentinel = ("vibestack-clipboard-check-" + uuid.uuid4().hex).encode("utf-8")
+    try:
+        status, _, body = client.request(
+            "PUT",
+            API_PREFIX + "/clipboard",
+            body=sentinel,
+            content_type="text/plain; charset=utf-8",
+        )
+        require(status == 200 and json.loads(body).get("bytes") == len(sentinel), "clipboard write failed")
+        status, _, current = client.request("GET", API_PREFIX + "/clipboard")
+        require(status == 200 and current == sentinel, "clipboard text did not round-trip")
+    finally:
+        # A disposable image with no prior CLIPBOARD owner is left with an
+        # empty selection. Existing user text is always restored byte-for-byte.
+        replacement = original if had_original else b""
+        status, _, _ = client.request(
+            "PUT",
+            API_PREFIX + "/clipboard",
+            body=replacement,
+            content_type="text/plain; charset=utf-8",
+        )
+        require(status == 200, "clipboard state could not be restored")
+
+
+def application_by_id(payload: dict[str, object], app_id: str) -> dict[str, object] | None:
+    applications = payload.get("applications")
+    if not isinstance(applications, list):
+        return None
+    for application in applications:
+        if isinstance(application, dict) and application.get("id") == app_id:
+            return application
+    return None
+
+
+def check_application_and_window(client: Client) -> None:
+    initial, _ = client.json("GET", API_PREFIX + "/applications")
+    selected = None
+    for app_id in ("files", "settings", "terminal"):
+        application = application_by_id(initial, app_id)
+        if application and application.get("installed") is True and application.get("running") is False:
+            selected = app_id
+            break
+    require(selected is not None, "no idle core application is available for lifecycle testing")
+    started = False
+    try:
+        response, _ = client.json(
+            "POST", "%s/applications/%s/start" % (API_PREFIX, selected), payload={}
+        )
+        require(response.get("started") is True, "catalog application was not started")
+        started = True
+        deadline = time.monotonic() + 15
+        window_id = None
+        while time.monotonic() < deadline:
+            current, _ = client.json("GET", API_PREFIX + "/applications")
+            application = application_by_id(current, selected)
+            windows = application.get("windows") if application else None
+            if isinstance(windows, list) and windows:
+                first = windows[0]
+                if isinstance(first, str):
+                    window_id = first
+                    break
+            time.sleep(0.2)
+        require(window_id is not None, "started application did not expose a window")
+        for state_name in ("maximized", "minimized", "normal"):
+            response, _ = client.json(
+                "POST",
+                "%s/windows/%s/state" % (API_PREFIX, window_id),
+                payload={"state": state_name},
+            )
+            require(isinstance(response.get("window"), dict), "window state response is malformed")
+            time.sleep(0.15)
+    finally:
+        if started and selected is not None:
+            client.json("POST", "%s/applications/%s/stop" % (API_PREFIX, selected), payload={})
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                current, _ = client.json("GET", API_PREFIX + "/applications")
+                application = application_by_id(current, selected)
+                if application and application.get("running") is False:
+                    break
+                time.sleep(0.2)
+            else:
+                raise CheckFailure("catalog application window did not close")
+
+
+def check_cancel_and_timeout(client: Client) -> None:
+    created, _ = client.json(
+        "POST",
+        API_PREFIX + "/commands",
+        payload={"argv": ["/usr/bin/sleep", "30"], "timeout_seconds": 30},
+        expected=(202,),
+    )
+    job = created.get("job")
+    require(isinstance(job, dict) and isinstance(job.get("id"), str), "cancel job is malformed")
+    wait_for_running_job(client, str(job["id"]))
+    cancelled, _ = client.json(
+        "POST", "%s/jobs/%s/cancel" % (API_PREFIX, job["id"]), payload={}
+    )
+    require(isinstance(cancelled.get("job"), dict), "cancel response is malformed")
+    finished = wait_for_job(client, str(job["id"]))
+    require(finished.get("status") == "cancelled", "job cancellation did not converge")
+
+    created, _ = client.json(
+        "POST",
+        API_PREFIX + "/commands",
+        payload={"argv": ["/usr/bin/sleep", "2"], "timeout_seconds": 1},
+        expected=(202,),
+    )
+    job = created.get("job")
+    require(isinstance(job, dict) and isinstance(job.get("id"), str), "timeout job is malformed")
+    finished = wait_for_job(client, str(job["id"]))
+    require(finished.get("status") == "timed_out", "job timeout did not converge")
+
+
+def check_mutating(client: Client) -> None:
+    stem = "vibestack-automation-check-" + uuid.uuid4().hex
+    run_job(
+        client,
+        "/commands",
+        {"argv": ["/usr/bin/printf", "vibestack-command-ok"], "timeout_seconds": 10},
+        b"vibestack-command-ok",
+    )
+    run_job(
+        client,
+        "/shell",
+        {
+            "command": "test \"$DISPLAY\" = :0 && printf vibestack-shell-ok",
+            "timeout_seconds": 10,
+        },
+        b"vibestack-shell-ok",
+    )
+    check_cancel_and_timeout(client)
+    check_files(client, stem)
+    check_saved_screenshot(client, stem)
+    check_clipboard(client)
+    check_application_and_window(client)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mutating", action="store_true", help="run reversible full API checks")
+    args = parser.parse_args()
+    try:
+        token = read_token(Path(os.environ.get("AUTOMATION_TOKEN_FILE", TOKEN_PATH)))
+        client = Client(os.environ.get("VIBESTACK_AUTOMATION_URL", "http://127.0.0.1"), token)
+        check_read_only(client)
+        print("PASS  automation authentication, discovery, desktop lists, screenshot, and correlated logs")
+        if args.mutating:
+            check_mutating(client)
+            print("PASS  automation commands, shell, files, clipboard, applications, and window states")
+        else:
+            print("SKIP  reversible automation mutations (use --mutating in a disposable container)")
+        return 0
+    except (CheckFailure, OSError, ValueError, json.JSONDecodeError) as exc:
+        print("FAIL  automation API: %s" % exc, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

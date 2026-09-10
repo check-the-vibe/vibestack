@@ -1,0 +1,391 @@
+#!/usr/bin/env bash
+# Opinionated per-user Flatpak workflow for VibeStack's stable Flathub remote.
+set -euo pipefail
+
+readonly FLATHUB_REPO=https://dl.flathub.org/repo/flathub.flatpakrepo
+readonly FLATHUB_URL=https://dl.flathub.org/repo/
+readonly SESSION_ENV=/run/vibestack/session.env
+readonly CAPABILITY_MARKER=/run/vibestack/host/flatpak-enabled
+readonly APP_ID_PATTERN='^[A-Za-z0-9][A-Za-z0-9._-]{2,254}$'
+
+usage() {
+  cat <<'USAGE'
+usage: vibestack-flatpak COMMAND [ARG]
+
+Commands:
+  status              show runtime support, remotes, and installed apps
+  search TERMS...     search configured Flathub AppStream metadata
+  info APP_ID         inspect a stable Flathub app and its permissions
+  install APP_ID      review, then interactively install an exact app ID
+  install-ref FILE    validate a stable Flathub .flatpakref, then review/install
+  install-url URL     validate a stable Flathub install link, then review/install
+  run APP_ID          launch an installed app in the live desktop session
+  list                list installed per-user applications
+  update              interactively update apps and runtimes
+  uninstall APP_ID    interactively remove an exact app ID
+  remotes             list configured per-user software sources
+  history             show per-user Flatpak transaction history
+  check               verify that nested bubblewrap sandboxes work
+
+VibeStack configures stable Flathub only. Apps, runtimes, remotes, and app data
+are installed per-user and persist under /data. Installing third-party code or
+adding any other remote requires the user's approval.
+USAGE
+}
+
+require_flatpak() {
+  if ! command -v flatpak >/dev/null 2>&1 || ! command -v bwrap >/dev/null 2>&1; then
+    printf '%s\n' \
+      'Flatpak support is not installed.' \
+      'Start VibeStack with --flatpak, then install the flatpak catalog component from Setup.' >&2
+    return 127
+  fi
+}
+
+require_mode() {
+  local metadata
+  metadata="$(stat -c '%u:%g:%a:%h' -- "$CAPABILITY_MARKER" 2>/dev/null || true)"
+  if [[ ! -f "$CAPABILITY_MARKER" || -L "$CAPABILITY_MARKER" ||
+        "$metadata" != '0:0:444:1' ]]; then
+    printf '%s\n' \
+      'Flatpak applications need VibeStack nested-sandbox mode.' \
+      'Recreate this trusted private desktop with: ./startup.sh --flatpak' >&2
+    return 1
+  fi
+}
+
+check_app_id() {
+  local app_id="$1"
+  if [[ ! "$app_id" =~ $APP_ID_PATTERN || "$app_id" != *.*.* || "$app_id" == *..* ]]; then
+    printf 'Invalid Flatpak application ID: %s\n' "$app_id" >&2
+    return 2
+  fi
+}
+
+read_flathub_reference() {
+  local reference_file="$1"
+  /usr/bin/python3 -I - "$reference_file" "$FLATHUB_URL" <<'PY'
+import configparser
+import os
+import stat
+import sys
+
+path, expected_url = sys.argv[1:]
+maximum_size = 65_536
+
+try:
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW,
+    )
+except OSError as error:
+    raise SystemExit(f"Cannot open Flatpak reference: {error.strerror}") from None
+
+try:
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISREG(metadata.st_mode):
+        raise SystemExit("Flatpak reference must be a regular file")
+    if metadata.st_size < 1 or metadata.st_size > maximum_size:
+        raise SystemExit("Flatpak reference must be between 1 byte and 64 KiB")
+    with os.fdopen(descriptor, "rb", closefd=False) as stream:
+        data = stream.read(maximum_size + 1)
+finally:
+    os.close(descriptor)
+
+if len(data) > maximum_size:
+    raise SystemExit("Flatpak reference exceeds 64 KiB")
+try:
+    text = data.decode("utf-8", "strict")
+except UnicodeDecodeError:
+    raise SystemExit("Flatpak reference is not valid UTF-8") from None
+
+parser = configparser.ConfigParser(interpolation=None, strict=True)
+try:
+    parser.read_string(text)
+except configparser.Error as error:
+    raise SystemExit(f"Invalid Flatpak reference: {error}") from None
+
+if parser.sections() != ["Flatpak Ref"]:
+    raise SystemExit("Flatpak reference must contain one [Flatpak Ref] section")
+
+reference = parser["Flatpak Ref"]
+name = reference.get("Name", "").strip()
+url = reference.get("Url", "").strip()
+branch = reference.get("Branch", "").strip()
+is_runtime = reference.get("IsRuntime", "").strip().lower()
+if url.rstrip("/") != expected_url.rstrip("/"):
+    raise SystemExit("Only references from VibeStack's stable Flathub remote are accepted")
+if branch != "stable":
+    raise SystemExit("Only the stable Flathub branch is accepted")
+if is_runtime != "false":
+    raise SystemExit("The desktop handler accepts application references only")
+if not name:
+    raise SystemExit("Flatpak reference has no application ID")
+
+print(name)
+PY
+}
+
+read_flathub_install_url() {
+  local install_url="$1"
+  /usr/bin/python3 -I - "$install_url" <<'PY'
+import re
+import sys
+from urllib.parse import urlsplit
+
+raw = sys.argv[1]
+if len(raw.encode("utf-8")) > 2_048:
+    raise SystemExit("Flatpak install URL exceeds 2 KiB")
+if any(
+    character.isspace() or ord(character) < 0x20 or ord(character) == 0x7f
+    for character in raw
+):
+    raise SystemExit("Flatpak install URL contains whitespace or control characters")
+
+try:
+    parsed = urlsplit(raw)
+except ValueError as error:
+    raise SystemExit(f"Invalid Flatpak install URL: {error}") from None
+
+if parsed.scheme != "flatpak+https":
+    raise SystemExit("Only flatpak+https install links are accepted")
+if parsed.netloc != "dl.flathub.org":
+    raise SystemExit("Only stable Flathub install links are accepted")
+if parsed.query or parsed.fragment:
+    raise SystemExit("Flatpak install links must not contain a query or fragment")
+
+match = re.fullmatch(
+    r"/repo/appstream/([A-Za-z0-9][A-Za-z0-9._-]{2,254})\.flatpakref",
+    parsed.path,
+)
+if match is None:
+    raise SystemExit("Flatpak install link has an unsupported path")
+
+print("https://dl.flathub.org" + parsed.path)
+print(match.group(1))
+PY
+}
+
+load_session_environment() {
+  if [[ -r "$SESSION_ENV" ]]; then
+    # VibeStack writes this mode-0600 file from fixed session values.
+    # shellcheck disable=SC1090
+    source "$SESSION_ENV"
+  fi
+  export DISPLAY="${DISPLAY:-:0}"
+  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/vibestack/runtime}"
+  export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+  export XDG_DATA_DIRS="${XDG_DATA_DIRS:-$XDG_DATA_HOME/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share}"
+}
+
+check_nested_sandbox() {
+  require_flatpak
+  require_mode
+  bwrap \
+    --die-with-parent \
+    --unshare-user --unshare-pid --unshare-uts --unshare-ipc \
+    --ro-bind / / --proc /proc --dev /dev \
+    /usr/bin/true
+}
+
+ensure_flathub() {
+  local configured_url
+  require_flatpak
+  flatpak --user remote-add --if-not-exists flathub "$FLATHUB_REPO"
+  configured_url="$(
+    flatpak --user remotes --columns=name,url |
+      awk '$1 == "flathub" { print $2; exit }'
+  )"
+  if [[ "${configured_url%/}" != "${FLATHUB_URL%/}" ]]; then
+    printf 'Refusing unexpected URL for the existing flathub remote: %s\n' \
+      "${configured_url:-<missing>}" >&2
+    return 1
+  fi
+}
+
+show_flathub_remote_review() {
+  local app_id="$1"
+  check_app_id "$app_id"
+  flatpak --user remote-info --app flathub "$app_id"
+  printf '\nRequested permissions from stable Flathub metadata:\n\n'
+  flatpak --user remote-info --app --show-metadata flathub "$app_id" |
+    awk '
+      /^\[/ {
+        emit = ($0 == "[Context]" ||
+                $0 == "[Session Bus Policy]" ||
+                $0 == "[System Bus Policy]")
+      }
+      emit { print }
+    '
+}
+
+install_flathub_app() {
+  local app_id="$1"
+  check_app_id "$app_id"
+  require_mode
+  require_flatpak
+  check_nested_sandbox >/dev/null
+  ensure_flathub
+  show_flathub_remote_review "$app_id"
+  printf '\nReview publisher/verification at https://flathub.org/apps/%s\n\n' "$app_id"
+  flatpak --user install flathub "$app_id"
+}
+
+install_flathub_reference() {
+  local reference_file="$1" app_id
+  app_id="$(read_flathub_reference "$reference_file")" || return
+  check_app_id "$app_id" || return
+  printf 'Validated stable Flathub reference for %s.\n\n' "$app_id"
+  install_flathub_app "$app_id"
+}
+
+install_flathub_url() {
+  local install_url="$1" parsed_fields download_url expected_app_id
+  local reference_file actual_app_id operation_status
+  local -a parsed=()
+
+  parsed_fields="$(read_flathub_install_url "$install_url")" || return
+  mapfile -t parsed <<< "$parsed_fields"
+  [[ ${#parsed[@]} -eq 2 ]] || {
+    printf '%s\n' 'Invalid Flatpak install URL result' >&2
+    return 2
+  }
+  download_url="${parsed[0]}"
+  expected_app_id="${parsed[1]}"
+  check_app_id "$expected_app_id" || return
+
+  reference_file="$(/usr/bin/mktemp /tmp/vibestack-flatpakref.XXXXXX)" || return
+  if /usr/bin/curl \
+    --fail --silent --show-error \
+    --connect-timeout 10 --max-time 60 --max-filesize 65536 \
+    --proto '=https' \
+    --output "$reference_file" \
+    "$download_url"; then
+    :
+  else
+    operation_status=$?
+    /usr/bin/unlink -- "$reference_file" 2>/dev/null || true
+    return "$operation_status"
+  fi
+
+  if actual_app_id="$(read_flathub_reference "$reference_file")"; then
+    :
+  else
+    operation_status=$?
+    /usr/bin/unlink -- "$reference_file" 2>/dev/null || true
+    return "$operation_status"
+  fi
+  /usr/bin/unlink -- "$reference_file" 2>/dev/null || true
+
+  check_app_id "$actual_app_id" || return
+  if [[ "$actual_app_id" != "$expected_app_id" ]]; then
+    printf 'Flatpak install link ID does not match its reference: %s != %s\n' \
+      "$expected_app_id" "$actual_app_id" >&2
+    return 2
+  fi
+  printf 'Validated stable Flathub install link for %s.\n\n' "$actual_app_id"
+  install_flathub_app "$actual_app_id"
+}
+
+command_name="${1:-help}"
+shift || true
+
+case "$command_name" in
+  help|-h|--help)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    usage
+    ;;
+  check)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    check_nested_sandbox
+    printf 'Flatpak nested sandbox: ready\n'
+    ;;
+  status)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    require_flatpak
+    printf 'Flatpak version: %s\n' "$(flatpak --version)"
+    if check_nested_sandbox >/dev/null 2>&1; then
+      printf 'Nested sandbox: ready\n'
+    else
+      printf 'Nested sandbox: unavailable (start VibeStack with --flatpak)\n'
+    fi
+    printf '\nPer-user remotes:\n'
+    flatpak --user remotes --columns=name,title,url,filter || true
+    printf '\nInstalled per-user applications:\n'
+    flatpak --user list --app --columns=application,name,version,branch,origin || true
+    ;;
+  search)
+    [[ $# -ge 1 ]] || { usage >&2; exit 2; }
+    require_flatpak
+    ensure_flathub
+    flatpak --user search \
+      --columns=application,name,description,version,branch,remotes "$*"
+    ;;
+  info)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    check_app_id "$1"
+    require_flatpak
+    ensure_flathub
+    if flatpak --user info "$1" >/dev/null 2>&1; then
+      flatpak --user info --show-permissions "$1"
+    else
+      show_flathub_remote_review "$1"
+    fi
+    printf '\nPublisher and verification: https://flathub.org/apps/%s\n' "$1"
+    ;;
+  install)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    install_flathub_app "$1"
+    ;;
+  install-ref)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    install_flathub_reference "$1"
+    ;;
+  install-url)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    install_flathub_url "$1"
+    ;;
+  run)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    check_app_id "$1"
+    check_nested_sandbox >/dev/null
+    load_session_environment
+    exec flatpak --user run "$1"
+    ;;
+  list)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    require_flatpak
+    flatpak --user list --app --columns=application,name,version,branch,origin
+    ;;
+  update)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    check_nested_sandbox >/dev/null
+    ensure_flathub
+    flatpak --user update
+    ;;
+  uninstall)
+    [[ $# -eq 1 ]] || { usage >&2; exit 2; }
+    check_app_id "$1"
+    require_flatpak
+    flatpak --user uninstall "$1"
+    ;;
+  remotes)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    require_flatpak
+    flatpak --user remotes --columns=name,title,url,filter
+    ;;
+  history)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    require_flatpak
+    flatpak --user history
+    ;;
+  _ensure-flathub)
+    [[ $# -eq 0 ]] || { usage >&2; exit 2; }
+    require_mode
+    ensure_flathub
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

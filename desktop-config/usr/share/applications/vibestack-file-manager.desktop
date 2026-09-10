@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=File Manager
+Comment=Browse the VibeStack home directory
+Exec=/usr/local/bin/vibestack-desktop-action file-manager
+Icon=system-file-manager
+Terminal=false
+StartupNotify=true
+Categories=System;FileTools;FileManager;X-VibeStack-System;
+OnlyShowIn=XFCE;

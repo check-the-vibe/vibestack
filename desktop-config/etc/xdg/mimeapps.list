@@ -1,0 +1,7 @@
+[Default Applications]
+application/vnd.flatpak.ref=vibestack-flatpakref.desktop;
+x-scheme-handler/flatpak+https=vibestack-flatpak-url.desktop;
+
+[Added Associations]
+application/vnd.flatpak.ref=vibestack-flatpakref.desktop;
+x-scheme-handler/flatpak+https=vibestack-flatpak-url.desktop;

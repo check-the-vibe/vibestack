@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Service Status
+Comment=Inspect the current VibeStack services and desktop state
+Exec=/usr/local/bin/vibestack-desktop-action service-status
+Icon=utilities-system-monitor
+Terminal=false
+StartupNotify=true
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

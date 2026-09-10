@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Launch a Chromium/Electron app with the flags a container needs.
+#   vibestack-app /usr/bin/google-chrome-stable [args...]
+set -euo pipefail
+[[ $# -ge 1 ]] || { echo "usage: vibestack-app <binary> [args...]" >&2; exit 1; }
+bin="$1"; shift
+# Pick up the desktop session's D-Bus and keyring when launched from a shell.
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -f /run/vibestack/session.env ]]; then
+  source /run/vibestack/session.env
+elif [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" && -f /tmp/vibestack-session.env ]]; then
+  # Compatibility with images created before the protected runtime migration.
+  source /tmp/vibestack-session.env
+fi
+flags=(--no-first-run)
+# On XFCE Chromium defaults to an unencrypted store; use the keyring when it is up.
+if [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && pgrep -x gnome-keyring-d >/dev/null 2>&1; then
+  flags+=(--password-store=gnome-libsecret)
+fi
+# Chromium's sandbox needs unprivileged user namespaces; fall back if absent.
+if ! unshare -U true 2>/dev/null; then
+  flags+=(--no-sandbox)
+fi
+# Small /dev/shm (Docker default 64MB) crashes renderers.
+shm_kb=$(df -k /dev/shm 2>/dev/null | awk 'NR==2{print $2}')
+if [[ -n "${shm_kb:-}" && "${shm_kb}" -lt 524288 ]]; then
+  flags+=(--disable-dev-shm-usage)
+fi
+export DISPLAY="${DISPLAY:-:0}"
+exec "$bin" "${flags[@]}" "$@"

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Flathub Marketplace
+Comment=Browse stable Flatpak applications on Flathub
+Exec=/usr/local/bin/vibestack-desktop-action flathub
+Icon=system-software-install
+Terminal=false
+StartupNotify=true
+Categories=Network;Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=X-XFCE-Helper
+Name=Google Chrome
+Icon=google-chrome
+StartupNotify=true
+X-XFCE-Binaries=vibestack-app;
+X-XFCE-Category=WebBrowser
+X-XFCE-Commands=%B /usr/bin/google-chrome-stable;
+X-XFCE-CommandsWithParameter=%B /usr/bin/google-chrome-stable "%s";

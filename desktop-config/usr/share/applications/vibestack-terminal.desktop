@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Terminal
+Comment=Open a shell in the project workspace
+Exec=/usr/local/bin/vibestack-desktop-action terminal
+Icon=utilities-terminal
+Terminal=false
+StartupNotify=true
+Categories=System;TerminalEmulator;X-VibeStack-System;
+OnlyShowIn=XFCE;

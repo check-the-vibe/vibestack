@@ -1,0 +1,319 @@
+#!/usr/bin/env bash
+# Host-side development helper. This file is not copied into the image.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IMAGE_NAME="${VIBESTACK_IMAGE:-vibestack:dev}"
+CONTAINER_NAME="${VIBESTACK_CONTAINER:-vibestack}"
+HOST_PORT="${VIBESTACK_PORT:-8080}"
+ACCEPTANCE_PORT="${VIBESTACK_ACCEPTANCE_PORT:-18080}"
+ACCEPTANCE_RESTORE_TIMEOUT_SECONDS="${VIBESTACK_ACCEPTANCE_RESTORE_TIMEOUT_SECONDS:-3600}"
+TAILSCALE_HTTPS_PORT="${VIBESTACK_TAILSCALE_HTTPS_PORT:-9443}"
+PIDS_LIMIT="${VIBESTACK_PIDS_LIMIT:-1024}"
+
+usage() {
+  cat <<'EOF'
+Usage: bin/vibestack-dev COMMAND [ARG]
+
+  test                  Run fast source/unit checks (no container required)
+  build [IMAGE]         Build the development image
+  accept [IMAGE]        Test an image in a disposable container, including UI
+  browser [BASE_URL]    Run Playwright against an already-running VibeStack
+  check                 Run non-mutating in-container checks on the live container
+  status                Show container, HTTP health, and Tailscale Serve status
+  logs [NAME]           Tail container logs, or one named persistent log
+  shell                 Open a shell as the vibe user in the live container
+  serve [HTTPS_PORT]    Privately proxy the loopback HTTP port with Tailscale
+
+Configuration is read from VIBESTACK_* environment variables; see .env.example.
+EOF
+}
+
+require() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "missing required command: $1" >&2
+    exit 1
+  }
+}
+
+run_fast_tests() {
+  require python3
+  require node
+  (
+    cd "$REPO_ROOT"
+    python3 -m unittest discover -s tests -v
+    node --check desktop/app.js
+    node --check desktop/launcher.js
+    node --check desktop/service-worker.js
+    node --check setup/app.js
+    python3 -m py_compile \
+      automation/automationlib.py automation/server.py \
+      bin/vibestack-api-token bin/vibestack-automation-check bin/vibestack-bootstrap \
+      bin/vibestack-control bin/vibestack-password bin/vibestack-setup \
+      control/server.py proxy/websockify_auth.py setup/server.py setup/setuplib.py \
+      tests/runtime_onboarding_check.py
+    bash -n bin/vibestack-app bin/vibestack-check bin/vibestack-desktop-action bin/vibestack-dev \
+      bin/vibestack-flatpak \
+      bin/vibestack-healthcheck bin/vibestack-install bin/vibestack-persist \
+      bin/vibestack-welcome startup.sh xfce-startup entrypoint.sh
+    python3 -m json.tool desktop/manifest.webmanifest >/dev/null
+    git diff --check HEAD
+  )
+}
+
+run_browser_tests() {
+  local base_url="${1:-http://127.0.0.1:${HOST_PORT}}"
+  require npm
+  [[ -d "$REPO_ROOT/node_modules/@playwright/test" ]] || {
+    echo "browser dependencies are missing; run: npm ci" >&2
+    exit 1
+  }
+  (cd "$REPO_ROOT" && \
+    VIBESTACK_BASE_URL="$base_url" \
+    VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=0 npm run test:browser)
+}
+
+wait_for_health() {
+  local container="$1"
+  local attempt health
+  for attempt in $(seq 1 60); do
+    health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container")"
+    case "$health" in
+      healthy) return 0 ;;
+      unhealthy)
+        docker logs --tail 200 "$container" >&2
+        return 1 ;;
+    esac
+    sleep 2
+  done
+  docker logs --tail 200 "$container" >&2
+  echo "container did not become healthy" >&2
+  return 1
+}
+
+run_acceptance() (
+  local image="${1:-$IMAGE_NAME}"
+  local acceptance_container="vibestack-acceptance-$$"
+  local acceptance_data="" acceptance_password_dir="" acceptance_password_file="" project_owner
+  umask 077
+  cleanup_acceptance() {
+    local cleanup_dir="$acceptance_data" cleanup_password_dir="$acceptance_password_dir"
+    acceptance_data=""
+    acceptance_password_dir=""
+    docker rm -f "$acceptance_container" >/dev/null 2>&1 || true
+    if [[ "$cleanup_dir" =~ ^/tmp/vibestack-acceptance\.[A-Za-z0-9]{10}$ &&
+          -d "$cleanup_dir" && ! -L "$cleanup_dir" ]]; then
+      # Bootstrap deliberately leaves the bind root and protected log
+      # directories root-owned. Use this already-validated image only to hand
+      # the exact disposable tree back to the invoking host UID before removal.
+      if docker run --rm --pids-limit=512 --entrypoint /usr/bin/chown \
+          -v "$cleanup_dir:/cleanup" "$image" \
+          -R "$(id -u):$(id -g)" /cleanup >/dev/null 2>&1; then
+        rm -rf -- "$cleanup_dir"
+      else
+        echo "acceptance cleanup could not reclaim $cleanup_dir" >&2
+      fi
+    elif [[ -n "$cleanup_dir" ]]; then
+      echo "refusing unexpected acceptance cleanup path: $cleanup_dir" >&2
+    fi
+    if [[ "$cleanup_password_dir" =~ ^/tmp/vibestack-acceptance-password\.[A-Za-z0-9]{10}$ &&
+          -d "$cleanup_password_dir" && ! -L "$cleanup_password_dir" ]]; then
+      rm -rf -- "$cleanup_password_dir"
+    elif [[ -n "$cleanup_password_dir" ]]; then
+      echo "refusing unexpected password cleanup path: $cleanup_password_dir" >&2
+    fi
+  }
+  trap cleanup_acceptance EXIT INT TERM
+  require docker
+  require openssl
+  [[ "$PIDS_LIMIT" =~ ^[0-9]+$ ]] && (( PIDS_LIMIT >= 128 && PIDS_LIMIT <= 4096 )) || {
+    echo "invalid VIBESTACK_PIDS_LIMIT: $PIDS_LIMIT" >&2
+    return 2
+  }
+  [[ "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] &&
+    (( ACCEPTANCE_RESTORE_TIMEOUT_SECONDS >= 60 && ACCEPTANCE_RESTORE_TIMEOUT_SECONDS <= 7200 )) || {
+      echo "invalid VIBESTACK_ACCEPTANCE_RESTORE_TIMEOUT_SECONDS: $ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" >&2
+      return 2
+    }
+  docker image inspect "$image" >/dev/null
+  acceptance_data="$(mktemp -d /tmp/vibestack-acceptance.XXXXXXXXXX)"
+  acceptance_password_dir="$(mktemp -d /tmp/vibestack-acceptance-password.XXXXXXXXXX)"
+  acceptance_password_file="$acceptance_password_dir/password"
+  chmod 0700 "$acceptance_password_dir"
+  openssl rand -out "$acceptance_password_file" -hex 24
+  chmod 0600 "$acceptance_password_file"
+  mkdir -p "$acceptance_data/.vibestack-state-v1" "$acceptance_data/projects"
+  chmod 0755 "$acceptance_data/.vibestack-state-v1"
+  touch "$acceptance_data/projects/ownership-sentinel"
+  project_owner="$(stat -c '%u:%g' "$acceptance_data/projects/ownership-sentinel")"
+  start_acceptance_container() {
+    docker run -d --name "$acceptance_container" --hostname vibestack \
+      --shm-size=1g --pids-limit="$PIDS_LIMIT" \
+      -e VIBESTACK_FLATPAK_ENABLED=1 \
+      --security-opt seccomp=unconfined \
+      --security-opt apparmor=unconfined \
+      --security-opt systempaths=unconfined \
+      -p "127.0.0.1:${ACCEPTANCE_PORT}:80" \
+      -v "$acceptance_data:/data" \
+      -v "$acceptance_data/projects:/projects" \
+      "$image" >/dev/null
+  }
+  copy_onboarding_probe() {
+    docker cp "$REPO_ROOT/tests/runtime_onboarding_check.py" \
+      "$acceptance_container:/tmp/vibestack-runtime-onboarding-check.py"
+  }
+
+  start_acceptance_container
+  wait_for_health "$acceptance_container"
+  docker exec -u vibe "$acceptance_container" vibestack-check --display --restart --automation
+  [[ "$(stat -c '%u:%g' "$acceptance_data/projects/ownership-sentinel")" == "$project_owner" ]] || {
+    echo "acceptance failed: the /projects sentinel ownership changed" >&2
+    return 1
+  }
+
+  copy_onboarding_probe
+  docker exec -i "$acceptance_container" \
+    python3 /tmp/vibestack-runtime-onboarding-check.py configure \
+    < "$acceptance_password_file"
+
+  # A replacement container starts again from the immutable image while using
+  # the same exact persistent state. This proves hash restoration and proves
+  # that ad-hoc apt installs are intentionally container-local.
+  docker rm -f "$acceptance_container" >/dev/null
+  start_acceptance_container
+  wait_for_health "$acceptance_container"
+  copy_onboarding_probe
+  docker exec -i "$acceptance_container" \
+    python3 /tmp/vibestack-runtime-onboarding-check.py verify-restored \
+    < "$acceptance_password_file"
+
+  # Exercise all durable acceptance routes. Their saved selection, exact
+  # probes, Flatpak sandbox, and Godot's real X11 editor must all work before
+  # the container is replaced.
+  docker exec -u vibe "$acceptance_container" \
+    vibestack-setup install godot build-essential flatpak
+  # Install one real stable-Flathub GUI only in the disposable state. This
+  # proves repository download, export discovery, inner sandbox launch, and
+  # persistence across the second image replacement.
+  docker exec -u vibe "$acceptance_container" \
+    /usr/bin/env HOME=/home/vibe USER=vibe LOGNAME=vibe \
+      XDG_DATA_HOME=/home/vibe/.local/share \
+      /usr/bin/flatpak --user install --noninteractive \
+        flathub org.gnome.Calculator
+  docker exec "$acceptance_container" \
+    python3 /tmp/vibestack-runtime-onboarding-check.py catalog-installed
+  docker exec -u vibe "$acceptance_container" vibestack-check --live
+
+  # Replace the container a second time after the catalog selection and Godot
+  # sentinels are durable. The in-container probe waits boundedly for the setup
+  # service's automatic reinstall, then rechecks the password, both catalog
+  # probes, both persistent directories, and a real Godot editor window.
+  docker rm -f "$acceptance_container" >/dev/null
+  start_acceptance_container
+  wait_for_health "$acceptance_container"
+  copy_onboarding_probe
+  docker exec -i "$acceptance_container" \
+    python3 /tmp/vibestack-runtime-onboarding-check.py \
+      verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" \
+    < "$acceptance_password_file"
+  docker exec -u vibe "$acceptance_container" vibestack-check --live
+
+  (cd "$REPO_ROOT" && \
+    VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1 npm run test:browser)
+)
+
+service_log_path() {
+  case "$1" in
+    desktop) echo /data/logs/vibestack/services/xfce4.log ;;
+    vnc) echo /data/logs/vibestack/services/x11vnc.log ;;
+    novnc) echo /data/logs/vibestack/services/novnc.log ;;
+    terminal) echo /data/logs/vibestack/services/ttyd.log ;;
+    setup) echo /data/logs/vibestack/services/vibestack-setup.log ;;
+    control) echo /data/logs/vibestack/services/vibestack-control.log ;;
+    automation) echo /data/logs/vibestack/services/vibestack-automation.log ;;
+    automation-audit) echo /data/logs/vibestack/automation-audit.jsonl ;;
+    desktop-actions) echo /data/logs/vibestack/desktop/actions.jsonl ;;
+    nginx) echo /data/logs/vibestack/nginx/error.log ;;
+    nginx-access) echo /data/logs/vibestack/nginx/access.jsonl ;;
+    xvfb) echo /data/logs/vibestack/services/xvfb.log ;;
+    *)
+      echo "unknown log '$1'; use desktop, vnc, novnc, terminal, setup, control, automation, automation-audit, desktop-actions, nginx, nginx-access, or xvfb" >&2
+      return 2 ;;
+  esac
+}
+
+command_name="${1:-help}"
+shift || true
+case "$command_name" in
+  test)
+    run_fast_tests ;;
+  build)
+    require docker
+    selected_image="${1:-$IMAGE_NAME}"
+    docker build -t "$selected_image" "$REPO_ROOT" ;;
+  accept)
+    run_acceptance "${1:-$IMAGE_NAME}" ;;
+  browser)
+    run_browser_tests "${1:-http://127.0.0.1:${HOST_PORT}}" ;;
+  check)
+    require docker
+    docker exec -u vibe "$CONTAINER_NAME" vibestack-check --live ;;
+  status)
+    require docker
+    docker ps -a --filter "name=^/${CONTAINER_NAME}$" --format '{{.Names}} {{.Status}} {{.Image}} {{.Ports}}'
+    curl -fsS "http://127.0.0.1:${HOST_PORT}/api/v1/status" || true
+    echo
+    if command -v tailscale >/dev/null 2>&1; then
+      tailscale serve status || true
+    fi ;;
+  logs)
+    require docker
+    if [[ $# -eq 0 ]]; then
+      docker logs --tail 200 -f "$CONTAINER_NAME"
+    else
+      selected_log="$(service_log_path "$1")"
+      docker exec "$CONTAINER_NAME" tail -n 200 -F "$selected_log"
+    fi ;;
+  shell)
+    require docker
+    docker exec -it -u vibe -e DISPLAY=:0 -e XAUTHORITY=/run/vibestack/Xauthority -e XDG_RUNTIME_DIR=/run/vibestack/runtime \
+      "$CONTAINER_NAME" bash -lc \
+      '[[ -f /run/vibestack/session.env ]] && source /run/vibestack/session.env; exec bash' ;;
+  serve)
+    require tailscale
+    require curl
+    require python3
+    selected_https_port="${1:-$TAILSCALE_HTTPS_PORT}"
+    [[ "$selected_https_port" =~ ^[0-9]{1,5}$ ]] && (( selected_https_port >= 1 && selected_https_port <= 65535 )) || {
+      echo "invalid HTTPS port: $selected_https_port" >&2
+      exit 2
+    }
+    expected_proxy="http://127.0.0.1:${HOST_PORT}"
+    curl -fsS "${expected_proxy}/api/v1/status" >/dev/null || {
+      echo "VibeStack is not healthy at ${expected_proxy}; Serve was not changed" >&2
+      exit 1
+    }
+    existing_proxy="$(tailscale serve status --json | python3 -c '
+import json, sys
+port = sys.argv[1]
+data = json.load(sys.stdin)
+for address, site in data.get("Web", {}).items():
+    if address.rsplit(":", 1)[-1] != port:
+        continue
+    print(site.get("Handlers", {}).get("/", {}).get("Proxy", ""))
+    break
+' "$selected_https_port")"
+    if [[ -n "$existing_proxy" && "$existing_proxy" != "$expected_proxy" ]]; then
+      echo "refusing to replace existing Tailscale Serve port ${selected_https_port}: ${existing_proxy}" >&2
+      exit 1
+    fi
+    tailscale serve --bg --https="$selected_https_port" "$expected_proxy"
+    tailscale serve status ;;
+  help|-h|--help)
+    usage ;;
+  *)
+    echo "unknown command: $command_name" >&2
+    usage >&2
+    exit 2 ;;
+esac

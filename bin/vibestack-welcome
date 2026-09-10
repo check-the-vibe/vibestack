@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Print the first-run banner. With --if-pending, print nothing once onboarding is done.
+set -uo pipefail
+STATE="${HOME}/.vibestack/setup.json"
+
+setup_complete=false
+if [[ -f "$STATE" ]] && grep -q '"completed": true' "$STATE"; then
+  setup_complete=true
+fi
+
+# The password helper owns the authoritative persistent credential state. Fail
+# closed here: if its status cannot be read, onboarding is still considered
+# pending and the interactive shell keeps showing the setup link.
+password_configured=false
+password_status=""
+if password_status="$(sudo -n /usr/local/bin/vibestack-password status 2>/dev/null)" && \
+   grep -Eq '"password_configured"[[:space:]]*:[[:space:]]*true' <<<"$password_status"; then
+  password_configured=true
+fi
+
+pending=true
+if [[ "$setup_complete" == "true" && "$password_configured" == "true" ]]; then
+  pending=false
+fi
+
+if [[ "${1:-}" == "--if-pending" && "$pending" == "false" ]]; then
+  exit 0
+fi
+
+port="${VIBESTACK_PUBLIC_PORT:-}"
+suffix=""
+[[ -n "$port" ]] && suffix=":$port"
+
+cat <<BANNER
+
+  VibeStack
+
+  Finish onboarding, set your Linux password, and choose what to install at:
+
+      http://<this-host>${suffix}/setup/
+
+  Or from here:  vibestack-setup status
+                 vibestack-setup install node claude-code
+                 vibestack-setup skip
+
+BANNER
+if [[ "$pending" == "false" ]]; then
+  echo "  Setup is already complete. Reopen /setup/?force=1 to add components."
+  echo
+fi

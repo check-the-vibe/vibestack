@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Install Flatpak Application
+Comment=Review and install a downloaded stable-Flathub application reference
+Exec=/usr/local/bin/vibestack-desktop-action flatpak-ref %f
+TryExec=/usr/bin/flatpak
+Icon=system-software-install
+Terminal=false
+NoDisplay=true
+StartupNotify=true
+MimeType=application/vnd.flatpak.ref;
+Categories=System;PackageManager;
+OnlyShowIn=XFCE;

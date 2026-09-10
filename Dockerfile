@@ -1,153 +1,118 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 LABEL maintainer="VibeStack Project"
-LABEL description="VibeStack - Lightweight VNC desktop environment using XFCE4 and noVNC"
-LABEL version="1.0"
+LABEL description="VibeStack - slim Linux desktop for AI coding tools, with a first-boot setup wizard"
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:0 \
-    NOVNC_PORT=6080 \
     VNC_PORT=5900 \
-    RESOLUTION=1920x1200 \
-    VNC_PASSWORD="" \
-    ROOT_PASSWORD="" \
-    VIBE_PASSWORD="coding" \
-    VIBESTACK_HOME=/home/vibe \
-    CODEX_CALLBACK_PORT=1455 \
-    VIBESTACK_MCP_PORT=9100 \
-    PATH="/home/vibe/bin:${PATH}"
+    NOVNC_PORT=6080 \
+    TTYD_PORT=7681 \
+    SETUP_PORT=7999 \
+    CONTROL_PORT=7998 \
+    AUTOMATION_PORT=7997 \
+    RESOLUTION=1920x1200
 
-# Base system + GUI stack
+# ---------------------------------------------------------------------------
+# Base system only. Everything optional is installed by the setup wizard, so
+# individual XFCE parts are named rather than pulling the xfce4 metapackage.
+# ---------------------------------------------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        curl \
-        dbus-x11 \
-        dos2unix \
-        xfce4 \
-        xfce4-terminal \
-        falkon \
-        git \
-        jq \
-        libegl1 \
-        libgl1-mesa-dri \
-        libglx-mesa0 \
-        libgles2 \
-        menu \
-        nano \
-        nginx \
-        novnc \
-        openssh-server \
-        python3 \
-        python3-pip \
-        supervisor \
-        sudo \
-        tmux \
-        vim \
-        websockify \
-        wget \
-        x11vnc \
-        xterm \
-        xvfb \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+        ca-certificates curl gnupg \
+        dbus dbus-x11 desktop-file-utils xdg-utils \
+        gnome-keyring libsecret-1-0 libsecret-tools \
+        git nano vim-tiny tmux sudo procps psmisc \
+        nginx openssl supervisor python3 util-linux \
+        websockify x11vnc xvfb xauth \
+        xfwm4 xfdesktop4 xfce4-panel xfce4-settings xfce4-terminal thunar \
+        fonts-dejavu-core \
+        scrot xclip xdotool wmctrl libgtk-3-bin x11-utils x11-xserver-utils xcvt \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Node.js runtime + global CLIs
-RUN set -x && \
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nodejs && \
-    npm install -g @anthropic-ai/claude-code @openai/codex opencode-ai@latest playwright && \
-    npx playwright install --with-deps chromium && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# noVNC as static web assets. The Ubuntu novnc package depends on Node 18
+# without npm, which the setup catalog would then mistake for a Node runtime.
+ARG NOVNC_VERSION=1.7.0
+ARG NOVNC_SHA256=b1003a11b6e6e8d8f7f5e5586daae7f8ca651d8aee0aa155ff9ac841c48f52c6
+RUN curl -fsSL "https://github.com/novnc/noVNC/archive/refs/tags/v${NOVNC_VERSION}.tar.gz" -o /tmp/novnc.tar.gz && \
+    echo "${NOVNC_SHA256}  /tmp/novnc.tar.gz" | sha256sum -c - && \
+    mkdir -p /usr/share/novnc && \
+    tar -xzf /tmp/novnc.tar.gz -C /usr/share/novnc --strip-components=1 && \
+    rm -f /tmp/novnc.tar.gz && \
+    test -f /usr/share/novnc/vnc.html
 
-# Create global opencode plugin directory
-RUN mkdir -p /home/vibe/.config/opencode/plugin
+# ttyd for the browser terminal
+ARG TTYD_VERSION=1.7.7
+ARG TTYD_SHA256_AMD64=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55
+ARG TTYD_SHA256_ARM64=b38acadd89d1d396a0f5649aa52c539edbad07f4bc7348b27b4f4b7219dd4165
+ARG TARGETARCH
+RUN case "${TARGETARCH}" in \
+      amd64) ttyd_asset=x86_64; ttyd_sha256="${TTYD_SHA256_AMD64}" ;; \
+      arm64) ttyd_asset=aarch64; ttyd_sha256="${TTYD_SHA256_ARM64}" ;; \
+      *) echo "unsupported ttyd target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_asset}" -o /tmp/ttyd && \
+    echo "${ttyd_sha256}  /tmp/ttyd" | sha256sum -c - && \
+    install -m 0755 /tmp/ttyd /usr/bin/ttyd && \
+    rm -f /tmp/ttyd
 
-# Visual Studio Code CLI for tunnel support
-RUN curl -fsSL "https://update.code.visualstudio.com/latest/cli-linux-x64/stable" -o /tmp/vscode-cli.tar.gz && \
-    mkdir -p /opt/vscode-cli && \
-    tar -xzf /tmp/vscode-cli.tar.gz -C /opt/vscode-cli && \
-    ln -sf /opt/vscode-cli/code /usr/local/bin/code && \
-    rm -f /tmp/vscode-cli.tar.gz
-
-# Python CLI tooling
-RUN pip install --no-cache-dir \
-        fastapi \
-        "uvicorn[standard]" \
-        streamlit \
-        llm \
-        "mcp[cli]" \
-        beautifulsoup4 \
-        requests \
-        httpx \
-        rich \
-        typer \
-        tui
-
-# ttyd for web terminal access
-RUN wget https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 -O /usr/bin/ttyd && \
-    chmod +x /usr/bin/ttyd
-
-# SSH daemon hardening + keys
-RUN mkdir -p /var/run/sshd && \
-    sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    ssh-keygen -A
-
-# Dedicated non-root user
-RUN useradd -m -s /bin/bash -u 1000 vibe && \
-    usermod -aG sudo vibe && \
-    mkdir -p /home/vibe/.config/xfce4 && \
-    echo 'vibe ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/vibe && \
+# Ubuntu 24.04 ships an "ubuntu" user on UID 1000; replace it.
+RUN userdel -r ubuntu 2>/dev/null || true && \
+    useradd -m -s /bin/bash -u 1000 vibe && \
+    usermod --lock vibe && \
+    printf '%s\n' \
+      'vibe ALL=(ALL:ALL) ALL' \
+      'vibe ALL=(root) NOPASSWD: /usr/local/bin/vibestack-install, /usr/local/bin/vibestack-control, /usr/local/bin/vibestack-password' \
+      > /etc/sudoers.d/vibe && \
     chmod 440 /etc/sudoers.d/vibe && \
-    echo "vibe:${VIBE_PASSWORD}" | chpasswd
+    visudo -cf /etc/sudoers.d/vibe
+
+COPY supervisord.conf /etc/supervisor/supervisord.conf
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY setup/catalog.json /usr/share/vibestack/catalog.json
+COPY setup/setuplib.py setup/server.py /usr/share/vibestack/
+COPY setup/index.html setup/style.css setup/app.js /usr/share/vibestack/web/
+COPY control/ /usr/share/vibestack-control/
+COPY automation/ /usr/share/vibestack-automation/
+RUN install -d -m 0755 /usr/share/vibestack-proxy
+COPY --chown=root:root --chmod=0444 proxy/websockify_auth.py /usr/share/vibestack-proxy/websockify_auth.py
+COPY runtime/AGENTS.md runtime/CLAUDE.md docs/AUTOMATION.md /usr/share/doc/vibestack/
+RUN ln -s /usr/share/doc/vibestack/AGENTS.md /AGENTS.md && \
+    ln -s /usr/share/doc/vibestack/AGENTS.md /home/vibe/AGENTS.md && \
+    ln -s /usr/share/doc/vibestack/AUTOMATION.md /home/vibe/AUTOMATION.md
+COPY desktop-config/etc/xdg/ /etc/xdg/
+COPY desktop-config/usr/share/ /usr/share/
+RUN update-desktop-database /usr/share/applications && \
+    gtk-update-icon-cache -f /usr/share/icons/hicolor
+COPY desktop/ /usr/share/vibestack/desktop/
+# Isolate every service-worker generation. Hash both the shell and the pinned
+# noVNC runtime because they share one exact precache graph.
+RUN shell_cache_version="$(find /usr/share/vibestack/desktop /usr/share/novnc/core /usr/share/novnc/vendor -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" && \
+    sed -i "s/__VIBESTACK_SHELL_CACHE_VERSION__/${shell_cache_version}/" /usr/share/vibestack/desktop/service-worker.js && \
+    ! grep -q '__VIBESTACK_SHELL_CACHE_VERSION__' /usr/share/vibestack/desktop/service-worker.js
+COPY chrome/policy.json /usr/share/vibestack/chrome-policy.json
+COPY chrome/google-chrome-xfce-helper.desktop /usr/share/vibestack/google-chrome-xfce-helper.desktop
+COPY --chmod=755 bin/vibestack-api-token bin/vibestack-app bin/vibestack-automation-check \
+     bin/vibestack-bootstrap bin/vibestack-check bin/vibestack-desktop-action bin/vibestack-install \
+     bin/vibestack-flatpak bin/vibestack-healthcheck bin/vibestack-persist bin/vibestack-setup bin/vibestack-welcome \
+     bin/vibestack-control bin/vibestack-password /usr/local/bin/
+COPY --chmod=755 entrypoint.sh /entrypoint.sh
+COPY --chown=vibe:vibe --chmod=755 xfce-startup /home/vibe/xfce-startup
+
+RUN mkdir -p /data/.vibestack-state-v1 /projects /home/vibe/Desktop && \
+    printf '\n# VibeStack first-run notice\n[[ $- == *i* ]] && command -v vibestack-welcome >/dev/null && vibestack-welcome --if-pending\n' >> /home/vibe/.bashrc && \
+    chown -R vibe:vibe /home/vibe /projects && \
+    chown root:vibe /data && \
+    chmod 1770 /data
 
 WORKDIR /home/vibe
 
-# Configuration and application files
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY entrypoint.sh /entrypoint.sh
-COPY --chown=vibe:vibe bin/ /home/vibe/bin/
-COPY --chown=vibe:vibe docs/ /home/vibe/docs/
-COPY --chown=vibe:vibe streamlit_app/ /home/vibe/streamlit/
-COPY --chown=vibe:vibe vibestack/ /home/vibe/vibestack/
-COPY --chown=vibe:vibe Xresources /home/vibe/.Xresources
-COPY --chown=vibe:vibe AGENTS.md /home/vibe/AGENTS.md
-COPY --chown=vibe:vibe xfce-startup /home/vibe/xfce-startup
-COPY --chown=vibe:vibe vibestack-extension/ /home/vibe/vibestack-extension/
-COPY --chown=vibe:vibe .opencode/plugin/session-logger.js /home/vibe/.config/opencode/plugin/session-logger.js
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD ["/usr/local/bin/vibestack-healthcheck"]
 
-# Final filesystem tweaks
-RUN ln -sf /home/vibe/bin/vibe /usr/local/bin/vibe && \
-    ln -sf /home/vibe/bin/vibestack-ttyd-entry /usr/local/bin/vibestack-ttyd-entry && \
-    dos2unix \
-      /home/vibe/xfce-startup \
-      /home/vibe/.Xresources \
-      /entrypoint.sh \
-      /home/vibe/bin/vibe \
-      /home/vibe/bin/vibestack-ttyd-entry \
-      /home/vibe/bin/vibestack-code-tunnel \
-      /home/vibe/bin/vibestack-configure-extension && \
-    chmod +x \
-      /entrypoint.sh \
-      /home/vibe/bin/vibe \
-      /home/vibe/bin/vibestack-ttyd-entry \
-      /home/vibe/bin/vibestack-code-tunnel \
-      /home/vibe/bin/vibestack-configure-extension \
-      /home/vibe/xfce-startup && \
-    mkdir -p /var/log/supervisor /var/run && \
-    chown -R vibe:vibe /home/vibe && \
-    chmod 755 /home/vibe && \
-    chmod +x /home/vibe/xfce-startup
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${NOVNC_PORT}/vnc.html || exit 1
-
-EXPOSE 80 1456
+EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

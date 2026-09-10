@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# Relocate tool state into /data so it survives container rebuilds.
+# This script must run as the unprivileged desktop user. Root-owned filesystem
+# and log bootstrap is deliberately isolated in vibestack-bootstrap.
+set -euo pipefail
+
+if (( EUID == 0 )); then
+  echo "[persist] refusing to manage user state as root" >&2
+  exit 1
+fi
+
+HOME_DIR="${VIBESTACK_PERSIST_HOME_DIR:-/home/vibe}"
+DATA="${VIBESTACK_PERSIST_DATA_DIR:-/data}"
+LOG_ROOT="${VIBESTACK_LOG_ROOT:-$DATA/logs/vibestack}"
+DESKTOP_DIR="${VIBESTACK_DESKTOP_DIR:-$HOME_DIR/Desktop}"
+RUNTIME_DOC_DIR="${VIBESTACK_RUNTIME_DOC_DIR:-/usr/share/doc/vibestack}"
+
+seed_agent_instructions() {
+  mkdir -p "$HOME_DIR/.codex" "$HOME_DIR/.claude" "$HOME_DIR/.config/opencode"
+  if [[ -f "$RUNTIME_DOC_DIR/AGENTS.md" && \
+        ! -e "$HOME_DIR/.codex/AGENTS.md" && ! -L "$HOME_DIR/.codex/AGENTS.md" && \
+        ! -e "$HOME_DIR/.codex/AGENTS.override.md" && ! -L "$HOME_DIR/.codex/AGENTS.override.md" ]]; then
+    ln -s -- "$RUNTIME_DOC_DIR/AGENTS.md" "$HOME_DIR/.codex/AGENTS.md"
+  fi
+  if [[ -f "$RUNTIME_DOC_DIR/CLAUDE.md" && \
+        ! -e "$HOME_DIR/.claude/CLAUDE.md" && ! -L "$HOME_DIR/.claude/CLAUDE.md" ]]; then
+    ln -s -- "$RUNTIME_DOC_DIR/CLAUDE.md" "$HOME_DIR/.claude/CLAUDE.md"
+  fi
+  if [[ -f "$RUNTIME_DOC_DIR/AGENTS.md" && \
+        ! -e "$HOME_DIR/.config/opencode/AGENTS.md" && \
+        ! -L "$HOME_DIR/.config/opencode/AGENTS.md" ]]; then
+    ln -s -- "$RUNTIME_DOC_DIR/AGENTS.md" "$HOME_DIR/.config/opencode/AGENTS.md"
+  fi
+}
+
+link_desktop_logs() {
+  if [[ -L "$DESKTOP_DIR" || ( -e "$DESKTOP_DIR" && ! -d "$DESKTOP_DIR" ) ]]; then
+    echo "[persist] refusing unsafe Desktop directory" >&2
+    exit 1
+  fi
+  mkdir -p "$DESKTOP_DIR"
+  local link="$DESKTOP_DIR/VibeStack Logs"
+  if [[ -L "$link" || ! -e "$link" ]]; then
+    ln -sfn "$LOG_ROOT" "$link"
+  else
+    echo "[persist] desktop log link not created: path already exists" >&2
+  fi
+}
+
+link_desktop_logs
+
+if ! mountpoint -q "$DATA"; then
+  echo "[persist] /data is not mounted; state stays inside the container"
+  seed_agent_instructions
+  exit 0
+fi
+
+directory_is_empty() {
+  [[ -z "$(find "$1" -mindepth 1 -maxdepth 1 -print -quit)" ]]
+}
+
+# Reconcile a real per-container path with an already-created persistent
+# destination without ever guessing which nonempty copy is authoritative.
+# This also covers profile-path corrections such as ChatGPT's historical
+# ~/.config/ChatGPT mapping versus its actual ~/.config/Codex profile.
+reconcile_existing_state() {
+  local src="$1" dst="$2" kind="$3" name="$4"
+  [[ -e "$src" && ! -L "$src" && -e "$dst" ]] || return 0
+  if [[ "$kind" == file ]]; then
+    if cmp -s -- "$src" "$dst"; then
+      rm -f -- "$src"
+    elif [[ ! -s "$dst" ]]; then
+      rm -f -- "$dst"
+      mv -- "$src" "$dst"
+    elif [[ ! -s "$src" ]]; then
+      rm -f -- "$src"
+    else
+      echo "[persist] refusing conflicting state file: $name" >&2
+      return 1
+    fi
+  elif directory_is_empty "$src"; then
+    rmdir -- "$src"
+  elif directory_is_empty "$dst"; then
+    rmdir -- "$dst"
+    mv -- "$src" "$dst"
+  else
+    echo "[persist] refusing conflicting state directory: $name" >&2
+    return 1
+  fi
+}
+
+# "relative-path-in-home:name-under-/data[:file]"
+ENTRIES=(
+  ".vibestack:vibestack"
+  ".claude:claude"
+  ".claude.json:claude.json:file"
+  ".codex:codex"
+  ".config/opencode:opencode-config"
+  ".local/share/opencode:opencode"
+  ".config/google-chrome:chrome"
+  ".config/Claude:claude-desktop"
+  ".config/Codex:chatgpt"
+  ".local/share/flatpak:flatpak"
+  ".var/app:flatpak-apps"
+  ".config/godot:godot-config"
+  ".local/share/godot:godot-data"
+  ".local/share/keyrings:keyrings"
+  ".gitconfig:gitconfig:file"
+  ".bash_history:bash_history:file"
+)
+for entry in "${ENTRIES[@]}"; do
+  IFS=: read -r rel name kind <<<"$entry"
+  src="$HOME_DIR/$rel"; dst="$DATA/$name"
+  mkdir -p "$(dirname "$src")"
+  if [[ "${kind:-dir}" == "file" ]]; then
+    if [[ -L "$dst" || ( -e "$dst" && ! -f "$dst" ) ]]; then
+      echo "[persist] refusing unsafe state file: $name" >&2
+      exit 1
+    fi
+    if [[ ! -e "$dst" ]]; then
+      if [[ -f "$src" && ! -L "$src" ]]; then mv "$src" "$dst"; else : > "$dst"; fi
+    fi
+  else
+    if [[ -L "$dst" || ( -e "$dst" && ! -d "$dst" ) ]]; then
+      echo "[persist] refusing unsafe state directory: $name" >&2
+      exit 1
+    fi
+    if [[ ! -d "$dst" ]]; then
+      if [[ -d "$src" && ! -L "$src" ]]; then mv "$src" "$dst"; else mkdir -p "$dst"; fi
+    fi
+  fi
+  reconcile_existing_state "$src" "$dst" "${kind:-dir}" "$name" || exit 1
+  ln -sfn "$dst" "$src"
+done
+
+# Retire only the exact obsolete link created by older VibeStack images. An
+# arbitrary file, directory, or differently targeted link remains untouched.
+legacy_chatgpt_link="$HOME_DIR/.config/ChatGPT"
+if [[ -L "$legacy_chatgpt_link" &&
+      "$(readlink -- "$legacy_chatgpt_link")" == "$DATA/chatgpt" ]]; then
+  rm -f -- "$legacy_chatgpt_link"
+fi
+# Chromium-based apps leave SingletonLock/Cookie/Socket symlinks naming the
+# host that held the profile. After a container recreate that host is gone
+# and the app refuses to start, so clear them; nothing is running at boot.
+find "$DATA/chrome" "$DATA/claude-desktop" "$DATA/chatgpt" -maxdepth 2 -name 'Singleton*' -type l -delete 2>/dev/null || true
+# Empty JSON files break tools that parse them.
+[[ -s "$DATA/claude.json" ]] || echo '{}' > "$DATA/claude.json"
+seed_agent_instructions
+echo "[persist] state linked into /data"

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Agent Guide
+Comment=Read how local and remote agents operate this VibeStack
+Exec=/usr/local/bin/vibestack-desktop-action agent-guide
+Icon=help-browser
+Terminal=false
+StartupNotify=true
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

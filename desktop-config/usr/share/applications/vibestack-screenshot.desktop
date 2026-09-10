@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Take Screenshot
+Comment=Save a timestamped image of the VibeStack desktop
+Exec=/usr/local/bin/vibestack-desktop-action screenshot
+Icon=camera-photo
+Terminal=false
+StartupNotify=false
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

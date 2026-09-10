@@ -1,0 +1,464 @@
+#!/usr/bin/env python3
+"""Root-only, no-follow bootstrap for logs, password state, and X11 runtime."""
+
+from __future__ import annotations
+
+import os
+import pwd
+import stat
+import sys
+
+
+DATA_ROOT = "/data"
+RUN_ROOT = "/run"
+STATE_MARKER = ".vibestack-state-v1"
+PASSWORD_STATE_DIR = ".vibestack-auth-v1"
+
+SERVICE_LOGS = (
+    "dbus-system.log",
+    "xvfb.log",
+    "x11vnc.log",
+    "novnc.log",
+    "xfce4.log",
+    "ttyd.log",
+    "vibestack-setup.log",
+    "vibestack-control.log",
+    "vibestack-automation.log",
+)
+
+
+class BootstrapError(RuntimeError):
+    pass
+
+
+def _directory_flags() -> int:
+    try:
+        return os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC | os.O_NOFOLLOW
+    except AttributeError as exc:  # VibeStack is Linux-only.
+        raise BootstrapError("required no-follow filesystem support is unavailable") from exc
+
+
+def _open_absolute_directory(path: str) -> int:
+    normalized = os.path.normpath(path)
+    if not os.path.isabs(path) or normalized != path or path == "/":
+        raise BootstrapError("bootstrap directory path is invalid")
+    current = os.open("/", _directory_flags())
+    try:
+        for component in normalized.split("/")[1:]:
+            next_fd = os.open(component, _directory_flags(), dir_fd=current)
+            os.close(current)
+            current = next_fd
+        return current
+    except BaseException:
+        os.close(current)
+        raise
+
+
+def _require_same_filesystem(fd: int, parent_fd: int, label: str) -> os.stat_result:
+    info = os.fstat(fd)
+    if info.st_dev != os.fstat(parent_fd).st_dev:
+        raise BootstrapError(f"{label} crosses an unexpected filesystem boundary")
+    return info
+
+
+def _set_metadata(fd: int, info: os.stat_result, *, uid: int, gid: int, mode: int) -> None:
+    """Set only metadata that differs, so unprivileged tests can use this helper."""
+
+    if (info.st_uid, info.st_gid) != (uid, gid):
+        os.fchown(fd, uid, gid)
+    if stat.S_IMODE(info.st_mode) != mode:
+        os.fchmod(fd, mode)
+
+
+def _require_entry_matches(
+    parent_fd: int,
+    name: str,
+    opened: os.stat_result,
+    *,
+    label: str,
+    directory: bool,
+) -> None:
+    """Ensure the checked descriptor is still the entry beneath its parent."""
+
+    try:
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as exc:
+        raise BootstrapError(f"{label} changed during bootstrap") from exc
+    expected_type = stat.S_ISDIR if directory else stat.S_ISREG
+    if (
+        (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino)
+        or not expected_type(current.st_mode)
+    ):
+        raise BootstrapError(f"{label} changed during bootstrap")
+
+
+def _ensure_directory(
+    parent_fd: int,
+    name: str,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+) -> int:
+    try:
+        os.mkdir(name, mode, dir_fd=parent_fd)
+    except FileExistsError:
+        pass
+    try:
+        fd = os.open(name, _directory_flags(), dir_fd=parent_fd)
+    except OSError as exc:
+        raise BootstrapError(f"{label} is not a safe directory") from exc
+    try:
+        info = _require_same_filesystem(fd, parent_fd, label)
+        if not stat.S_ISDIR(info.st_mode):
+            raise BootstrapError(f"{label} is not a directory")
+        _set_metadata(fd, info, uid=uid, gid=gid, mode=mode)
+        _require_entry_matches(
+            parent_fd, name, info, label=label, directory=True
+        )
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _ensure_private_root_directory(
+    parent_fd: int,
+    name: str,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+) -> int:
+    """Create a root-private state directory or strictly verify the old one.
+
+    Unlike log directories, an existing credential boundary is never adopted
+    by changing its ownership or mode. This prevents an unprivileged entry
+    planted in a persistent volume from becoming trusted during bootstrap.
+    """
+
+    created = False
+    try:
+        os.mkdir(name, mode, dir_fd=parent_fd)
+        created = True
+    except FileExistsError:
+        pass
+    try:
+        fd = os.open(name, _directory_flags(), dir_fd=parent_fd)
+    except OSError as exc:
+        raise BootstrapError(f"{label} is not a safe directory") from exc
+    try:
+        info = _require_same_filesystem(fd, parent_fd, label)
+        if not stat.S_ISDIR(info.st_mode):
+            raise BootstrapError(f"{label} is not a directory")
+        if created:
+            _set_metadata(fd, info, uid=uid, gid=gid, mode=mode)
+            info = os.fstat(fd)
+        if (
+            (info.st_uid, info.st_gid) != (uid, gid)
+            or stat.S_IMODE(info.st_mode) != mode
+        ):
+            raise BootstrapError(f"{label} failed its ownership check")
+        _require_entry_matches(parent_fd, name, info, label=label, directory=True)
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _ensure_regular_file(
+    parent_fd: int,
+    name: str,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+) -> None:
+    # Inspect existing entries through O_PATH first. This avoids opening a FIFO,
+    # device, or socket as root. Reopening the checked descriptor through procfs
+    # keeps the operation attached to the same inode if a name is raced.
+    path_flags = os.O_PATH | os.O_CLOEXEC | os.O_NOFOLLOW
+    create_flags = (
+        os.O_RDWR
+        | os.O_APPEND
+        | os.O_CREAT
+        | os.O_EXCL
+        | os.O_CLOEXEC
+        | os.O_NONBLOCK
+        | os.O_NOFOLLOW
+    )
+    path_fd = None
+    try:
+        try:
+            path_fd = os.open(name, path_flags, dir_fd=parent_fd)
+        except FileNotFoundError:
+            try:
+                fd = os.open(name, create_flags, mode, dir_fd=parent_fd)
+            except OSError as exc:
+                raise BootstrapError(f"{label} could not be created safely") from exc
+        else:
+            path_info = _require_same_filesystem(path_fd, parent_fd, label)
+            if not stat.S_ISREG(path_info.st_mode) or path_info.st_nlink != 1:
+                raise BootstrapError(f"{label} failed its regular-file safety check")
+            try:
+                fd = os.open(
+                    f"/proc/self/fd/{path_fd}",
+                    os.O_RDWR | os.O_APPEND | os.O_CLOEXEC | os.O_NONBLOCK,
+                )
+            except OSError as exc:
+                raise BootstrapError(f"{label} could not be opened safely") from exc
+    except BaseException:
+        if path_fd is not None:
+            os.close(path_fd)
+        raise
+    try:
+        info = _require_same_filesystem(fd, parent_fd, label)
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise BootstrapError(f"{label} failed its regular-file safety check")
+        if path_fd is not None:
+            path_info = os.fstat(path_fd)
+            if (path_info.st_dev, path_info.st_ino) != (info.st_dev, info.st_ino):
+                raise BootstrapError(f"{label} changed while being opened")
+        _set_metadata(fd, info, uid=uid, gid=gid, mode=mode)
+        _require_entry_matches(
+            parent_fd, name, info, label=label, directory=False
+        )
+    finally:
+        os.close(fd)
+        if path_fd is not None:
+            os.close(path_fd)
+
+
+def _remove_tree_entry(parent_fd: int, name: str, *, label: str) -> None:
+    """Remove one exact entry recursively without following any symlink."""
+
+    try:
+        info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return
+    if not stat.S_ISDIR(info.st_mode):
+        os.unlink(name, dir_fd=parent_fd)
+        return
+
+    try:
+        child_fd = os.open(name, _directory_flags(), dir_fd=parent_fd)
+    except OSError as exc:
+        raise BootstrapError(f"{label} could not be opened safely") from exc
+    try:
+        _require_same_filesystem(child_fd, parent_fd, label)
+        for child in os.listdir(child_fd):
+            _remove_tree_entry(child_fd, child, label=f"{label} child")
+    finally:
+        os.close(child_fd)
+    try:
+        os.rmdir(name, dir_fd=parent_fd)
+    except OSError as exc:
+        raise BootstrapError(f"{label} changed during safe removal") from exc
+
+
+def _create_xauthority(runtime_fd: int, *, root_uid: int, vibe_gid: int) -> None:
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW
+    try:
+        fd = os.open("Xauthority", flags, 0o640, dir_fd=runtime_fd)
+    except OSError as exc:
+        raise BootstrapError("Xauthority could not be created safely") from exc
+    try:
+        info = _require_same_filesystem(fd, runtime_fd, "Xauthority")
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise BootstrapError("Xauthority failed its regular-file safety check")
+        _set_metadata(fd, info, uid=root_uid, gid=vibe_gid, mode=0o640)
+        _require_entry_matches(
+            runtime_fd,
+            "Xauthority",
+            info,
+            label="Xauthority",
+            directory=False,
+        )
+    finally:
+        os.close(fd)
+
+
+def bootstrap(
+    *,
+    data_root: str,
+    run_root: str,
+    root_uid: int,
+    vibe_uid: int,
+    vibe_gid: int,
+    root_gid: int | None = None,
+) -> None:
+    if root_gid is None:
+        root_gid = os.getgid()
+    data_fd = _open_absolute_directory(data_root)
+    try:
+        try:
+            marker_fd = os.open(STATE_MARKER, _directory_flags(), dir_fd=data_fd)
+        except OSError as exc:
+            raise BootstrapError("/data is missing its safe state marker") from exc
+        try:
+            marker_info = _require_same_filesystem(
+                marker_fd, data_fd, "VibeStack state marker"
+            )
+            if (
+                not stat.S_ISDIR(marker_info.st_mode)
+                or stat.S_IMODE(marker_info.st_mode) & 0o022
+            ):
+                raise BootstrapError("VibeStack state marker failed its safety check")
+        finally:
+            os.close(marker_fd)
+        data_info = os.fstat(data_fd)
+        # Root ownership plus sticky group-write lets UID 1000 manage its own
+        # state roots without replacing root-owned /data/logs.
+        _set_metadata(
+            data_fd, data_info, uid=root_uid, gid=vibe_gid, mode=0o1770
+        )
+        password_fd = _ensure_private_root_directory(
+            data_fd,
+            PASSWORD_STATE_DIR,
+            uid=root_uid,
+            gid=root_gid,
+            mode=0o700,
+            label="password state directory",
+        )
+        os.close(password_fd)
+        logs_fd = _ensure_directory(
+            data_fd, "logs", uid=root_uid, gid=vibe_gid, mode=0o750, label="logs"
+        )
+        try:
+            stack_fd = _ensure_directory(
+                logs_fd,
+                "vibestack",
+                uid=root_uid,
+                gid=vibe_gid,
+                mode=0o1770,
+                label="VibeStack log root",
+            )
+            try:
+                services_fd = _ensure_directory(
+                    stack_fd,
+                    "services",
+                    uid=root_uid,
+                    gid=vibe_gid,
+                    mode=0o750,
+                    label="service log directory",
+                )
+                try:
+                    for name in SERVICE_LOGS:
+                        _ensure_regular_file(
+                            services_fd,
+                            name,
+                            uid=root_uid,
+                            gid=vibe_gid,
+                            mode=0o640,
+                            label=f"service log {name}",
+                        )
+                finally:
+                    os.close(services_fd)
+
+                nginx_fd = _ensure_directory(
+                    stack_fd,
+                    "nginx",
+                    uid=root_uid,
+                    gid=vibe_gid,
+                    mode=0o750,
+                    label="nginx log directory",
+                )
+                try:
+                    for name in ("access.jsonl", "error.log"):
+                        _ensure_regular_file(
+                            nginx_fd,
+                            name,
+                            uid=root_uid,
+                            gid=vibe_gid,
+                            mode=0o640,
+                            label=f"nginx log {name}",
+                        )
+                finally:
+                    os.close(nginx_fd)
+
+                desktop_fd = _ensure_directory(
+                    stack_fd,
+                    "desktop",
+                    uid=vibe_uid,
+                    gid=vibe_gid,
+                    mode=0o750,
+                    label="desktop audit directory",
+                )
+                os.close(desktop_fd)
+                _ensure_regular_file(
+                    stack_fd,
+                    "supervisord.log",
+                    uid=root_uid,
+                    gid=vibe_gid,
+                    mode=0o640,
+                    label="Supervisor log",
+                )
+                _ensure_regular_file(
+                    stack_fd,
+                    "automation-audit.jsonl",
+                    uid=vibe_uid,
+                    gid=vibe_gid,
+                    mode=0o640,
+                    label="automation audit log",
+                )
+            finally:
+                os.close(stack_fd)
+        finally:
+            os.close(logs_fd)
+    finally:
+        os.close(data_fd)
+
+    run_fd = _open_absolute_directory(run_root)
+    try:
+        _remove_tree_entry(run_fd, "vibestack", label="VibeStack runtime directory")
+        runtime_fd = _ensure_directory(
+            run_fd,
+            "vibestack",
+            uid=root_uid,
+            gid=vibe_gid,
+            mode=0o1770,
+            label="VibeStack runtime directory",
+        )
+        try:
+            xdg_fd = _ensure_directory(
+                runtime_fd,
+                "runtime",
+                uid=vibe_uid,
+                gid=vibe_gid,
+                mode=0o700,
+                label="XDG runtime directory",
+            )
+            os.close(xdg_fd)
+            _create_xauthority(runtime_fd, root_uid=root_uid, vibe_gid=vibe_gid)
+        finally:
+            os.close(runtime_fd)
+    finally:
+        os.close(run_fd)
+
+
+def main() -> int:
+    if os.geteuid() != 0:
+        print("vibestack-bootstrap must run as root", file=sys.stderr)
+        return 1
+    try:
+        account = pwd.getpwnam("vibe")
+        bootstrap(
+            data_root=DATA_ROOT,
+            run_root=RUN_ROOT,
+            root_uid=0,
+            root_gid=0,
+            vibe_uid=account.pw_uid,
+            vibe_gid=account.pw_gid,
+        )
+    except (BootstrapError, OSError) as exc:
+        message = os.strerror(exc.errno) if isinstance(exc, OSError) and exc.errno else str(exc)
+        print(f"[bootstrap] refusing unsafe filesystem state: {message}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
