@@ -165,7 +165,11 @@ limit in a representative full desktop. Override it with
 launcher accepts 128 through 4096.
 
 `.github/workflows/publish-docker.yml` calls this same helper against its built
-candidate, so local and release acceptance cannot silently diverge.
+candidate, so local and release acceptance cannot silently diverge. CI retries
+one failed disposable run from completely fresh state to tolerate a transient
+hosted-runner or package-network failure; a release still requires one full
+end-to-end pass. A failed attempt prints bounded container, Supervisor, and
+service-log diagnostics before cleanup.
 
 ## Start or replace the live container
 

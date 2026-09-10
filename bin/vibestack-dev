@@ -97,9 +97,19 @@ run_acceptance() (
   local acceptance_data="" acceptance_password_dir="" acceptance_password_file="" project_owner
   umask 077
   cleanup_acceptance() {
+    local exit_status=$?
     local cleanup_dir="$acceptance_data" cleanup_password_dir="$acceptance_password_dir"
     acceptance_data=""
     acceptance_password_dir=""
+    if (( exit_status != 0 )) && docker inspect "$acceptance_container" >/dev/null 2>&1; then
+      echo "acceptance container diagnostics ($acceptance_container)" >&2
+      docker inspect --format \
+        'status={{.State.Status}} exit={{.State.ExitCode}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
+        "$acceptance_container" >&2 || true
+      docker exec "$acceptance_container" \
+        supervisorctl -c /etc/supervisor/supervisord.conf status >&2 || true
+      docker logs --tail 300 "$acceptance_container" >&2 || true
+    fi
     docker rm -f "$acceptance_container" >/dev/null 2>&1 || true
     if [[ "$cleanup_dir" =~ ^/tmp/vibestack-acceptance\.[A-Za-z0-9]{10}$ &&
           -d "$cleanup_dir" && ! -L "$cleanup_dir" ]]; then
@@ -122,8 +132,11 @@ run_acceptance() (
     elif [[ -n "$cleanup_password_dir" ]]; then
       echo "refusing unexpected password cleanup path: $cleanup_password_dir" >&2
     fi
+    return "$exit_status"
   }
-  trap cleanup_acceptance EXIT INT TERM
+  trap cleanup_acceptance EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   require docker
   require openssl
   [[ "$PIDS_LIMIT" =~ ^[0-9]+$ ]] && (( PIDS_LIMIT >= 128 && PIDS_LIMIT <= 4096 )) || {

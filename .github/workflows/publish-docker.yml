@@ -19,10 +19,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node for browser tests
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -34,7 +36,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/check-the-vibe/vibestack
           tags: |
@@ -48,7 +50,7 @@ jobs:
         run: bin/vibestack-dev test
 
       - name: Build acceptance image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -57,11 +59,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Run disposable container, onboarding, app and browser acceptance
-        run: bin/vibestack-dev accept vibestack:test
+        run: |
+          for attempt in 1 2; do
+            if bin/vibestack-dev accept vibestack:test; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 2 ]; then
+              exit 1
+            fi
+            echo "::warning::Disposable acceptance failed; retrying once from clean state"
+          done
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

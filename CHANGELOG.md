@@ -35,6 +35,9 @@ versioned release yet; changes below describe the next release from `main`.
   callback scheme so external sign-in opens reliably inside the container.
 - Made manual apt installs explicitly ephemeral and catalog installs
   auto-restoring across image replacement.
+- Updated the release workflow to current Node 24-based GitHub Actions and made
+  disposable acceptance emit bounded failure diagnostics before one clean CI
+  retry.
 
 ### Security
 
