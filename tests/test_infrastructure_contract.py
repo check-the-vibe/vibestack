@@ -564,6 +564,19 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn('-R "$(id -u):$(id -g)" /cleanup', helper)
         self.assertIn('rm -rf -- "$cleanup_dir"', helper)
 
+    def test_acceptance_rechecks_project_owner_inside_container(self) -> None:
+        helper = read("bin/vibestack-dev")
+        self.assertIn(
+            'docker exec "$acceptance_container" /usr/bin/stat -c \'%u:%g\'',
+            helper,
+        )
+        self.assertIn("/projects/ownership-sentinel", helper)
+        self.assertNotIn(
+            '[[ "$(stat -c \'%u:%g\' '
+            '"$acceptance_data/projects/ownership-sentinel")"',
+            helper,
+        )
+
     def test_static_text_compression_does_not_touch_websocket_configuration(self) -> None:
         nginx = read("nginx.conf")
         self.assertIn("gzip on;", nginx)

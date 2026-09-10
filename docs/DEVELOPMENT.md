@@ -170,6 +170,8 @@ one failed disposable run from completely fresh state to tolerate a transient
 hosted-runner or package-network failure; a release still requires one full
 end-to-end pass. A failed attempt prints bounded container, Supervisor, and
 service-log diagnostics before cleanup.
+Project ownership is rechecked from container root after bootstrap secures the
+bind root, so this gate also works when the CI host UID differs from `vibe`.
 
 ## Start or replace the live container
 

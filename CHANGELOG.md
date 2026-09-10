@@ -36,8 +36,8 @@ versioned release yet; changes below describe the next release from `main`.
 - Made manual apt installs explicitly ephemeral and catalog installs
   auto-restoring across image replacement.
 - Updated the release workflow to current Node 24-based GitHub Actions and made
-  disposable acceptance emit bounded failure diagnostics before one clean CI
-  retry.
+  disposable acceptance portable across host UIDs, with bounded failure
+  diagnostics before one clean CI retry.
 
 ### Security
 
