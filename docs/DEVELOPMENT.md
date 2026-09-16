@@ -220,8 +220,11 @@ hosted-runner or package-network failure; a release still requires one full
 end-to-end pass. A failed attempt prints bounded container, Supervisor, and
 service-log diagnostics before cleanup, including the last 80 lines (at most
 64 KiB per service) from code-server, SSH, and native VNC.
-Project ownership is rechecked from container root after bootstrap secures the
-bind root, so this gate also works when the CI host UID differs from `vibe`.
+The disposable project directory explicitly uses mode `0755` so the required
+core editor can start in `/projects` as `vibe` even when the CI host UID differs.
+Its host ownership is preserved, and the sentinel ownership is rechecked from
+container root after bootstrap secures the bind root. The onboarding password
+directory remains private (`0700`).
 
 Disposable image acceptance covers one workspace. Runner lifecycle acceptance
 uses a separate private state directory and the accepted candidate digest;

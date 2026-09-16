@@ -176,7 +176,9 @@ run_acceptance() (
   openssl rand -out "$acceptance_password_file" -hex 24
   chmod 0600 "$acceptance_password_file"
   mkdir -p "$acceptance_data/.vibestack-state-v1" "$acceptance_data/projects"
-  chmod 0755 "$acceptance_data/.vibestack-state-v1"
+  # Supervisor starts the core editor as vibe, which must traverse /projects
+  # even when the host UID differs. Preserve the fixture's host ownership.
+  chmod 0755 "$acceptance_data/.vibestack-state-v1" "$acceptance_data/projects"
   touch "$acceptance_data/projects/ownership-sentinel"
   project_owner="$(stat -c '%u:%g' "$acceptance_data/projects/ownership-sentinel")"
   start_acceptance_container() {
