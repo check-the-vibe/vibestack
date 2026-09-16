@@ -122,6 +122,13 @@ run_acceptance() (
       docker exec "$acceptance_container" \
         supervisorctl -c /etc/supervisor/supervisord.conf status >&2 || true
       docker logs --tail 300 "$acceptance_container" >&2 || true
+      local service
+      for service in code-server ssh native-vnc; do
+        echo "acceptance service log: $service (last 80 lines, at most 64 KiB)" >&2
+        docker exec "$acceptance_container" \
+          tail -c 65536 "/data/logs/vibestack/services/$service.log" 2>&1 |
+          tail -n 80 >&2 || true
+      done
     fi
     docker rm -f "$acceptance_container" >/dev/null 2>&1 || true
     if [[ "$cleanup_dir" =~ ^/tmp/vibestack-acceptance\.[A-Za-z0-9]{10}$ &&
