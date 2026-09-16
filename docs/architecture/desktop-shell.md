@@ -9,7 +9,7 @@ source of truth.
 ```text
  iPad/desktop browser (one origin)
  ┌──────────────────────────────────────────────────────────────┐
- │ / root chooser -> /vnc/ VibeStack shell                     │
+ │ / default Desktop -> /vnc/ VibeStack shell                     │
  │  ├─ Desktop: RFB adapter ── WebSocket /vnc/websockify        │
  │  ├─ Terminal: same-origin frame ───────────── /terminal/     │
  │  ├─ Controls/Settings/Tools ─ JSON /api/v1/*                 │
@@ -102,12 +102,17 @@ Logical service mappings are fixed in code:
 | `vnc` | `x11vnc` | `/data/logs/vibestack/services/x11vnc.log` |
 | `terminal` | `ttyd` | `/data/logs/vibestack/services/ttyd.log` |
 | `setup` | `vibestack-setup` | `/data/logs/vibestack/services/vibestack-setup.log` |
+| `ssh` | `ssh` | `/data/logs/vibestack/services/ssh.log` |
+| `native-vnc` | `native-vnc` | `/data/logs/vibestack/services/native-vnc.log` |
+| `editor` | `code-server` | `/data/logs/vibestack/services/code-server.log` |
 
 The helper cannot address nginx, the control/automation services themselves,
 arbitrary supervisor names, or arbitrary files. `vibe` has passwordless sudo
 only for `vibestack-control`, `vibestack-install`, and `vibestack-password`;
 each helper has its own fixed grammar. Once onboarding configures the Linux
 password, all other sudo commands require it through PAM.
+Native VNC runs as root for PAM access and therefore uses x11vnc's `-noshm`
+capture path; Xvfb belongs to `vibe` and rejects a root-owned MIT-SHM segment.
 
 ### nginx and routes
 
@@ -121,7 +126,11 @@ password, all other sudo commands require it through PAM.
 | `/api/v1/` | Proxy to the loopback control service. Responses are `no-store`. |
 | `/api/v1/automation` | Proxy to the separate bearer-authenticated automation service. Never cached. |
 | `/terminal/` | Existing ttyd proxy. Never service-worker cached. |
+| `/editor/` | Optional code-server proxy. Never service-worker cached. |
 | `/setup/` | Password and component setup proxy; redirects to `/` only when both are complete. Never service-worker cached. |
+| `/.well-known/vibestack` | Public identity/version/API/pairing discovery without credentials or inventory. |
+| `/AGENTS.md`, `/CLI.md`, `/AUTOMATION.md`, `/RUNNER.md` | Version-matched, non-cacheable Markdown guidance. |
+| `/cli.sh`, `/skills/vibestack/SKILL.md` | Secret-free client bootstrap and portable skill. |
 | `/manifest.webmanifest` | Root-scope install metadata; no-cache for update discovery. |
 | `/service-worker.js` | Root-scoped worker; no-cache and `Service-Worker-Allowed: /`. |
 | `/icons/` | Versioned application icons. |
@@ -130,13 +139,16 @@ The upstream `/novnc/vnc.html` is blocked. Only the pinned `/novnc/core/` and
 `/novnc/vendor/` protocol modules are exposed; VibeStack owns every visible UI
 route.
 
-Before selecting any route, nginx accepts only loopback Host values and valid
-multi-label `.ts.net` names. An optional browser Origin must be HTTP(S) and
-match the exact Host authority case-insensitively; its scheme may differ after
-Tailscale TLS termination. Missing Origin remains valid for CLI clients, while
-malformed, null, duplicate, cross-authority, and cross-site fetch metadata are
-rejected. This applies equally to static/setup traffic and the ttyd and noVNC
-WebSocket upgrades.
+Before selecting any route, nginx accepts only loopback Host values, valid
+multi-label `.ts.net` names, and exact hostname/IP values validated from the
+operator's bounded `VIBESTACK_ALLOWED_HOSTS` list. An optional browser Origin
+must be HTTP(S) and match the exact Host authority case-insensitively; its
+scheme may differ after Tailscale TLS termination. Missing Origin remains valid for CLI clients, while
+malformed, null, duplicate, and cross-authority values are rejected. A safe
+top-level `GET`/`HEAD` is the only request allowed to carry exact
+`cross-site`/`same-site` and `navigate` metadata, with destination `document`
+or extension-generated `empty`; subresources, mutations, and the ttyd and
+noVNC WebSocket upgrades remain rejected.
 
 For the two browser streams nginx also replaces any inbound
 `X-VibeStack-Proxy` value with a fixed marker. It preserves the public
@@ -162,17 +174,31 @@ objects, foreign framing, base URL, or foreign form actions.
 
 ## Browser information architecture
 
-The root page is a dependency-free chooser whose primary destinations are
-`/vnc/?view=desktop` and `/vnc/?view=terminal`; Setup and the raw ttyd route stay
-directly accessible. The shell has one full-viewport workspace, accessible
-Desktop/Terminal tabs, one top Menu disclosure, and two mutually exclusive
-drawers launched from that menu. Terminal is a lazy-loaded same-origin iframe;
-the raw `/terminal/` endpoint and WebSocket route are unchanged.
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers installation instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
 
 ```text
 Landscape / desktop
 ┌───────────────────────────────────────────────────────────────────────┐
-│ VibeStack  [Desktop Terminal] ● Connected       Menu  Focus  Full │
+│ VibeStack  [Desktop Terminal Editor Settings] ● Connected       Menu  Focus  Full │
 ├────────────────────────────────────────────────────────────────────────┤
 │ Keyboard Clipboard | Ctrl Alt Super CAD | Match | Settings Tools │
 │                                                                       │
@@ -180,7 +206,7 @@ Landscape / desktop
 │                                                                       │
 │                                        ┌─────────────────────────────┐│
 │                                        │ active drawer          Close││
-│                                        │ settings or tools           ││
+│                                        │ apps, settings or tools           ││
 │                                        └─────────────────────────────┘│
 └───────────────────────────────────────────────────────────────────────┘
 
@@ -333,7 +359,7 @@ the viewport. The RFB adapter always sets `resizeSession = false`; local
 
 ### `GET /api/v1/logs/{service}?cursor=&limit=`
 
-`service` is one of the four logical IDs. `limit` defaults to 100 and must be
+`service` is one of the seven fixed logical IDs. `limit` defaults to 100 and must be
 1–200. `cursor` is an optional non-negative byte offset. Without a cursor the
 newest `limit` lines are returned; with one, reading continues from that byte.
 
@@ -352,10 +378,12 @@ at byte zero and `reset` is true. Each line is capped at 4096 bytes, pages at
 64 KiB, ANSI escape sequences are stripped, nonprinting controls are escaped,
 and UI renders every line as text.
 
-### `POST /api/v1/services/{service}/restart`
+### `POST /api/v1/services/{service}/{operation}`
 
-Requires JSON `{}` and one logical service ID. Extra fields are rejected. A
-success response is:
+Requires JSON `{}`, one logical service ID, and `start`, `stop`, or `restart`.
+Extra fields are rejected. Core shell UI exposes the safe actions relevant to
+its current state; CLI clients can manage all published services. Stopping
+native VNC leaves browser VNC running. A restart success response is:
 
 ```json
 {"service": "vnc", "state": "RUNNING", "restarted": true}
@@ -369,8 +397,10 @@ while pending, and not optimistically report success.
 - Mutation bodies are JSON objects, at most 4096 bytes, with Content-Length,
   no transfer encoding, no duplicate keys, and exactly the documented fields.
 - Mutations require one valid `Host`. If an `Origin` is present its host and
-  effective port must match; browser requests marked `cross-site` or
-  `same-site` rather than `same-origin` are rejected. No CORS headers exist.
+  effective port must match; browser mutations marked `cross-site` or
+  `same-site` rather than `same-origin` are rejected. Only safe top-level
+  `GET`/`HEAD` document navigations receive the narrow exception. No CORS
+  headers exist.
 - Missing `Origin` is supported for same-host scripts and is not an auth
   bypass because the private network remains the authorization boundary.
 - Only one mutation runs at once. A concurrent mutation receives 409

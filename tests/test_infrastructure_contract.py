@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import subprocess
 import unittest
 
 
@@ -26,6 +27,23 @@ def supervisor_section(source: str, name: str) -> str:
 
 
 class InfrastructureContractTests(unittest.TestCase):
+    def test_official_ubuntu_sources_switch_to_https_after_ca_bootstrap(self) -> None:
+        dockerfile = read("Dockerfile")
+        expression = re.search(r"RUN sed -Ei '([^']+)' /etc/apt/sources.list.d/ubuntu.sources", dockerfile)
+        self.assertIsNotNone(expression)
+        self.assertLess(dockerfile.index("ca-certificates curl"), expression.start())
+        original = ("URIs: http://archive.ubuntu.com/ubuntu/ http://security.ubuntu.com/ubuntu/\n"
+                    "URIs: http://ports.ubuntu.com/ubuntu-ports/\n"
+                    "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n"
+                    "URIs: https://archive.ubuntu.com/ubuntu/\n"
+                    "URIs: http://operator.example/ubuntu/\n")
+        result = subprocess.run(["sed", "-E", expression.group(1)], input=original,
+                                text=True, capture_output=True, check=True).stdout
+        expected = original.replace("http://archive.ubuntu.com/", "https://archive.ubuntu.com/")
+        expected = expected.replace("http://security.ubuntu.com/", "https://security.ubuntu.com/")
+        expected = expected.replace("http://ports.ubuntu.com/", "https://ports.ubuntu.com/")
+        self.assertEqual(result, expected)
+
     def test_base_image_has_pinned_multiarch_automation_dependencies(self) -> None:
         dockerfile = read("Dockerfile")
         self.assertIn("FROM ubuntu:24.04", dockerfile)
@@ -170,6 +188,8 @@ class InfrastructureContractTests(unittest.TestCase):
         x11vnc = supervisor_section(supervisor, "program:x11vnc")
         self.assertIn("-listen 127.0.0.1", x11vnc)
         self.assertIn("-auth /run/vibestack/Xauthority", x11vnc)
+        native_vnc = supervisor_section(supervisor, "program:native-vnc")
+        self.assertIn("-noshm", native_vnc)
 
         novnc = supervisor_section(supervisor, "program:novnc")
         self.assertIn("--heartbeat=30", novnc)
@@ -255,7 +275,7 @@ class InfrastructureContractTests(unittest.TestCase):
             self.assertIn('add_header Cache-Control "no-cache" always;', location)
 
         acceptance = read("bin/vibestack-check")
-        self.assertIn('AC-3 / serves workspace launcher', acceptance)
+        self.assertIn('AC-3 / serves Desktop landing', acceptance)
         self.assertIn('AC-26 configured setup redirects to launcher', acceptance)
         self.assertIn('AC-26 locked account stays in onboarding', acceptance)
 
@@ -274,7 +294,9 @@ class InfrastructureContractTests(unittest.TestCase):
         helper = read("bin/vibestack-dev")
         probe = read("tests/runtime_onboarding_check.py")
 
-        install = helper.index("vibestack-setup install godot build-essential flatpak")
+        install = helper.index(
+            "vibestack-setup install godot build-essential flatpak"
+        )
         flatpak_install = helper.index("org.gnome.Calculator", install)
         initial_probe = helper.index("catalog-installed", install)
         recreate = helper.index('docker rm -f "$acceptance_container"', initial_probe)
@@ -485,12 +507,15 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn(
             'map "$http_origin|$http_host" $vibestack_origin_allowed', nginx
         )
-        self.assertIn("map $http_sec_fetch_site $vibestack_fetch_site_allowed", nginx)
+        self.assertIn(
+            'map "$request_method|$http_sec_fetch_site|$http_sec_fetch_mode|$http_sec_fetch_dest" $vibestack_fetch_site_allowed',
+            nginx,
+        )
         self.assertIn("if ($vibestack_origin_allowed = 0)", nginx)
         self.assertIn("if ($vibestack_fetch_site_allowed = 0)", nginx)
         origin_map = nginx[
             nginx.index('map "$http_origin|$http_host"') : nginx.index(
-                "map $http_sec_fetch_site"
+                'map "$request_method|$http_sec_fetch_site'
             )
         ]
         origin_expressions = re.findall(
@@ -534,16 +559,24 @@ class InfrastructureContractTests(unittest.TestCase):
             self.assertFalse(origin_allowed(origin, host), (origin, host))
 
         fetch_map = nginx[
-            nginx.index("map $http_sec_fetch_site") : nginx.index("server {")
+            nginx.index('map "$request_method|$http_sec_fetch_site') : nginx.index("server {")
         ]
-        allowed_fetch_sites = set(
-            re.findall(r'^\s*(""|[a-z-]+)\s+1;', fetch_map, re.MULTILINE)
+        self.assertIn(
+            r"(?:GET|HEAD)\|(?:cross-site|same-site)\|navigate\|(?:document|empty)$",
+            fetch_map,
         )
-        self.assertEqual({'""', "none", "same-origin"}, allowed_fetch_sites)
-        for disallowed in ("same-site", "cross-site", "same-origin, cross-site"):
-            self.assertNotIn(f"{disallowed} 1;", fetch_map)
+        self.assertIn(r"(?:none|same-origin)\|[^|]*\|[^|]*$", fetch_map)
+        self.assertNotIn("POST|cross-site", fetch_map)
+        self.assertNotIn(r"(?:cross-site|same-site)\|[^|]*\|[^|]*$", fetch_map)
+        self.assertIn('"fetchSite":"$http_sec_fetch_site"', nginx)
+        self.assertIn('"fetchMode":"$http_sec_fetch_mode"', nginx)
+        self.assertIn('"fetchDest":"$http_sec_fetch_dest"', nginx)
 
         acceptance = read("bin/vibestack-check")
+        self.assertIn(
+            '{\\"desktop\\",\\"vnc\\",\\"terminal\\",\\"setup\\",\\"ssh\\",\\"native-vnc\\",\\"editor\\"}',
+            acceptance,
+        )
         self.assertIn("terminal cross-origin WS rejected", acceptance)
         self.assertIn("VNC cross-origin WS rejected", acceptance)
         self.assertIn("cross-origin static rejected", acceptance)

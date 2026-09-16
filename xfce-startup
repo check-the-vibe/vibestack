@@ -83,8 +83,7 @@ xfwm4 --compositor=off --replace &
 sleep 1
 xfce4-panel --disable-wm-check &
 xfdesktop --disable-wm-check &
-# The first-run banner comes from ~/.bashrc, so a plain interactive terminal
-# shows it exactly once.
-xfce4-terminal --hide-menubar --hide-scrollbar --geometry=100x30 &
+# Show connection details without launching an interactive terminal.
+(sleep 2; /usr/local/bin/vibestack-wallpaper --apply) &
 
 wait

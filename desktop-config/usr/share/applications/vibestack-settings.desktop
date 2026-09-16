@@ -1,11 +1,11 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Desktop Settings
+Name=Settings
 Comment=Configure the VibeStack XFCE desktop
 Exec=/usr/local/bin/vibestack-desktop-action settings
 Icon=preferences-system
 Terminal=false
 StartupNotify=true
-Categories=Settings;X-VibeStack-System;
+Categories=Settings;X-VibeStack-System;X-VibeStack-Action;
 OnlyShowIn=XFCE;

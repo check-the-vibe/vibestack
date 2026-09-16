@@ -76,7 +76,10 @@
       "name": "Node.js 22.23.2 LTS",
       "description": "Pinned JavaScript runtime with npm 10.9.8. Required by all three coding CLIs.",
       "size_mb": 225,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "command -v npm >/dev/null && test \"$(node --version)\" = v22.23.2 && test \"$(npm --version)\" = 10.9.8",
       "next_steps": []
@@ -87,7 +90,10 @@
       "name": "Claude Code",
       "description": "Anthropic's coding agent 2.1.263. Drives Chrome with --chrome.",
       "size_mb": 206,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [
         "node"
       ],
@@ -103,7 +109,10 @@
       "name": "Codex CLI",
       "description": "OpenAI's Codex CLI 0.153.4 for the terminal.",
       "size_mb": 320,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [
         "node"
       ],
@@ -118,7 +127,10 @@
       "name": "OpenCode",
       "description": "OpenCode 1.18.29, an open source provider-agnostic terminal agent.",
       "size_mb": 353,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [
         "node"
       ],
@@ -133,7 +145,9 @@
       "name": "Google Chrome",
       "description": "Chrome for amd64 hosts, with the Claude and Codex extensions force-installed by policy.",
       "size_mb": 450,
-      "architectures": ["amd64"],
+      "architectures": [
+        "amd64"
+      ],
       "requires": [],
       "probe": "command -v google-chrome-stable",
       "next_steps": [
@@ -147,7 +161,10 @@
       "name": "Claude Desktop",
       "description": "Anthropic's amd64/arm64 desktop app: Chat and Claude Code. Cowork needs KVM and stays unavailable here.",
       "size_mb": 560,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "command -v claude-desktop",
       "next_steps": [
@@ -160,7 +177,9 @@
       "name": "ChatGPT / Codex desktop",
       "description": "OpenAI's amd64-only desktop app. Large download. Computer Use is not in the Linux build.",
       "size_mb": 1350,
-      "architectures": ["amd64"],
+      "architectures": [
+        "amd64"
+      ],
       "requires": [
         "chrome"
       ],
@@ -175,7 +194,10 @@
       "name": "Godot Engine 4.7.2",
       "description": "Pinned standard Godot editor for 2D and 3D game development. Uses the OpenGL Compatibility renderer in VibeStack.",
       "size_mb": 200,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "test -x /usr/local/bin/godot && test -f /usr/share/applications/org.godotengine.Godot.desktop && test \"$(cat /usr/local/bin/.vibestack-godot-4.7.2.complete 2>/dev/null)\" = 'godot 4.7.2' && /usr/local/bin/godot --version | grep -q '^4\\.7\\.2\\.stable\\.official\\.'",
       "next_steps": [
@@ -189,8 +211,13 @@
       "name": "Flatpak + Flathub marketplace",
       "description": "Per-user Flatpak apps from stable Flathub, with XFCE portal and menu integration. Requires VibeStack's explicit --flatpak nested-sandbox mode.",
       "size_mb": 25,
-      "architectures": ["amd64", "arm64"],
-      "runtime_requirements": ["nested-sandbox"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "runtime_requirements": [
+        "nested-sandbox"
+      ],
       "requires": [],
       "probe": "command -v flatpak >/dev/null && command -v bwrap >/dev/null && test \"$(dpkg-query -W -f='${db:Status-Abbrev}' xdg-desktop-portal-xapp 2>/dev/null)\" = 'ii ' && flatpak --user remotes --columns=name,url | awk '$1 == \"flathub\" && $2 == \"https://dl.flathub.org/repo/\" { found=1 } END { exit !found }'",
       "next_steps": [
@@ -204,7 +231,10 @@
       "name": "Native build tools",
       "description": "The distro's build-essential metapackage: GCC, G++, Make, and development headers for compiling native software.",
       "size_mb": 200,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "test \"$(dpkg-query -W -f='${db:Status-Abbrev}' build-essential 2>/dev/null)\" = 'ii '",
       "next_steps": []
@@ -215,7 +245,10 @@
       "name": "Editors and diff",
       "description": "Mousepad, Geany, Vim and Meld. Meld is wired in as the git difftool.",
       "size_mb": 82,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "command -v geany && command -v meld && command -v mousepad",
       "next_steps": [
@@ -228,7 +261,10 @@
       "name": "Image editing",
       "description": "GIMP, Drawing and Flameshot for screenshots and mockups.",
       "size_mb": 210,
-      "architectures": ["amd64", "arm64"],
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
       "requires": [],
       "probe": "command -v gimp && command -v flameshot",
       "next_steps": []

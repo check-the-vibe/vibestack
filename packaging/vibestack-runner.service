@@ -1,0 +1,22 @@
+[Unit]
+Description=VibeStack Docker host runner
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/sbin/vibestack-runner serve --config /etc/vibestack-runner/config.json
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/var/lib/vibestack-runner /run
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

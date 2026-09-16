@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Host-only, explicit manual development patching and bounded diagnostic collection."""
+import argparse
+import datetime
+import hashlib
+import json
+import logging
+from logging.handlers import RotatingFileHandler
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+import urllib.request
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'control'))
+import walkthrough
+
+FILES = {
+    **{f'desktop/{p}': f'/usr/share/vibestack/desktop/{p}' for p in
+       ('index.html', 'launcher.html', 'app.js', 'app.css', 'launcher.js', 'launcher.css', 'service-worker.js', 'walkthrough.js', 'navigation.js')},
+    **{f'setup/{p}': f'/usr/share/vibestack/web/{p}' for p in ('index.html', 'app.js', 'style.css')},
+    **{f'control/{p}': f'/usr/share/vibestack-control/{p}' for p in ('server.py', 'controllib.py', 'walkthrough.py')},
+    'setup/catalog.json': '/usr/share/vibestack/catalog.json',
+    'setup/setuplib.py': '/usr/share/vibestack/setuplib.py',
+    'xfce-startup': '/home/vibe/xfce-startup',
+    'supervisord.conf': '/etc/supervisor/supervisord.conf',
+    'bin/vibestack-wallpaper': '/usr/local/bin/vibestack-wallpaper',
+    'bin/vibestack-healthcheck': '/usr/local/bin/vibestack-healthcheck',
+    'bin/vibestack-desktop-action': '/usr/local/bin/vibestack-desktop-action',
+    'desktop-config/etc/xdg/menus/vibestack-applications.menu': '/etc/xdg/menus/vibestack-applications.menu',
+    **{f'desktop-config/usr/share/applications/vibestack-{p}.desktop': f'/usr/share/applications/vibestack-{p}.desktop' for p in ('workspace-desktop', 'desktop', 'terminal', 'editor', 'settings')},
+    'runtime/AGENTS.md': '/usr/share/doc/vibestack/AGENTS.md',
+    'docs/AUTOMATION.md': '/usr/share/doc/vibestack/AUTOMATION.md',
+}
+
+
+def run(*args, check=True):
+    return subprocess.run(args, capture_output=True, check=check, timeout=40)
+
+
+def request(args, path):
+    with urllib.request.urlopen(args.url.rstrip('/') + path, timeout=8) as response:
+        return json.load(response)
+
+
+def logger(directory):
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    handler = RotatingFileHandler(directory / 'walkthrough.jsonl', maxBytes=10*1024*1024, backupCount=4)
+    log = logging.getLogger('walkthrough')
+    log.setLevel(logging.INFO)
+    log.addHandler(handler)
+    return log
+
+
+def emit(log, source, **fields):
+    log.info(json.dumps(dict(timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(), source=source, **fields), separators=(',', ':')))
+
+
+READ = '''import json,os,sys
+positions=json.loads(sys.argv[1]); result={}
+for name,path in {'control':'/data/logs/vibestack/services/vibestack-control.log','http':'/data/logs/vibestack/nginx/access.jsonl'}.items():
+ try:
+  with open(path,'rb') as f:
+   st=os.fstat(f.fileno()); old=positions.get(name,[0,0]); offset=old[1] if old[0]==st.st_ino and old[1]<=st.st_size else max(0,st.st_size-262144)
+   f.seek(offset); data=f.read(262144); end=data.rfind(b'\\n')+1
+   if not end and data: end=len(data)
+   result[name]={'position':[st.st_ino,offset+end],'lines':data[:end].decode('utf-8','replace').splitlines()}
+ except FileNotFoundError: pass
+print(json.dumps(result))
+'''
+
+
+def collect(args, log):
+    positions, previous = {}, None
+    emit(log, 'collector', event='started', container=args.container)
+    while True:
+        try:
+            result = json.loads(run('docker', 'exec', args.container, 'python3', '-c', READ, json.dumps(positions)).stdout)
+            for source, batch in result.items():
+                positions[source] = batch['position']
+                for line in batch['lines']:
+                    try:
+                        value = json.loads(line)
+                        if source == 'control' and value.get('source') == 'walkthrough':
+                            value = walkthrough.validate({k:v for k,v in value.items() if k not in ('source','timestamp')})
+                            emit(log, 'browser', **value)
+                        elif source == 'http':
+                            path = value.get('path', '').split('?', 1)[0]
+                            if path == '/api/v1/diagnostics/events':
+                                continue
+                            endpoint = path if path in walkthrough.ROUTES else 'other'
+                            metadata = {k:value[k] for k in ('status','requestBytes','responseBytes','requestSeconds') if type(value.get(k)) in (int,float)}
+                            method=value.get('method')
+                            emit(log, 'http', endpoint=endpoint, method=method if method in ('GET','POST','PUT','DELETE','HEAD','PATCH') else 'other', **metadata)
+                    except (ValueError, TypeError, AttributeError):
+                        continue
+            setup = request(args, '/setup/api/state')
+            status = request(args, '/api/v1/status')
+            # Never serialize raw state, setup errors, environment, or request bodies.
+            state = {'completed':bool(setup.get('state', {}).get('completed')), 'passwordConfigured':bool(setup.get('authentication', {}).get('password_configured')),
+                     'installationRunning':bool(setup.get('job', {}).get('running')),
+                     'installationOK':setup.get('job', {}).get('ok') is True,
+                     'services':{k:v.get('state', 'UNKNOWN') for k,v in status.get('services', {}).items() if isinstance(v,dict)}}
+            if state != previous:
+                emit(log, 'state', **state)
+                previous = state
+        except Exception as error:
+            emit(log, 'collector', event='unavailable', error=type(error).__name__)
+        time.sleep(3)
+
+
+def restore(args, backup, manifest):
+    for source, existed in manifest.items():
+        destination = FILES[source]
+        if existed:
+            run('docker', 'cp', str(backup / source), args.container + ':' + destination)
+        else:
+            run('docker', 'exec', args.container, 'rm', '-f', '--', destination)
+    run('docker', 'exec', args.container, 'supervisorctl', 'restart', 'vibestack-control', 'vibestack-setup')
+
+
+def deploy(args, log):
+    # Local syntax checks before any live mutation. Full image acceptance is a later checkpoint.
+    for source in FILES:
+        path = ROOT / source
+        if path.suffix == '.js':
+            run('node', '--check', str(path))
+        elif source in ('bin/vibestack-desktop-action', 'bin/vibestack-healthcheck', 'xfce-startup'):
+            run('bash', '-n', str(path))
+        elif path.suffix == '.py' or source == 'bin/vibestack-wallpaper':
+            compile(path.read_text(), str(path), 'exec')
+    state = request(args, '/setup/api/state')
+    if state.get('job', {}).get('running'):
+        raise RuntimeError('Wait for the active setup installation to finish before patching.')
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+    backup = args.directory / 'patches' / stamp
+    backup.mkdir(parents=True, mode=0o700)
+    manifest = {}
+    for source, destination in FILES.items():
+        target = backup / source
+        target.parent.mkdir(parents=True, exist_ok=True)
+        exists = run('docker', 'exec', args.container, 'test', '-f', destination, check=False)
+        if exists.returncode not in (0, 1):
+            raise RuntimeError('Could not inspect patch target')
+        manifest[source] = exists.returncode == 0
+        if manifest[source]:
+            run('docker', 'cp', args.container + ':' + destination, str(target))
+    (backup / 'manifest.json').write_text(json.dumps({'container':args.container, 'files':manifest}, indent=2))
+    digest = hashlib.sha256(b''.join((ROOT / source).read_bytes() for source in sorted(FILES))).hexdigest()[:16]
+    worker = backup / 'candidate-service-worker.js'
+    worker.write_text((ROOT / 'desktop/service-worker.js').read_text().replace('__VIBESTACK_SHELL_CACHE_VERSION__', 'walkthrough-' + digest))
+    try:
+        for source, destination in FILES.items():
+            candidate = worker if source == 'desktop/service-worker.js' else ROOT / source
+            run('docker', 'cp', str(candidate), args.container + ':' + destination)
+        run('docker', 'exec', args.container, 'supervisorctl', 'restart', 'vibestack-control', 'vibestack-setup')
+        for attempt in range(10):
+            try:
+                request(args, '/api/v1/status')
+                request(args, '/setup/api/state')
+                break
+            except Exception:
+                if attempt == 9:
+                    raise
+                time.sleep(1)
+    except Exception:
+        restore(args, backup, manifest)
+        emit(log, 'deployment', event='failed-and-restored', patch=stamp)
+        raise
+    (args.directory / 'last-patch').write_text(stamp)
+    emit(log, 'deployment', event='patched', patch=stamp, revision=digest)
+    print(f'Development patch {stamp} applied. Reload the browser. Backup: {backup}')
+
+
+def main():
+    os.umask(0o077)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--container', required=True, help='Exact running runner container name')
+    parser.add_argument('--url', required=True, help='Matching private desktop origin')
+    parser.add_argument('--directory', type=Path, required=True, help='Private host log/backup directory')
+    parser.add_argument('command', choices=['collect', 'deploy', 'rollback', 'mark'])
+    parser.add_argument('label', nargs='?', default='issue')
+    args = parser.parse_args()
+    # Require an explicit runner desktop; never patch the independent standalone desktop.
+    if not re.fullmatch(r'vibestack-[a-z0-9-]+-[a-f0-9]{8}', args.container):
+        parser.error('Expected an exact runner-managed container name')
+    info=json.loads(run('docker','inspect','--format','{{json .Config.Labels}}',args.container).stdout)
+    if (info or {}).get('dev.vibestack.runner.managed') != 'true':
+        parser.error('Container has no VibeStack management labels')
+    args.directory = args.directory.resolve()
+    log = logger(args.directory)
+    if args.command == 'collect':
+        collect(args, log)
+    elif args.command == 'deploy':
+        deploy(args, log)
+    elif args.command == 'rollback':
+        stamp = (args.directory / 'last-patch').read_text().strip()
+        if not re.fullmatch(r'\d{8}T\d{12}Z', stamp):
+            raise RuntimeError('Invalid patch reference')
+        backup = args.directory / 'patches' / stamp
+        manifest = json.loads((backup / 'manifest.json').read_text())
+        if manifest['container'] != args.container or not set(manifest['files']) <= set(FILES):
+            raise RuntimeError('Backup target does not match')
+        restore(args, backup, manifest['files'])
+        emit(log, 'deployment', event='rolled-back', patch=stamp)
+        print('Previous files restored; reload the browser.')
+    else:
+        if not re.fullmatch(r'[a-zA-Z0-9_-]{1,80}', args.label):
+            parser.error('Use a short issue label containing letters, digits, hyphens, or underscores')
+        emit(log, 'marker', label=args.label)
+        print(args.directory / 'walkthrough.jsonl')
+
+
+if __name__ == '__main__':
+    main()

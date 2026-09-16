@@ -24,13 +24,18 @@ RUN apt-get update && \
         ca-certificates curl gnupg \
         dbus dbus-x11 desktop-file-utils xdg-utils \
         gnome-keyring libsecret-1-0 libsecret-tools \
-        git nano vim-tiny tmux sudo procps psmisc \
+        git nano vim-tiny tmux sudo procps psmisc openssh-server \
         nginx openssl supervisor python3 util-linux \
         websockify x11vnc xvfb xauth \
         xfwm4 xfdesktop4 xfce4-panel xfce4-settings xfce4-terminal thunar \
         fonts-dejavu-core \
         scrot xclip xdotool wmctrl libgtk-3-bin x11-utils x11-xserver-utils xcvt \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# The upstream base has no CA bundle. Once the signed base-package bootstrap
+# installs ca-certificates, use verified HTTPS for setup and restoration.
+# Keep the official archive, security, and ARM ports repositories unchanged.
+RUN sed -Ei 's#http://(archive\.ubuntu\.com/ubuntu|security\.ubuntu\.com/ubuntu|ports\.ubuntu\.com/ubuntu-ports)(/|[[:space:]]|$)#https://\1\2#g' /etc/apt/sources.list.d/ubuntu.sources
 
 # noVNC as static web assets. The Ubuntu novnc package depends on Node 18
 # without npm, which the setup catalog would then mistake for a Node runtime.
@@ -58,6 +63,11 @@ RUN case "${TARGETARCH}" in \
     install -m 0755 /tmp/ttyd /usr/bin/ttyd && \
     rm -f /tmp/ttyd
 
+# Editor is a core workspace service, installed and verified while building.
+COPY --chmod=755 bin/vibestack-install-editor /usr/local/bin/vibestack-install-editor
+RUN apt-get update && apt-get install -y --no-install-recommends python3-pil && \
+    /usr/local/bin/vibestack-install-editor && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Ubuntu 24.04 ships an "ubuntu" user on UID 1000; replace it.
 RUN userdel -r ubuntu 2>/dev/null || true && \
     useradd -m -s /bin/bash -u 1000 vibe && \
@@ -70,15 +80,20 @@ RUN userdel -r ubuntu 2>/dev/null || true && \
     visudo -cf /etc/sudoers.d/vibe
 
 COPY supervisord.conf /etc/supervisor/supervisord.conf
+COPY --chown=root:root --chmod=0444 sshd_config /etc/ssh/sshd_config_vibestack
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY setup/catalog.json /usr/share/vibestack/catalog.json
 COPY setup/setuplib.py setup/server.py /usr/share/vibestack/
 COPY setup/index.html setup/style.css setup/app.js /usr/share/vibestack/web/
+COPY common/ /usr/share/vibestack-common/
 COPY control/ /usr/share/vibestack-control/
 COPY automation/ /usr/share/vibestack-automation/
+COPY --chmod=0555 cli.sh /usr/share/vibestack/cli.sh
 RUN install -d -m 0755 /usr/share/vibestack-proxy
 COPY --chown=root:root --chmod=0444 proxy/websockify_auth.py /usr/share/vibestack-proxy/websockify_auth.py
 COPY runtime/AGENTS.md runtime/CLAUDE.md docs/AUTOMATION.md /usr/share/doc/vibestack/
+COPY docs/CLI.md docs/RUNNER.md /usr/share/doc/vibestack/
+COPY skills/vibestack/ /usr/share/doc/vibestack/skills/vibestack/
 RUN ln -s /usr/share/doc/vibestack/AGENTS.md /AGENTS.md && \
     ln -s /usr/share/doc/vibestack/AGENTS.md /home/vibe/AGENTS.md && \
     ln -s /usr/share/doc/vibestack/AUTOMATION.md /home/vibe/AUTOMATION.md
@@ -97,12 +112,12 @@ COPY chrome/google-chrome-xfce-helper.desktop /usr/share/vibestack/google-chrome
 COPY --chmod=755 bin/vibestack-api-token bin/vibestack-app bin/vibestack-automation-check \
      bin/vibestack-bootstrap bin/vibestack-check bin/vibestack-desktop-action bin/vibestack-install \
      bin/vibestack-flatpak bin/vibestack-healthcheck bin/vibestack-persist bin/vibestack-setup bin/vibestack-welcome \
-     bin/vibestack-control bin/vibestack-password /usr/local/bin/
+     bin/vibestack-control bin/vibestack-password bin/vibestack-wallpaper /usr/local/bin/
+COPY --chmod=755 bin/vibestack-volume-init /usr/local/bin/vibestack-volume-init
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 COPY --chown=vibe:vibe --chmod=755 xfce-startup /home/vibe/xfce-startup
 
 RUN mkdir -p /data/.vibestack-state-v1 /projects /home/vibe/Desktop && \
-    printf '\n# VibeStack first-run notice\n[[ $- == *i* ]] && command -v vibestack-welcome >/dev/null && vibestack-welcome --if-pending\n' >> /home/vibe/.bashrc && \
     chown -R vibe:vibe /home/vibe /projects && \
     chown root:vibe /data && \
     chmod 1770 /data
@@ -112,7 +127,7 @@ WORKDIR /home/vibe
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
     CMD ["/usr/local/bin/vibestack-healthcheck"]
 
-EXPOSE 80
+EXPOSE 80 22 5901
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]

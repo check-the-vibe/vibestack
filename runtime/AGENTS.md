@@ -4,7 +4,8 @@ You are working with VibeStack: a private, single-user Ubuntu 24.04/XFCE
 desktop running inside Docker. This file is the canonical quick-start for both
 agents inside the desktop and authorized agents on the Docker host or private
 tailnet. It is packaged at `/usr/share/doc/vibestack/AGENTS.md` and served at
-`/AGENTS.md`. The exact automation schemas, limits, and longer examples are at
+`/AGENTS.md`. The client and runner guides are `/CLI.md` and `/RUNNER.md`; the
+exact automation schemas, limits, and longer examples are at
 `/usr/share/doc/vibestack/AUTOMATION.md` and `/AUTOMATION.md`.
 
 ## Trust boundary
@@ -14,14 +15,33 @@ tailnet. It is packaged at `/usr/share/doc/vibestack/AGENTS.md` and served at
   access. Never use Tailscale Funnel or a public bind.
 - `/setup/`, `/terminal/`, `/vnc/`, and the small desktop-control API rely on
   that loopback/tailnet boundary. The automation API additionally requires a
-  bearer token, but the token does not make the other routes safe to publish.
+  paired client credential or compatible legacy token, but authentication does
+  not make the other routes safe to publish.
 - `/setup/` can set or replace the `vibe` Linux password without the old value.
   Do this only when the user explicitly asks. Never collect a password in an
   agent prompt, command argument, file, clipboard, screenshot, or log.
-- The automation token has the full authority of `vibe`, including shell
+- Any automation credential has the full authority of `vibe`, including shell
   execution, application control, screenshots, clipboard text, and Desktop
   files. Handle it like a password and never put it in a URL, repository,
   prompt, screenshot, clipboard value, command argument, or shared log.
+
+## Identify your execution context
+
+| Agent execution context | Correct interface |
+|---|---|
+| Inside one VibeStack workspace | Local files/commands, or the loopback workspace API. |
+| On a customer Linux/macOS machine | A named, paired `vibestack` profile. |
+| On the Docker host as operator | `vibestack-runner` only for local administration; use a paired client profile for agent work. |
+
+Never infer a target when several profiles or instances exist. Start external
+work with `vibestack --profile NAME doctor` and `capabilities`. New work
+defaults to `/projects`; use the Desktop root only when requested. Prefer
+argv-based `exec`, and do not resubmit an uncertain mutation—inspect its job or
+operation ID. Pairing uses a short operator-approved code plus a separate
+polling secret; credentials remain in the mode-0600 local profile and must not
+be printed. Install the portable skill with `vibestack skill install --claude`
+or export it with `vibestack skill export DIRECTORY` without overwriting an
+existing skill directory.
 
 ## Filesystem and desktop session
 
@@ -58,7 +78,9 @@ URL:
 | `/vnc/?view=terminal` | The same shell with the persistent terminal selected. |
 | `/terminal/` | Raw ttyd terminal, backed by the same persistent tmux session. |
 | `/setup/?force=1` | Linux-password onboarding and durable component catalog. |
+| `/editor/` | Optional code-server project editor. |
 | `/AGENTS.md` | This canonical operating guide. |
+| `/CLI.md`, `/RUNNER.md` | Client and Docker-host runner references. |
 | `/AUTOMATION.md` | Complete REST API reference and examples. |
 
 The browser shell's **Desktop** and **Terminal** tabs switch views without
@@ -77,14 +99,16 @@ next menu refresh; if needed, reopen the menu or restart the XFCE panel.
 
 ## Automation REST API
 
-Every request to the exact discovery route and all descendants needs:
+The pairing request/poll routes are the only unauthenticated automation
+bootstrap. Every other request to the exact API root and its descendants needs:
 
 ```text
 Authorization: Bearer <automation-token>
 ```
 
-The token is mode `0600` at `~/.vibestack/automation.token` and persists under
-`/data`. From the Docker host, load it without printing it:
+The legacy token is mode `0600` at `~/.vibestack/automation.token` and persists
+under `/data`; individually revocable paired credentials are preferred for the
+compiled client. For legacy host automation, load the token without printing it:
 
 ```bash
 export VIBESTACK_URL=http://127.0.0.1:8080
@@ -111,7 +135,8 @@ states; inspect it instead of assuming a particular image has an app.
 | Screenshot | `POST /screenshot` with `{}` for raw PNG, or a Desktop-relative `.png` filename to save it atomically. |
 | Applications | `GET /applications`; start/stop only returned catalog IDs with `POST /applications/{id}/start` or `/stop`. |
 | Windows | `GET /windows`; set a freshly returned ID to `minimized`, `maximized`, or `normal` with `POST /windows/{id}/state`. |
-| Files | Raw binary `GET`, `HEAD`, and `PUT /files/{Desktop-relative-path}` with ETag/precondition support. |
+| Files | Raw binary `GET`, `HEAD`, and `PUT` beneath `/files` (Desktop) or `/projects` (durable projects), with ETag/precondition support. |
+| SSH keys | List fingerprints and add/remove API-managed public keys; private keys never enter VibeStack. |
 | Clipboard | UTF-8 text `GET` and `PUT /clipboard`. Preserve and restore temporary values. |
 
 Commands and shell requests return `202 Accepted` asynchronous jobs. Prefer:
@@ -279,3 +304,55 @@ Fresh Codex, Claude Code, and OpenCode profiles link their default global
 instructions to this packaged file. Existing instruction files and Codex
 overrides are preserved; create the tool's documented override if the user
 wants additional local policy rather than editing the immutable package copy.
+
+### Manual walkthrough trace
+
+Open setup/Home/the desktop shell with `?walkthrough=1` to enable metadata-only
+browser diagnostics for that tab; `walkthrough=0` disables it. Fixed page/step,
+button, HTTP timing/status and socket/error-class events are posted to the
+same-origin `POST /api/v1/diagnostics/events` control endpoint. It rejects raw text
+and unknown fields and rate-limits submissions. Events are untrusted diagnostics,
+not authenticated user actions. Read the rotating canonical
+`/data/logs/vibestack/services/vibestack-control.log` locally; there is no new
+remote log-read route. Never add form values, tokens, query strings, clipboard
+contents, terminal data or exception messages to this trace. Host operators can
+use `bin/vibestack-walkthrough` from the source checkout to collect a sanitized
+trace and apply/roll back explicit development patches; see `docs/DEVELOPMENT.md`.
+
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
+The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
+amd64/arm64 package checksums and identities are verified during image build;
+Supervisor starts it automatically, and container health includes it. Apps and
+packs exclude the former `browser-editor` component. Legacy saved selections
+ignore that retired ID without resetting other selections; editor configuration
+and extensions retain their existing persistent mounts.
+
+Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
+Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only
+`VIBESTACK_INSTANCE_NAME`, sanitized `VIBESTACK_PUBLIC_URL`, published web/SSH/VNC
+ports, and `/projects`. The runner supplies these reserved values; standalone
+startup derives them from its name and port flags. Set `VIBESTACK_PUBLIC_URL`
+locally when standalone uses a different private HTTPS origin. URL credentials,
+paths, queries, fragments and arbitrary environment variables are never drawn.
+No startup terminal or automatic shell banner is opened. `vibestack-welcome`
+remains available as an explicit compatibility command.

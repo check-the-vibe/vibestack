@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import automationlib as lib  # noqa: E402
 from files import FileError, parse_range  # noqa: E402
 from runner import MAX_OUTPUT_PAGE_BYTES, RunnerError  # noqa: E402
+from vibestack_hosts import host_is_configured  # noqa: E402
 
 
 HOST_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
@@ -73,7 +74,7 @@ def _host_allowed(host_name: str) -> bool:
     if host_name in ("localhost", "127.0.0.1", "::1"):
         return True
     labels = host_name.split(".")
-    return (
+    return host_is_configured(host_name) or (
         len(labels) >= 4
         and labels[-2:] == ["ts", "net"]
         and all(HOST_LABEL_RE.fullmatch(label) for label in labels[:-2])
@@ -98,9 +99,20 @@ def validate_request_source(handler: BaseHTTPRequestHandler) -> None:
         raise RequestError("invalid_request", "Duplicate fetch metadata is not allowed.", 400)
     fetch_site = fetch_sites[0].strip().lower() if fetch_sites else ""
     if fetch_site in ("cross-site", "same-site"):
-        raise RequestError("cross_origin", "Cross-origin requests are not allowed.", 403)
+        if handler.command not in ("GET", "HEAD"):
+            raise RequestError("cross_origin", "Cross-origin requests are not allowed.", 403)
+        modes = handler.headers.get_all("Sec-Fetch-Mode") or []
+        destinations = handler.headers.get_all("Sec-Fetch-Dest") or []
+        if len(modes) != 1 or len(destinations) != 1:
+            raise RequestError("invalid_request", "Safe navigation fetch metadata is required.", 400)
+        if not (
+            modes[0].strip().lower() == "navigate"
+            and destinations[0].strip().lower() in ("document", "empty")
+        ):
+            raise RequestError("cross_origin", "Cross-origin requests are not allowed.", 403)
     if fetch_site not in ("", "none", "same-origin"):
-        raise RequestError("invalid_request", "Invalid fetch metadata.", 400)
+        if fetch_site not in ("cross-site", "same-site"):
+            raise RequestError("invalid_request", "Invalid fetch metadata.", 400)
     origins = handler.headers.get_all("Origin") or []
     if not origins:
         return
@@ -276,7 +288,8 @@ class Handler(BaseHTTPRequestHandler):
         self.audit_details = {}
         try:
             validate_request_source(self)
-            self._authenticate()
+            if not self._is_public_pairing_request():
+                self._authenticate()
             self._dispatch()
         except (RequestError, lib.AutomationError, FileError, RunnerError) as exc:
             if exc.status == 401:
@@ -306,6 +319,20 @@ class Handler(BaseHTTPRequestHandler):
                 duration_ms=int((time.monotonic() - started) * 1000),
                 details=self.audit_details,
             )
+
+    def _is_public_pairing_request(self) -> bool:
+        """Pairing bootstrap is secret-bearing but intentionally unauthenticated."""
+
+        path = urlsplit(self.path).path
+        return self.command == "POST" and (
+            path == lib.API_PREFIX + "/pairing/requests"
+            or re.fullmatch(
+                re.escape(lib.API_PREFIX)
+                + r"/pairing/requests/([0-9a-f]{32})/poll",
+                path,
+            )
+            is not None
+        )
 
     def _dispatch(self) -> None:
         parsed = urlsplit(self.path)
@@ -351,6 +378,11 @@ class Handler(BaseHTTPRequestHandler):
             self.audit_details = {"bytes": len(data)}
             self._send_bytes(200, data, "text/plain; charset=utf-8")
             return
+        if path == lib.API_PREFIX + "/ssh-keys":
+            self._no_query(query)
+            self.audit_action = "ssh_keys.list"
+            self._send_json(200, self.automation_server.backend.list_ssh_keys())
+            return
         job_match = re.fullmatch(re.escape(lib.API_PREFIX) + r"/jobs/([0-9a-f]{32})", path)
         if job_match:
             self._no_query(query)
@@ -367,7 +399,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path.startswith(lib.API_PREFIX + "/files/"):
             self.audit_action = "file.read"
-            self._file_response(path, query)
+            self._file_response(path, query, root="desktop")
+            return
+        if path.startswith(lib.API_PREFIX + "/projects/"):
+            self.audit_action = "project_file.read"
+            self._file_response(path, query, root="projects")
             return
         self.audit_action = "route.not_found"
         raise RequestError("not_found", "Endpoint not found.", 404)
@@ -375,13 +411,34 @@ class Handler(BaseHTTPRequestHandler):
     def _head(self, path: str, query: str) -> None:
         if path.startswith(lib.API_PREFIX + "/files/"):
             self.audit_action = "file.head"
-            self._file_response(path, query)
+            self._file_response(path, query, root="desktop")
+            return
+        if path.startswith(lib.API_PREFIX + "/projects/"):
+            self.audit_action = "project_file.head"
+            self._file_response(path, query, root="projects")
             return
         self.audit_action = "method.reject"
         raise RequestError("method_not_allowed", "Method not allowed.", 405)
 
     def _post(self, path: str, query: str) -> None:
         self._no_query(query)
+        if path == lib.API_PREFIX + "/pairing/requests":
+            self.audit_action = "pairing.request"
+            body = self._json_body(8192)
+            self._send_json(201, self.automation_server.backend.request_pairing(body))
+            return
+        pairing_poll = re.fullmatch(
+            re.escape(lib.API_PREFIX) + r"/pairing/requests/([0-9a-f]{32})/poll",
+            path,
+        )
+        if pairing_poll:
+            self.audit_action = "pairing.poll"
+            body = self._json_body(8192)
+            self._send_json(
+                200,
+                self.automation_server.backend.poll_pairing(pairing_poll.group(1), body),
+            )
+            return
         if path in (lib.API_PREFIX + "/commands", lib.API_PREFIX + "/shell"):
             shell = path.endswith("/shell")
             self.audit_action = "shell.submit" if shell else "command.submit"
@@ -392,6 +449,21 @@ class Handler(BaseHTTPRequestHandler):
             job = payload["job"]
             self.audit_details = {"job_id": job["id"], "kind": job["kind"]}
             self._send_json(202, payload)
+            return
+        if path == lib.API_PREFIX + "/ssh-keys":
+            self.audit_action = "ssh_key.add"
+            payload = self.automation_server.backend.add_ssh_key(self._json_body(20 * 1024))
+            self.audit_details = {"key_id": payload["key"]["id"], "created": payload["created"]}
+            self._send_json(201 if payload["created"] else 200, payload)
+            return
+        ssh_remove = re.fullmatch(
+            re.escape(lib.API_PREFIX) + r"/ssh-keys/([0-9a-f]{32})/remove", path
+        )
+        if ssh_remove:
+            self.audit_action = "ssh_key.remove"
+            self._require_empty_json()
+            self.audit_details = {"key_id": ssh_remove.group(1)}
+            self._send_json(200, self.automation_server.backend.remove_ssh_key(ssh_remove.group(1)))
             return
         if path == lib.API_PREFIX + "/screenshot":
             self.audit_action = "screenshot.capture"
@@ -493,15 +565,40 @@ class Handler(BaseHTTPRequestHandler):
             }
             self._send_json(201 if value.created else 200, {"file": value.metadata()})
             return
+        if path.startswith(lib.API_PREFIX + "/projects/"):
+            self.audit_action = "project_file.write"
+            relative = _decode_file_path(path[len(lib.API_PREFIX + "/projects/") :])
+            data = self._raw_body(lib.MAX_FILE_BYTES)
+            value = self.automation_server.backend.project_files.write(
+                relative,
+                data,
+                if_match=self._single_header("If-Match"),
+                if_none_match=self._single_header("If-None-Match"),
+            )
+            self.audit_details = {
+                "path": relative,
+                "root": "projects",
+                "bytes": len(data),
+                "created": value.created,
+            }
+            self._send_json(201 if value.created else 200, {"file": value.metadata()})
+            return
         self.audit_action = "route.not_found"
         raise RequestError("not_found", "Endpoint not found.", 404)
 
-    def _file_response(self, path: str, query: str) -> None:
+    def _file_response(self, path: str, query: str, *, root: str) -> None:
         self._no_query(query)
-        relative = _decode_file_path(path[len(lib.API_PREFIX + "/files/") :])
-        value = self.automation_server.backend.files.read(relative)
+        route = "/files/" if root == "desktop" else "/projects/"
+        relative = _decode_file_path(path[len(lib.API_PREFIX + route) :])
+        store = (
+            self.automation_server.backend.files
+            if root == "desktop"
+            else self.automation_server.backend.project_files
+        )
+        value = store.read(relative)
         self.audit_details = {
             "path": relative,
+            "root": root,
             "file_bytes": value.size,
         }
         if_none_match = self._single_header("If-None-Match")

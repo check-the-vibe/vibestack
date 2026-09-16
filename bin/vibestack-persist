@@ -92,6 +92,9 @@ reconcile_existing_state() {
 # "relative-path-in-home:name-under-/data[:file]"
 ENTRIES=(
   ".vibestack:vibestack"
+  ".ssh:ssh"
+  ".config/code-server:code-server-config"
+  ".local/share/code-server:code-server-data"
   ".claude:claude"
   ".claude.json:claude.json:file"
   ".codex:codex"
@@ -127,6 +130,9 @@ for entry in "${ENTRIES[@]}"; do
     fi
     if [[ ! -d "$dst" ]]; then
       if [[ -d "$src" && ! -L "$src" ]]; then mv "$src" "$dst"; else mkdir -p "$dst"; fi
+    fi
+    if [[ "$rel" == ".ssh" ]]; then
+      /usr/bin/install -d -m 0700 -- "$dst"
     fi
   fi
   reconcile_existing_state "$src" "$dst" "${kind:-dir}" "$name" || exit 1

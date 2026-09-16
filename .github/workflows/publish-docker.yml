@@ -29,6 +29,12 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Set up Go for client and runner tests
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
       - name: Install browser test dependencies
         run: |
           npm ci

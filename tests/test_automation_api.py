@@ -43,17 +43,22 @@ class AutomationHTTPTests(unittest.TestCase):
         root = Path(self.temporary.name)
         self.desktop = root / "Desktop"
         self.desktop.mkdir()
+        self.projects = root / "Projects"
+        self.projects.mkdir()
+        self.client_store = lib.WorkspaceClientStore(str(root / "client-state"))
         self.backend = lib.AutomationBackend(
             desktop_root=str(self.desktop),
+            projects_root=str(self.projects),
             job_directory=str(root / "jobs"),
             session_env_file=str(root / "no-session.env"),
             xdg_runtime_dir=str(root / "runtime"),
+            client_store=self.client_store,
         )
         self.audit = CapturingAudit()
         self.server = api.create_server(
             port=0,
             backend=self.backend,
-            token_provider=lib.TokenProvider(token=TOKEN),
+            token_provider=lib.TokenProvider(token=TOKEN, client_store=self.client_store),
             audit=self.audit,
         )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -125,6 +130,39 @@ class AutomationHTTPTests(unittest.TestCase):
         status, _, payload = self.request("GET", PREFIX + "/")
         self.assertEqual((404, "not_found"), (status, payload["code"]))
 
+    def test_public_pairing_delivers_one_revocable_client_credential(self):
+        status, _, requested = self.request(
+            "POST",
+            PREFIX + "/pairing/requests",
+            {"device_label": "test agent", "permissions": ["workspace"]},
+            authenticate=False,
+        )
+        self.assertEqual(201, status)
+        self.client_store.approve(requested["verification_code"])
+        status, _, delivered = self.request(
+            "POST",
+            PREFIX + "/pairing/requests/%s/poll" % requested["pairing_id"],
+            {"polling_secret": requested["polling_secret"]},
+            authenticate=False,
+        )
+        self.assertEqual(200, status)
+        credential = delivered["credential"]
+        status, _, payload = self.request(
+            "GET", PREFIX, headers={"Authorization": "Bearer " + credential}, authenticate=False
+        )
+        self.assertEqual(200, status)
+        self.assertEqual("projects", payload["project_workflows"]["default_root"])
+        self.client_store.revoke(delivered["client_id"])
+        status, _, payload = self.request(
+            "GET", PREFIX, headers={"Authorization": "Bearer " + credential}, authenticate=False
+        )
+        self.assertEqual((401, "unauthorized"), (status, payload["code"]))
+        with self.assertRaises(lib.ClientAuthError):
+            self.client_store.poll(requested["pairing_id"], requested["polling_secret"])
+        audit = json.dumps(self.audit.records)
+        self.assertNotIn(requested["polling_secret"], audit)
+        self.assertNotIn(credential, audit)
+
     def test_host_and_origin_are_validated_on_reads_and_writes(self):
         status, _, _ = self.request(
             "GET",
@@ -151,6 +189,31 @@ class AutomationHTTPTests(unittest.TestCase):
             headers={"Host": "evil.test", "Origin": "https://evil.test"},
         )
         self.assertEqual((421, "host_not_allowed"), (status, payload["code"]))
+
+    def test_cross_site_top_level_navigation_reaches_auth_boundary(self):
+        for destination in ("document", "empty"):
+            with self.subTest(destination=destination):
+                status, _, payload = self.request(
+                    "GET",
+                    PREFIX,
+                    headers={
+                        "Sec-Fetch-Site": "cross-site",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Dest": destination,
+                    },
+                )
+                self.assertEqual(200, status, payload)
+
+        status, _, payload = self.request(
+            "GET",
+            PREFIX,
+            headers={
+                "Sec-Fetch-Site": "cross-site",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty",
+            },
+        )
+        self.assertEqual((403, "cross_origin"), (status, payload["code"]))
 
     def test_backend_host_allowlist_matches_the_edge_contract(self):
         for authority in (
@@ -326,6 +389,24 @@ class AutomationHTTPTests(unittest.TestCase):
         file_records = [record for record in self.audit.records if record["action"].startswith("file.")]
         self.assertTrue(any(record.get("details", {}).get("path") == "data.bin" for record in file_records))
         self.assertNotIn(content.hex(), json.dumps(file_records))
+
+    def test_project_files_preserve_binary_bytes_on_the_independent_root(self):
+        content = b"project\x00\xffbytes"
+        status, _, payload = self.request(
+            "PUT",
+            PREFIX + "/projects/source.bin",
+            content,
+            {"Content-Type": "application/octet-stream", "If-None-Match": "*"},
+        )
+        self.assertEqual(201, status)
+        self.assertEqual("source.bin", payload["file"]["path"])
+        self.assertFalse((self.desktop / "source.bin").exists())
+        status, _, raw = self.request("GET", PREFIX + "/projects/source.bin")
+        self.assertEqual((200, content), (status, raw))
+        project_records = [
+            record for record in self.audit.records if record["action"].startswith("project_file.")
+        ]
+        self.assertTrue(all(record.get("details", {}).get("root") == "projects" for record in project_records))
 
     def test_clipboard_is_plain_utf8_and_screenshot_is_png(self):
         clipboard = {"value": b""}

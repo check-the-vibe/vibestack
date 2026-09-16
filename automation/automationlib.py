@@ -13,12 +13,21 @@ import signal
 import stat
 import struct
 import subprocess
+import sys
 import threading
 import time
 import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
+
+COMMON_ROOT = os.environ.get(
+    "VIBESTACK_COMMON_ROOT",
+    str(Path(__file__).resolve().parent.parent / "common"),
+)
+if COMMON_ROOT not in sys.path:
+    sys.path.insert(0, COMMON_ROOT)
+from vibestack_auth import ClientAuthError, WorkspaceClientStore  # noqa: E402
 
 from files import DesktopFileStore, FileError, FileValue, MAX_FILE_BYTES
 from runner import (
@@ -33,6 +42,7 @@ from runner import (
     CommandSpec,
     RunnerError,
 )
+from sshkeys import SSHKeyError, SSHKeyStore
 
 
 API_PREFIX = "/api/v1/automation"
@@ -40,6 +50,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 7997
 DEFAULT_HOME = "/home/vibe"
 DEFAULT_DESKTOP_ROOT = "/home/vibe/Desktop"
+DEFAULT_PROJECTS_ROOT = "/projects"
 DEFAULT_TOKEN_FILE = "/home/vibe/.vibestack/automation.token"
 DEFAULT_JOB_DIRECTORY = "/home/vibe/.vibestack/automation/jobs"
 DEFAULT_AUDIT_LOG = "/data/logs/vibestack/automation-audit.jsonl"
@@ -127,9 +138,16 @@ class AutomationError(Exception):
 class TokenProvider:
     """Read a rotatable bearer token without ever retaining it in logs."""
 
-    def __init__(self, token_file: str = DEFAULT_TOKEN_FILE, token: str | None = None):
+    def __init__(
+        self,
+        token_file: str = DEFAULT_TOKEN_FILE,
+        token: str | None = None,
+        client_store: WorkspaceClientStore | None = None,
+    ):
         self.token_file = token_file
         self._fixed_token = token
+        self.client_store = client_store or WorkspaceClientStore()
+        self._allow_clients = token is None or client_store is not None
 
     def authenticate(self, authorization: str | None) -> bool:
         expected = self._fixed_token if self._fixed_token is not None else self._read()
@@ -142,7 +160,12 @@ class TokenProvider:
         # malformed credential once the server has a token.
         supplied_digest = hashlib.sha256(supplied.encode("utf-8")).digest()
         expected_digest = hashlib.sha256(expected.encode("utf-8")).digest()
-        return hmac.compare_digest(supplied_digest, expected_digest)
+        legacy_match = hmac.compare_digest(supplied_digest, expected_digest)
+        return legacy_match or (
+            self._allow_clients
+            and bool(supplied)
+            and self.client_store.authenticate(supplied)
+        )
 
     def _read(self) -> str:
         flags = os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0)
@@ -425,14 +448,20 @@ class AutomationBackend:
         self,
         *,
         desktop_root: str = DEFAULT_DESKTOP_ROOT,
+        projects_root: str = DEFAULT_PROJECTS_ROOT,
         job_directory: str = DEFAULT_JOB_DIRECTORY,
         session_env_file: str = DEFAULT_SESSION_ENV_FILE,
         applications_file: str | None = None,
         runner: CommandRunner | None = None,
         expected_uid: int | None = None,
         xdg_runtime_dir: str = DEFAULT_XDG_RUNTIME_DIR,
+        client_store: WorkspaceClientStore | None = None,
+        ssh_key_store: SSHKeyStore | None = None,
     ):
         self.files = DesktopFileStore(desktop_root, expected_uid=expected_uid)
+        self.project_files = DesktopFileStore(projects_root, expected_uid=expected_uid)
+        self.client_store = client_store or WorkspaceClientStore()
+        self.ssh_keys = ssh_key_store or SSHKeyStore(os.path.dirname(desktop_root))
         self.environment = DesktopEnvironment(
             home=os.path.dirname(desktop_root),
             session_env_file=session_env_file,
@@ -485,6 +514,13 @@ class AutomationBackend:
             "base_path": API_PREFIX,
             "authentication": "bearer",
             "desktop": {"display": ":0", "file_root": "Desktop"},
+            "project_workflows": {
+                "default_root": "projects",
+                "roots": {
+                    "desktop": self.files.root,
+                    "projects": self.project_files.root,
+                },
+            },
             "file_preconditions": {
                 "api_writers": "serialized",
                 "create_if_absent": "atomic",
@@ -516,6 +552,10 @@ class AutomationBackend:
                 "windows": API_PREFIX + "/windows",
                 "clipboard": API_PREFIX + "/clipboard",
                 "files": API_PREFIX + "/files/{path}",
+                "project_files": API_PREFIX + "/projects/{path}",
+                "pairing_request": API_PREFIX + "/pairing/requests",
+                "pairing_poll": API_PREFIX + "/pairing/requests/{id}/poll",
+                "ssh_keys": API_PREFIX + "/ssh-keys",
             },
         }
 
@@ -526,9 +566,10 @@ class AutomationBackend:
         shell: bool,
         request_id: str | None = None,
     ) -> dict[str, Any]:
-        expected = {"command", "cwd", "env", "timeout_seconds"} if shell else {
+        expected = {"command", "cwd", "root", "env", "timeout_seconds"} if shell else {
             "argv",
             "cwd",
+            "root",
             "env",
             "timeout_seconds",
         }
@@ -549,7 +590,10 @@ class AutomationBackend:
             raise AutomationError(
                 "invalid_timeout", "timeout_seconds must be between 1 and 300.", 400
             )
-        cwd = self.files.require_cwd(body.get("cwd"))
+        root = body.get("root", "desktop")
+        if root not in ("desktop", "projects"):
+            raise AutomationError("invalid_root", "root must be desktop or projects.", 400)
+        cwd = (self.files if root == "desktop" else self.project_files).require_cwd(body.get("cwd"))
         env = self.environment.build(body.get("env"))
         if shell:
             command = body["command"]
@@ -578,6 +622,50 @@ class AutomationBackend:
             )
         )
         return {"job": job.public()}
+
+    def request_pairing(self, body: dict[str, Any]) -> dict[str, Any]:
+        if set(body) != {"device_label", "permissions"}:
+            raise AutomationError(
+                "invalid_pairing_request",
+                "Pairing requires only device_label and permissions.",
+                400,
+            )
+        try:
+            return self.client_store.request_pairing(
+                body["device_label"], body["permissions"]
+            )
+        except ClientAuthError as exc:
+            raise AutomationError(exc.code, exc.message, exc.status) from None
+
+    def poll_pairing(self, pairing_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        if set(body) != {"polling_secret"}:
+            raise AutomationError(
+                "invalid_pairing_poll", "Pairing poll requires only polling_secret.", 400
+            )
+        try:
+            return self.client_store.poll(pairing_id, body["polling_secret"])
+        except ClientAuthError as exc:
+            raise AutomationError(exc.code, exc.message, exc.status) from None
+
+    def list_ssh_keys(self) -> dict[str, Any]:
+        try:
+            return self.ssh_keys.list()
+        except SSHKeyError as exc:
+            raise AutomationError(exc.code, exc.message, exc.status) from None
+
+    def add_ssh_key(self, body: dict[str, Any]) -> dict[str, Any]:
+        if set(body) != {"public_key"}:
+            raise AutomationError("invalid_ssh_public_key", "SSH key creation requires only public_key.", 400)
+        try:
+            return self.ssh_keys.add(body["public_key"])
+        except SSHKeyError as exc:
+            raise AutomationError(exc.code, exc.message, exc.status) from None
+
+    def remove_ssh_key(self, key_id: str) -> dict[str, Any]:
+        try:
+            return self.ssh_keys.remove(key_id)
+        except SSHKeyError as exc:
+            raise AutomationError(exc.code, exc.message, exc.status) from None
 
     @staticmethod
     def _require_argv(value: object) -> tuple[str, ...]:

@@ -16,6 +16,7 @@ readonly -a REQUIRED_PROGRAMS=(
   vibestack-control
   vibestack-automation
   nginx
+  code-server
 )
 
 if ! status="$(${SUPERVISORCTL} -c "${SUPERVISOR_CONFIG}" status "${REQUIRED_PROGRAMS[@]}" 2>&1)"; then

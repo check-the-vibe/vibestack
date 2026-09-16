@@ -6,9 +6,14 @@ from any browser:
 - **Terminal** at `/terminal/` — a tmux-backed shell (ttyd).
 - **Desktop** at `/vnc/` — VibeStack's installable web shell around an XFCE desktop.
 - **Setup** at `/setup/` — first-boot Linux password and application wizard.
-- **Launcher** at `/` — choose Desktop or Terminal, with Setup kept one tap away.
-- **Automation** at `/api/v1/automation` — token-authorized desktop, command,
-  application, window, file, screenshot, and clipboard operations for agents.
+- **Desktop** at `/` — the default workspace, with Apps and Settings sidebars.
+- **Automation** at `/api/v1/automation` — bearer-authenticated desktop, command,
+  application, window, project/file, SSH-key, screenshot, and clipboard operations for agents.
+- **Browser editor** at `/editor/` — optional code-server rooted at `/projects`.
+- **Agent CLI** — a compiled Linux/macOS client with named profiles, device
+  pairing, byte-safe project workflows, and stable JSON output.
+- **Host runner** — a separate Linux service for approved-image, multi-instance
+  Docker lifecycle; it has an authenticated API and local admin CLI, not a dashboard.
 - **Agent guide** at `/AGENTS.md` — version-matched operating instructions for
   authorized local and tailnet agents; `/AUTOMATION.md` is the full REST reference.
 
@@ -36,27 +41,35 @@ on first boot, by you, from a catalog. The full specification is in
 ./startup.sh --data ~/vibestack  # where logins and your setup choice persist
 ./startup.sh --data ~/vibestack --adopt-data  # one-time use for existing state
 ./startup.sh --projects ~/code   # mounted at /projects
+./startup.sh --ssh-port 2222     # password/key SSH, loopback only (0 disables)
+./startup.sh --vnc-port 5900     # full-password native VNC (0 disables)
+./startup.sh --allowed-host workspace.example.test  # explicit custom Host allowlist
 ./startup.sh --flatpak           # opt in to nested Flatpak application sandboxes
 ./startup.sh --skip-setup        # unattended: skip apps; password setup still remains
 ./startup.sh check               # run the acceptance checks after start
 ```
 
-Open `http://localhost:8080/`. A fresh workspace first asks you to create the
-Linux password used by `sudo`, then offers the application catalog. Completing
-or skipping the catalog opens the launcher, where you choose Desktop or
-Terminal. Setup and optional applications remain available from the launcher
-and desktop Tools panel. Loopback-only is the safe default for these private
-single-user interfaces; prefer Tailscale Serve below rather than a direct
-public bind.
+Open `http://localhost:8080/`. A fresh workspace asks for the Linux password
+used by `sudo`, then opens Desktop with the Apps sidebar. Browse individual apps
+or choose a pack in the full-screen installer. Terminal and Editor fill the
+workspace and return to Desktop. The application catalog remains available from
+Apps; settings remain available in a sidebar. Catalog installs and restoration
+retain certificate-verified HTTPS and APT signature verification. Keep these
+single-user interfaces private through loopback or Tailscale Serve.
 
-Nginx accepts only `localhost`, `127.0.0.1`, `[::1]`, and valid hostnames below
-`*.ts.net` (each optionally with a port). Other Host values are rejected before
+Nginx accepts only `localhost`, `127.0.0.1`, `[::1]`, valid hostnames below
+`*.ts.net`, and exact names explicitly configured with `--allowed-host` or
+`VIBESTACK_ALLOWED_HOSTS` (each optionally with a port). Other Host values are rejected before
 setup, terminal, desktop, control, or automation routing, which prevents DNS
 rebinding from turning a browser's same-origin access into local control. If a
 browser sends `Origin`, its HTTP(S) authority must exactly match `Host` (the
-scheme may differ across Tailscale TLS termination); cross-site fetch metadata
-and duplicate/malformed values are rejected on every route, including both
-WebSocket endpoints. CLI requests may omit these browser-only headers.
+scheme may differ across Tailscale TLS termination). A `GET` or `HEAD` carrying
+cross-site or same-site fetch metadata is accepted only when it is a safe
+top-level request with `mode=navigate` and destination `document` or the
+extension-generated `empty`, which lets direct links and browser launchers open
+the workspace. Cross-site subresources, WebSockets, mutations, and duplicate
+or malformed metadata are rejected on every route. CLI requests may omit these
+browser-only headers.
 Nginx also overwrites a private proxy-marker header before forwarding the
 terminal and RFB WebSockets. ttyd requires that header and checks WebSocket
 Origin against the port-preserving Host; websockify requires exactly one
@@ -64,6 +77,40 @@ constant-time exact marker match. Direct browser connections from inside the
 desktop to the raw loopback ports therefore fail. The fixed marker is defense
 in depth, not a user credential; container loopback and private Tailscale Serve
 remain the network boundary.
+
+## Connect an agent
+
+Setup and Settings contain a reusable **Connect your agent** walkthrough. Run
+the installer on the machine where the agent process actually executes, then
+pair a named profile without putting a credential in the command or URL:
+
+```bash
+curl -fsSL 'https://workspace.example/cli.sh' | \
+  sh -s -- --version 0.2.0 --server 'https://workspace.example'
+vibestack connect --name studio --url 'https://workspace.example'
+vibestack --profile studio doctor
+vibestack --profile studio capabilities
+```
+
+Approve the displayed code in workspace Setup/Settings. Each client receives a
+separate revocable credential. The legacy automation token remains compatible.
+A local Claude Desktop session uses the local CLI; a Claude Code session over
+SSH needs the CLI and private-network reachability on that SSH machine. Cloud
+web-fetch tools generally cannot reach a private Tailscale URL. See
+[the CLI reference](docs/CLI.md), [automation reference](docs/AUTOMATION.md),
+and [runner guide](docs/RUNNER.md).
+
+## Managed Docker hosts
+
+`vibestack-runner` runs only on the Docker host and is packaged for Ubuntu
+24.04/26.04 systemd. It approves immutable local image digests, allocates
+independent `/data` and `/projects` volumes plus loopback ports, applies
+operator CPU/memory/PID/count/disk limits, records durable SQLite operations,
+and reconciles its labeled containers after restart. Remote clients cannot
+submit builds, mounts, capabilities, or Docker flags. Optional runner-owned
+Tailscale Serve mappings are explicit and never reset unrelated mappings.
+Removing an instance retains both volumes; only the local operator can purge a
+removed instance. Installation and trust details are in [docs/RUNNER.md](docs/RUNNER.md).
 
 The launcher marks every newly created state directory with
 `.vibestack-state-v1`. If upgrading an existing VibeStack state directory,
@@ -116,6 +163,22 @@ return after an image replacement, choose the catalog component instead (for
 example `vibestack-setup install build-essential`). Three fixed VibeStack
 helpers remain passwordless so onboarding, component installation, and desktop
 control can bootstrap safely; all other `sudo` commands require your password.
+
+## SSH, native VNC, and editors
+
+The launcher publishes SSH on `127.0.0.1:2222` and native VNC on
+`127.0.0.1:5900` by default; use `0` to disable either host mapping. SSH accepts
+the user-created Linux password and public keys. API-managed public keys live
+in `~/.ssh/vibestack_authorized_keys`, while an existing user-managed
+`authorized_keys` file is preserved; private keys stay on the customer device.
+Native VNC is a separate PAM-backed x11vnc listener and therefore requires the
+full Linux password. Stopping it does not stop the passwordless browser desktop
+transport.
+
+Install the Browser editor catalog component to enable code-server at
+`/editor/`. Desktop VS Code is intentionally used through Remote SSH rather
+than a second browser editor protocol. Editor configuration and data persist
+under `/data`, and projects remain on the independent `/projects` mount.
 
 ## Flatpak and Flathub
 
@@ -172,7 +235,7 @@ tailscale serve --bg --https=9443 http://127.0.0.1:8080
 
 Open the resulting `https://<machine>.<tailnet>.ts.net:9443` URL in Safari,
 complete setup, then choose **Share → Add to Home Screen**. The manifest launches
-the workspace chooser as a standalone app. Direct HTTP remains useful for local development,
+Desktop as a standalone app. Direct HTTP remains useful for local development,
 but it does not support the service worker on an iPad.
 
 The explicit non-default HTTPS port avoids replacing another Serve mapping on
@@ -205,16 +268,17 @@ scaling enabled. VibeStack deliberately does not use noVNC `resizeSession`.
 
 The shell-facing control API remains deliberately narrow. The separate
 automation API can run commands with the authority of the `vibe` account, but
-requires a persistent bearer token on every request and confines convenience
-file operations to the Desktop. VNC preferences stay in local browser storage;
+requires a legacy token or individually paired bearer credential on every request and confines convenience
+file operations to the Desktop or durable `/projects` roots. VNC preferences stay in local browser storage;
 clipboard contents and credentials are never persisted there.
 
 ## Automation and logs
 
 The complete REST contract and copyable inside/outside-container examples are
-in [docs/AUTOMATION.md](docs/AUTOMATION.md). The token is generated at
+in [docs/AUTOMATION.md](docs/AUTOMATION.md). The compatible legacy token is generated at
 `~/.vibestack/automation.token` with mode `0600` and persists under `/data`.
-Treat it as a password: a holder can execute shell commands as `vibe`.
+Pairing creates separate revocable credentials. Treat either as a password: a
+holder can execute shell commands as `vibe`.
 
 Every interface request, privileged automation action, and Supervisor service
 has bounded persistent logging below `/data/logs/vibestack/`. The desktop links
@@ -235,6 +299,7 @@ output are excluded from shared logs.
 | Claude Desktop | 560 MB | Chat and Claude Code tabs |
 | ChatGPT / Codex desktop | 1.3 GB | Large download; installs Chrome for external sign-in |
 | Godot Engine 4.7.2 | 200 MB | Pinned standard editor; amd64/arm64, Compatibility renderer |
+| Browser editor | 775 MB | Pinned code-server at `/editor/`, rooted at `/projects` |
 | Flatpak + stable Flathub | 25 MB plus selected app runtimes | Per-user apps; requires `--flatpak` |
 | Native build tools | 200 MB | Distro `build-essential`: GCC, G++, Make, and development headers |
 | Editors and diff | 82 MB | Mousepad, Geany, Vim, Meld as `git difftool` |
@@ -338,6 +403,9 @@ replacing an existing user file or override.
 | `SETUP_PORT` | `7999` | Internal setup service port |
 | `CONTROL_PORT` | `7998` | Internal desktop control API port |
 | `AUTOMATION_PORT` | `7997` | Internal token-authenticated automation API port |
+| `VIBESTACK_SSH_PORT` | `2222` | Loopback host SSH port used by `startup.sh`; `0` disables publication |
+| `VIBESTACK_NATIVE_VNC_PORT` | `5900` | Loopback host native-VNC port; `0` disables publication |
+| `VIBESTACK_ALLOWED_HOSTS` | unset | Comma-separated exact custom DNS/IP Host allowlist (maximum 32) |
 | `VIBESTACK_BIND_ADDRESS` | `127.0.0.1` | Host address used by `startup.sh` |
 | `VIBESTACK_PORT` | `8080` | Host port used by `startup.sh` |
 | `VIBESTACK_SKIP_SETUP` | unset | `1` completes setup at boot with nothing installed |
@@ -359,6 +427,10 @@ replacing an existing user file or override.
 | `desktop/` | Root launcher, custom noVNC/terminal shell, manifest, service worker and icons |
 | `control/` | Local allowlisted status, logs, restart and display API |
 | `automation/` | Privileged bearer-authenticated automation API and job runner |
+| `cmd/`, `pkg/vibestack/` | Go client/runner entrypoints, shared HTTP client, types, and profiles |
+| `runner/`, `packaging/` | Docker host daemon, SQLite state, lifecycle, pairing, and systemd package |
+| `api/`, `contracts/` | Machine-readable APIs, CLI coverage, and versioned launch contract |
+| `cli.sh`, `skills/vibestack/` | Checksum-verifying client installer and portable agent skill |
 | `desktop-config/` | Curated XFCE menu, launchers, and VibeStack actions |
 | `runtime/` | Default in-container instructions for coding agents |
 | `bin/vibestack-install` | Component installers |
@@ -371,7 +443,7 @@ replacing an existing user file or override.
 | `bin/vibestack-flatpak` | Stable-Flathub search, review, install, run, update, and history helper |
 | `bin/vibestack-app` | Launcher adding container-safe flags to Chromium apps |
 | `bin/vibestack-persist` | State relocation into `/data` |
-| `bin/vibestack-welcome` | First-run banner |
+| `bin/vibestack-welcome` | Optional manual welcome banner |
 | `chrome/policy.json` | Chrome policy: forced extensions, no nags |
 
 ## Adding a component
@@ -406,3 +478,53 @@ VibeStack is available under the [MIT License](LICENSE).
 - **Flatpak outer-boundary trade-off.** Flatpak works only with explicit
   `--flatpak`, which relaxes three Docker security layers for the trusted
   private container so bubblewrap can create its inner sandbox.
+
+The optional host runner supports reusable owner-scoped drives, private named
+environment sets and stopped-desktop snapshots. Each clone gets independent app
+state with fresh machine credentials. Its `/AGENTS.md` is a broker-specific guide
+containing the configured private origin; remote harnesses must load it explicitly.
+See [runner operations](docs/RUNNER.md) for API, host folder registration,
+onboarding, snapshot and retention workflows. Standalone VibeStack remains
+independent of the runner service.
+
+For manual onboarding/debugging, the opt-in walkthrough trace and host-only
+rapid patch/rollback commands are documented in
+[the development guide](docs/DEVELOPMENT.md#manual-walkthrough-and-rapid-source-patches).
+
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
+The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
+amd64/arm64 package checksums and identities are verified during image build;
+Supervisor starts it automatically, and container health includes it. Apps and
+packs exclude the former `browser-editor` component. Legacy saved selections
+ignore that retired ID without resetting other selections; editor configuration
+and extensions retain their existing persistent mounts.
+
+Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
+Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only
+`VIBESTACK_INSTANCE_NAME`, sanitized `VIBESTACK_PUBLIC_URL`, published web/SSH/VNC
+ports, and `/projects`. The runner supplies these reserved values; standalone
+startup derives them from its name and port flags. Set `VIBESTACK_PUBLIC_URL`
+locally when standalone uses a different private HTTPS origin. URL credentials,
+paths, queries, fragments and arbitrary environment variables are never drawn.
+No startup terminal or automatic shell banner is opened. `vibestack-welcome`
+remains available as an explicit compatibility command.

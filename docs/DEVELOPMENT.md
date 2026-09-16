@@ -10,6 +10,7 @@ losing state or masking regressions.
 - Docker Engine with permission to build, run, inspect, and exec containers.
 - Python 3 for unit and source-contract tests.
 - Node.js 22 and npm for the Playwright browser suite.
+- Go 1.23 or newer for the client and host runner.
 - Tailscale on the host, logged into the intended tailnet, for private HTTPS.
 - `curl` and OpenSSL; `jq` is useful but not required by the development helper.
 
@@ -39,12 +40,14 @@ again before building:
 bin/vibestack-dev test
 ```
 
-The command runs Python unit/contract tests, JavaScript syntax checks, shell
-syntax checks, manifest parsing, and `git diff --check`. Useful focused forms:
+The command runs Python and Go unit/contract tests, browser diagnostics privacy tests, JavaScript syntax checks,
+shell syntax checks, machine-readable API/launch-contract parsing, and
+`git diff --check`. Useful focused forms:
 
 ```bash
 python3 -m unittest tests.test_control_api -v
 python3 -m unittest tests.test_desktop_contract -v
+go test ./...
 VIBESTACK_BASE_URL=http://127.0.0.1:8080 npm run test:browser -- --project=desktop-chromium
 ```
 
@@ -53,17 +56,54 @@ Most runtime source is copied into the image, so changes to `desktop/`,
 require a rebuild. Playwright tests can target an already-running container;
 Python source tests run directly from the checkout.
 
-The public root is a static workspace chooser. Its choices open
-`/vnc/?view=desktop` and `/vnc/?view=terminal`; the latter lazy-loads the
-existing `/terminal/` ttyd route inside the shell. `/terminal/` itself remains
-the direct terminal endpoint for diagnostics. Fresh or legacy state without a
-Linux password is routed into setup before the chooser. Setup redirects to `/`
-only when component state is complete and the password is configured;
-`/setup/?force=1` always reopens password settings and component selection.
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
 The same image's canonical operating instructions are available internally at
 `/usr/share/doc/vibestack/AGENTS.md` and externally at `/AGENTS.md`; the full
 automation reference is similarly served at `/AUTOMATION.md`. Update and test
-both paths as one versioned contract.
+both paths as one versioned contract. `/CLI.md`, `/RUNNER.md`, `/cli.sh`,
+`/.well-known/vibestack`, and `/skills/vibestack/SKILL.md` are part of the same
+versioned surface. Route changes must update both OpenAPI files and
+`api/command-coverage.json`.
+
+The product evidence and acceptance expectations for Home, Applications,
+Settings, onboarding, agent connection, failure recovery, and the reproduced
+browser-only 403 regression are recorded in
+[`research/guided-workspaces-audit.md`](research/guided-workspaces-audit.md).
+Do not mark that browser gate validated from source inspection alone.
+
+The Go code has two deliverables: `cmd/vibestack` is the cross-platform client;
+`cmd/vibestack-runner` is Linux-only and uses Docker's official SDK with API
+negotiation. Verify all release targets before tagging:
+
+```bash
+go test ./...
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o /dev/null ./cmd/vibestack
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o /dev/null ./cmd/vibestack-runner
+```
+
+Do not use `go mod tidy` as an incidental formatting step: Docker's
+`+incompatible` module test graph is broader than the packages VibeStack
+builds. Change dependency pins deliberately and run all cross-builds.
 
 Install the optional native compiler toolchain with
 `vibestack-setup install build-essential`. Using the setup CLI records the
@@ -128,6 +168,13 @@ source links, UI alternatives, and the agent workflow.
 
 ## Candidate image and disposable acceptance
 
+The upstream Ubuntu base has no CA trust store. Its existing signature-verified
+base-package bootstrap installs `ca-certificates`; immediately afterward the
+Dockerfile switches only the official Ubuntu archive, security, and ARM ports
+URLs to HTTPS. Runtime setup and restoration therefore use certificate-verified
+HTTPS without changing repositories, suites, components, or signing keys.
+Never work around download failures by disabling TLS or APT signature checks.
+
 Use an informative immutable tag rather than overwriting the live tag:
 
 ```bash
@@ -143,11 +190,13 @@ sudo password, uses the good password for a real `apt-get update` and
 `build-essential` install, and checks that shared logs contain no plaintext.
 It recreates the container from the clean image against the same `/data`, proves
 that the password restores while the ad-hoc apt install does not, then installs
-Godot, `build-essential`, and Flatpak through the durable catalog route. The
+Godot, `build-essential`, and Flatpak through the durable catalog route, with
+code-server already available as a core service. The
 acceptance container alone receives all three explicit Flatpak security
 options. It verifies the nested bubblewrap preflight and exact stable Flathub
 remote, installs `org.gnome.Calculator` only in disposable state, and observes
-its real sandboxed XFCE window alongside Godot's editor. It also sends the
+its real sandboxed XFCE window alongside Godot's editor and verifies the
+code-server process plus `/editor/` route before and after replacement. It also sends the
 actual Flathub `flatpak+https` link for VLC through the bounded handler, proves
 that remote permissions are displayed with the image's Flatpak version, answers
 `n`, and verifies that review remains a consent boundary rather than installing
@@ -172,6 +221,16 @@ end-to-end pass. A failed attempt prints bounded container, Supervisor, and
 service-log diagnostics before cleanup.
 Project ownership is rechecked from container root after bootstrap secures the
 bind root, so this gate also works when the CI host UID differs from `vibe`.
+
+Disposable image acceptance covers one workspace. Runner lifecycle acceptance
+uses a separate private state directory and the accepted candidate digest;
+never point a development runner at `/var/lib/vibestack-runner` or adopt the
+live `vibestack` container. Exercise two managed instances, independent volume
+sentinels/credentials/ports, idempotent create, restart reconciliation,
+occupied-port rejection, failed update rollback, retained-volume removal, and
+operator purge. Keep `manage_tailscale_serve` off unless the test owns exact
+isolated mappings; never use `tailscale serve reset` because that would delete
+unrelated operator mappings.
 
 Release CI is pinned to GitHub's Ubuntu 24.04 runner. Noble restricts
 capabilities inside unprivileged user namespaces through AppArmor by default,
@@ -215,7 +274,8 @@ during rollout:
 ```bash
 ./startup.sh --no-build --image vibestack:automation-YYYYMMDD \
   --data /absolute/path/to/vibestack-data \
-  --projects /absolute/path/to/projects
+  --projects /absolute/path/to/projects \
+  --ssh-port 2222 --vnc-port 5900
 ```
 
 Add `--flatpak` to that exact rollout command only when the user accepts the
@@ -410,3 +470,121 @@ is correct.
   and both nginx-proxied WebSocket paths still upgrade normally.
 - Desktop/iPad Playwright projects pass. Any remaining physical iPad check is
   written down explicitly rather than implied by browser emulation.
+
+## Runner storage acceptance
+
+Runner API 1.1 adds owner-scoped registered file drives, immutable private
+environment sets, stopped-state snapshot seeds, and selected host reporting.
+See [RUNNER.md](RUNNER.md) for local folder registration, lease/retention rules,
+private environment-file input and clone credential exclusions. The launch
+contract keeps version 1 and adds optional storage fields. The broker serves a
+dynamic `/AGENTS.md` and `/api/runner.openapi.json`; workspace guidance remains
+at its separate origin. The client `api` command accepts `--idempotency-key`.
+
+Run `python3 tests/runner_integration.py --baseline OLD_RUNNER --runner NEW_RUNNER
+--image ACCEPTED_IMAGE` on the intended Tailscale Docker host after disposable
+image acceptance. This uses isolated `/tmp/vibestack-runner-integration-*` state,
+loopback listener 18079, private broker HTTPS 12443, and workspace ports
+12080–12179. It starts with the original runner, migrates its registry in place,
+checks private HTTPS onboarding, uses a random disposable password only in the
+setup request body, verifies owner boundaries and host-folder mediation, restarts
+the runner/desktop, and checks independent clones and retained storage. Existing
+Serve mappings and the standalone desktop are preserved. Failure evidence and
+retained test volumes remain local; purging is explicit. This does not replace
+user-selected application sign-in reuse acceptance or systemd installation.
+
+## Manual walkthrough and rapid source patches
+
+For an explicitly requested manual development session, use the host-only
+`bin/vibestack-walkthrough` helper. The current first-desktop is available at
+`https://server.tail14a7e5.ts.net:11080/setup/?walkthrough=1`.
+The `walkthrough=1` query enables diagnostics for that browser tab across setup,
+Home and the desktop/terminal shell; `walkthrough=0` disables it. It records
+page/step transitions, fixed button IDs, request status/timing, connection
+changes and error classes. It never records input values, request/response
+bodies, clipboard contents, terminal frames, error messages or URL queries.
+Third-party application pages and the embedded terminal's internal scripts are
+outside the browser instrumentation; their connection/status and existing
+service logs remain available.
+
+```bash
+bin/vibestack-walkthrough \
+  --container vibestack-first-desktop-49962b6d \
+  --url https://server.tail14a7e5.ts.net:11080 \
+  --directory /home/jarvis/Code/vibestack-runner-local/walkthrough collect
+```
+
+Run `collect` in tmux for continuous collection. The private host directory holds
+`walkthrough.jsonl` (10 MiB, four rotated backups). It combines sanitized HTTP
+request metadata, validated browser events and changing setup/service status.
+Container source logs remain under `/data/logs/vibestack`; browser events enter
+`services/vibestack-control.log`, also rotated. Collection is best effort: a
+container restart/rotation or sustained excess traffic can lose events. This is
+a debugging trace, not an audit guarantee. Same-origin callers can submit events;
+treat them as untrusted observations, not evidence of user identity.
+
+Use the same flags with `mark password-page-issue`, `deploy`, or `rollback`.
+`deploy` syntax-checks and copies the allowlisted desktop/setup assets and Python
+modules, catalog, fixed XFCE workspace menu/actions, wallpaper/startup helpers,
+Supervisor configuration, health probe, and runtime guides into the explicitly
+named runner container. It backs up every destination, updates the service-worker
+cache version, restarts the control and setup services, and checks setup/control HTTP
+health. A failed patch restores the backup; `rollback` restores the most recent
+patch. Reload the browser after either operation. This leaves persistent user
+state and other desktops intact, but the patch is ephemeral: a container recreate
+returns to its image. It does not install dependencies or reload Supervisor:
+the core editor and Pillow must already be installed, and startup/configuration
+changes take effect on the next container restart. Dependency, nginx, runner,
+or system service changes require the image/service workflow.
+
+The isolated browser instrumentation privacy checks run with
+`node --test tests/walkthrough-privacy.test.mjs`; endpoint/schema checks run with
+`python3 -m unittest tests.test_walkthrough`. The real transport regression is
+`VIBESTACK_BASE_URL=<private-origin> npx playwright test tests/browser/diagnostics-transport.spec.mjs`.
+It connects the actual pinned noVNC client with diagnostics enabled and disabled.
+Socket instrumentation must preserve the native instance prototype: noVNC checks
+its immediate prototype for methods such as `send`, so a subclass wrapper breaks
+connection setup even though the socket itself opens.
+
+During the user-authorized manual loop, run focused checks for each change and
+reserve the full build/disposable image/browser acceptance for the agreed feature
+checkpoint. Record any interim failures. Before releasing a durable image, run
+the normal complete workflow above; a source patch is not image acceptance.
+
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
+The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
+amd64/arm64 package checksums and identities are verified during image build;
+Supervisor starts it automatically, and container health includes it. Apps and
+packs exclude the former `browser-editor` component. Legacy saved selections
+ignore that retired ID without resetting other selections; editor configuration
+and extensions retain their existing persistent mounts.
+
+Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
+Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only
+`VIBESTACK_INSTANCE_NAME`, sanitized `VIBESTACK_PUBLIC_URL`, published web/SSH/VNC
+ports, and `/projects`. The runner supplies these reserved values; standalone
+startup derives them from its name and port flags. Set `VIBESTACK_PUBLIC_URL`
+locally when standalone uses a different private HTTPS origin. URL credentials,
+paths, queries, fragments and arbitrary environment variables are never drawn.
+No startup terminal or automatic shell banner is opened. `vibestack-welcome`
+remains available as an explicit compatibility command.

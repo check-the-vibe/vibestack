@@ -14,6 +14,15 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import controllib as lib  # noqa: E402
+import walkthrough  # noqa: E402
+
+COMMON_ROOT = os.environ.get(
+    "VIBESTACK_COMMON_ROOT",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "common"),
+)
+if COMMON_ROOT not in sys.path:
+    sys.path.insert(0, COMMON_ROOT)
+from vibestack_hosts import host_is_configured  # noqa: E402
 
 
 MAX_BODY_BYTES = 4096
@@ -61,7 +70,7 @@ def _host_allowed(host_name: str) -> bool:
     if host_name in ("localhost", "127.0.0.1", "::1"):
         return True
     labels = host_name.split(".")
-    return (
+    return host_is_configured(host_name) or (
         len(labels) >= 4
         and labels[-2:] == ["ts", "net"]
         and all(HOST_LABEL_RE.fullmatch(label) for label in labels[:-2])
@@ -88,9 +97,20 @@ def validate_request_source(handler: BaseHTTPRequestHandler) -> None:
         raise RequestError("invalid_request", "Duplicate fetch metadata is not allowed.", 400)
     fetch_site = fetch_sites[0].strip().lower() if fetch_sites else ""
     if fetch_site in ("cross-site", "same-site"):
-        raise RequestError("cross_origin", "Cross-origin mutations are not allowed.", 403)
+        if handler.command not in ("GET", "HEAD"):
+            raise RequestError("cross_origin", "Cross-origin mutations are not allowed.", 403)
+        modes = handler.headers.get_all("Sec-Fetch-Mode") or []
+        destinations = handler.headers.get_all("Sec-Fetch-Dest") or []
+        if len(modes) != 1 or len(destinations) != 1:
+            raise RequestError("invalid_request", "Safe navigation fetch metadata is required.", 400)
+        if not (
+            modes[0].strip().lower() == "navigate"
+            and destinations[0].strip().lower() in ("document", "empty")
+        ):
+            raise RequestError("cross_origin", "Cross-origin mutations are not allowed.", 403)
     if fetch_site not in ("", "none", "same-origin"):
-        raise RequestError("invalid_request", "Invalid fetch metadata.", 400)
+        if fetch_site not in ("cross-site", "same-site"):
+            raise RequestError("invalid_request", "Invalid fetch metadata.", 400)
 
     origins = handler.headers.get_all("Origin") or []
     if not origins:
@@ -317,22 +337,41 @@ class Handler(BaseHTTPRequestHandler):
             validate_request_source(self)
             if parsed.fragment:
                 raise RequestError("invalid_path", "The request path is invalid.", 400)
-            prefix = "/api/v1/services/"
-            suffix = "/restart"
-            if not path.startswith(prefix) or not path.endswith(suffix):
+            if path == "/api/v1/diagnostics/events":
+                if parsed.query:
+                    raise RequestError("invalid_query", "This endpoint takes no query.", 400)
+                body = self._json_body()
+                try:
+                    accepted = walkthrough.record(body)
+                except ValueError:
+                    raise RequestError("invalid_diagnostic", "Only supported diagnostic metadata is accepted.", 400)
+                self._send_json(202 if accepted else 429, {"accepted": accepted})
+                return
+            match = re.fullmatch(r"/api/v1/services/([^/]+)/(start|stop|restart)", path)
+            if match is None:
                 raise RequestError("not_found", "Endpoint not found.", 404)
             if parsed.query:
                 raise RequestError("invalid_query", "This endpoint takes no query.", 400)
-            service = path[len(prefix) : -len(suffix)]
+            service, operation = match.groups()
             lib.require_service(service)
             body = self._json_body()
             if body:
                 raise RequestError(
-                    "unknown_field", "Service restart does not accept request fields.", 400
+                    "unknown_field", "Service operation does not accept request fields.", 400
                 )
-            self._mutate(
-                lambda: (200, self.control_server.backend.restart_service(service))
-            )
+            if operation == "restart":
+                self._mutate(
+                    lambda: (200, self.control_server.backend.restart_service(service))
+                )
+            else:
+                self._mutate(
+                    lambda: (
+                        200,
+                        self.control_server.backend.set_service_state(
+                            service, operation == "start"
+                        ),
+                    )
+                )
         except (RequestError, lib.ControlError) as exc:
             self._error(exc)
 

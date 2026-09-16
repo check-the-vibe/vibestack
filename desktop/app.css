@@ -43,7 +43,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   height: calc(var(--bar-height) + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));
   background: var(--chrome); border-bottom: 1px solid var(--line); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
 }
-.brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.brand { min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; border-radius: 9px; }
 .brand-mark { position: relative; display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 9px; background: linear-gradient(145deg, var(--accent-bright), #b95135); box-shadow: inset 0 1px rgba(255,255,255,.24), 0 6px 18px rgba(112, 36, 19, .22); }
 .brand-mark::before, .brand-mark::after, .brand-mark span { content: ""; position: absolute; width: 4px; border-radius: 3px; background: rgba(28, 13, 8, .82); }
 .brand-mark::before { height: 8px; left: 8px; bottom: 7px; }
@@ -52,8 +52,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .brand-copy { display: grid; min-width: 0; line-height: 1.15; }
 .brand-copy strong { font-size: 14px; letter-spacing: -.01em; }
 .brand-copy small { max-width: 180px; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 11px; white-space: nowrap; text-overflow: ellipsis; }
+.workspace-tabs { display: contents; }
 .view-switcher { display: flex; align-items: center; gap: 2px; margin-left: auto; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: rgba(8,10,14,.62); }
-.view-tab { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 38px; padding: 0 10px; color: var(--muted); border: 1px solid transparent; border-radius: 8px; text-decoration: none; touch-action: manipulation; }
+.view-tab { background: transparent; cursor: pointer; font: inherit; display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 38px; padding: 0 10px; color: var(--muted); border: 1px solid transparent; border-radius: 8px; text-decoration: none; touch-action: manipulation; }
 .view-tab:hover { color: var(--text); background: var(--panel-raised); }
 .view-tab[aria-selected="true"] { color: var(--text); border-color: var(--line); background: var(--panel-soft); box-shadow: 0 1px 5px rgba(0,0,0,.28); }
 .view-tab svg { width: 17px; height: 17px; }
@@ -181,6 +182,7 @@ textarea { resize: vertical; min-height: 130px; padding: 11px 12px; line-height:
 .service-copy small { margin-top: 2px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
 .restart-button { min-width: 70px; min-height: 44px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 650; }
 .restart-button:hover { color: var(--text); border-color: var(--line-strong); background: var(--panel-soft); }
+.service-actions { display: flex; gap: 5px; }
 .empty-state { margin: 0; padding: 16px; color: var(--muted); border: 1px dashed var(--line); border-radius: 9px; text-align: center; font-size: 12px; }
 .log-output { min-height: 190px; max-height: 310px; margin: 10px 0 4px; padding: 12px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #c7cbd4; background: #090b0f; border: 1px solid var(--line); border-radius: 9px; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .quick-links { display: grid; gap: 8px; }
@@ -209,7 +211,7 @@ textarea { resize: vertical; min-height: 130px; padding: 11px 12px; line-height:
 @media (max-width: 700px) {
   :root { --bar-height: 54px; }
   .topbar { gap: 8px; padding-left: max(9px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
-  .brand-copy small, .tool-button span, .view-tab span { display: none; }
+  .brand-copy small, .tool-button span { display: none; }
   .view-switcher { gap: 1px; padding: 2px; }
   .view-tab { min-height: 40px; padding: 0 8px; }
   .modal-actions { flex-wrap: wrap; }
@@ -239,3 +241,28 @@ textarea { resize: vertical; min-height: 130px; padding: 11px 12px; line-height:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
+
+.menu-workspace-navigation { display: flex; flex-wrap: wrap; justify-content: flex-start; width: 100%; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.menu-workspace-navigation a { text-decoration: none; }
+@media (max-width: 900px) {
+  :root { --bar-height: 110px; }
+  .topbar { flex-wrap: wrap; align-content: center; }
+  .view-switcher { order: 4; flex-basis: 100%; margin-left: 0; justify-content: center; }
+  .view-tab { flex: 1; }
+  .top-actions { margin-left: auto; }
+  .view-tab svg { display: none; }
+}
+
+.editor-stage { position: relative; overflow: hidden; background: #111318; }
+.editor-stage[hidden], .terminal-frame[hidden], .workspace-back[hidden] { display: none; }
+.editor-unavailable { max-width: 440px; margin: 10vh auto; padding: 24px; }
+.editor-unavailable[hidden] { display: none; }
+.workspace-back { color: var(--text); text-decoration: none; white-space: nowrap; }
+.browse-apps { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.apps-packs { display: grid; gap: 10px; }
+.apps-pack { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); text-decoration: none; background: var(--panel-soft); }
+.apps-pack small { color: var(--muted); }
+.settings-shortcuts { display: grid; gap: 12px; }
+.app-shell:not([data-view="desktop"]) .connection-pill,
+.app-shell:not([data-view="desktop"]) .desktop-only-control { display: none; }
+@media (max-width: 430px) { .workspace-back { font-size: 12px; padding-inline: 4px; } #apps-button { width: auto; padding-inline: 8px; } }

@@ -21,6 +21,15 @@ from urllib.parse import parse_qs, urlsplit
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import setuplib as lib  # noqa: E402
 
+COMMON_ROOT = os.environ.get(
+    "VIBESTACK_COMMON_ROOT",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "common"),
+)
+if COMMON_ROOT not in sys.path:
+    sys.path.insert(0, COMMON_ROOT)
+from vibestack_auth import ClientAuthError, WorkspaceClientStore  # noqa: E402
+from vibestack_hosts import host_is_configured  # noqa: E402
+
 WEB_ROOT = os.environ.get("VIBESTACK_WEB_ROOT", "/usr/share/vibestack/web")
 PORT = int(os.environ.get("SETUP_PORT", "7999"))
 INSTALLER = "/usr/local/bin/vibestack-install"
@@ -47,6 +56,7 @@ HOST_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _lock = threading.Lock()
 _mirror_lock = threading.Lock()
 _password_lock = threading.Lock()
+_client_store = WorkspaceClientStore(os.environ.get("VIBESTACK_CLIENT_STATE_DIR", "/home/vibe/.vibestack"))
 _job = {
     "running": False,
     "log": b"",
@@ -106,7 +116,7 @@ def _host_allowed(host_name):
     if host_name in ("localhost", "127.0.0.1", "::1"):
         return True
     labels = host_name.split(".")
-    return (
+    return host_is_configured(host_name) or (
         len(labels) >= 4
         and labels[-2:] == ["ts", "net"]
         and all(HOST_LABEL_RE.fullmatch(label) for label in labels[:-2])
@@ -136,11 +146,24 @@ def validate_request_source(handler):
     if fetch_sites:
         fetch_site = fetch_sites[0].strip().lower()
         if fetch_site in ("cross-site", "same-site"):
-            raise RequestError(
-                "cross_origin", "Cross-origin requests are not allowed.", 403
-            )
+            if handler.command not in ("GET", "HEAD"):
+                raise RequestError(
+                    "cross_origin", "Cross-origin requests are not allowed.", 403
+                )
+            modes = handler.headers.get_all("Sec-Fetch-Mode") or []
+            destinations = handler.headers.get_all("Sec-Fetch-Dest") or []
+            if len(modes) != 1 or len(destinations) != 1:
+                raise RequestError("invalid_request", "Safe navigation fetch metadata is required.")
+            if not (
+                modes[0].strip().lower() == "navigate"
+                and destinations[0].strip().lower() in ("document", "empty")
+            ):
+                raise RequestError(
+                    "cross_origin", "Cross-origin requests are not allowed.", 403
+                )
         if fetch_site not in ("same-origin", "none"):
-            raise RequestError("invalid_request", "Invalid Sec-Fetch-Site header.")
+            if fetch_site not in ("cross-site", "same-site"):
+                raise RequestError("invalid_request", "Invalid Sec-Fetch-Site header.")
 
     origins = handler.headers.get_all("Origin") or []
     if not origins:
@@ -701,6 +724,36 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
             self._json(200, payload)
+        elif path == "/api/discovery":
+            if query:
+                self._json(400, {"code": "invalid_query", "error": "discovery does not accept query parameters"})
+                return
+            try:
+                identity = _client_store.identity()
+            except ClientAuthError as exc:
+                self._json(exc.status, {"code": exc.code, "error": exc.message})
+                return
+            self._json(
+                200,
+                {
+                    "kind": "workspace",
+                    "identity": identity,
+                    "version": "0.2.0",
+                    "api_versions": ["1"],
+                    "api_roots": {"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"},
+                    "documentation": {"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md", "runner": "/RUNNER.md"},
+                    "pairing": {"request": "/api/v1/automation/pairing/requests", "approval": "/setup/?force=1", "permissions": ["workspace"]},
+                    "cli": {"installer": "/cli.sh", "compatible": ">=0.2.0 <1.0.0"},
+                },
+            )
+        elif path == "/api/clients":
+            if query:
+                self._json(400, {"code": "invalid_query", "error": "client listing does not accept query parameters"})
+                return
+            try:
+                self._json(200, _client_store.admin_state())
+            except ClientAuthError as exc:
+                self._json(exc.status, {"code": exc.code, "error": exc.message})
         elif path == "/api/log":
             try:
                 lease_held = lib.install_job_lock_held()
@@ -768,18 +821,38 @@ class Handler(BaseHTTPRequestHandler):
                     "invalid_request", "Mutation routes do not accept a query string."
                 )
             path = parsed.path
+            pairing_action = re.fullmatch(r"/api/pairings/([A-Z2-9]{4}-[A-Z2-9]{4})/(approve|deny)", path)
+            client_revoke = re.fullmatch(r"/api/clients/([0-9a-f]{32})/revoke", path)
             if path not in (
                 "/api/install",
                 "/api/skip",
                 "/api/complete",
                 "/api/reset",
                 "/api/password",
-            ):
+            ) and pairing_action is None and client_revoke is None:
                 self._send(404, b"not found")
                 return
             body = self._body()
 
-            if path == "/api/password":
+            if pairing_action is not None:
+                self._validate_body_keys(body, set())
+                try:
+                    payload = (
+                        _client_store.approve(pairing_action.group(1))
+                        if pairing_action.group(2) == "approve"
+                        else _client_store.deny(pairing_action.group(1))
+                    )
+                except ClientAuthError as exc:
+                    raise RequestError(exc.code, exc.message, exc.status) from None
+                self._json(200, {"pairing": payload})
+            elif client_revoke is not None:
+                self._validate_body_keys(body, set())
+                try:
+                    payload = _client_store.revoke(client_revoke.group(1))
+                except ClientAuthError as exc:
+                    raise RequestError(exc.code, exc.message, exc.status) from None
+                self._json(200, {"client": payload})
+            elif path == "/api/password":
                 password = validate_password_request(body)
                 if not _password_lock.acquire(blocking=False):
                     raise RequestError(

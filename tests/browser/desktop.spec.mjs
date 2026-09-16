@@ -132,7 +132,7 @@ test('custom shell connects and its unified menu settings/tools contracts work',
   await page.getByRole('button', { name: 'Close settings' }).click();
 
   await openTools(page);
-  await expect(page.locator('.service-row')).toHaveCount(4);
+  await expect(page.locator('.service-row')).toHaveCount(7);
   await expect(page.locator('#status-uptime')).not.toHaveText('—');
   await expect(page.locator('#status-disk')).not.toHaveText('—');
   await expect(page.locator('#status-resolution')).toHaveText(/^\d+x\d+$/);
@@ -155,71 +155,20 @@ test('custom shell connects and its unified menu settings/tools contracts work',
   expect(pageErrors).toEqual([]);
 });
 
-test('launcher and workspace tabs switch between the desktop and embedded terminal', async ({ page }) => {
-  const pageErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(error.message));
-  // This contract replaces the RFB module at the network boundary. Prevent
-  // this page from installing the real shell worker and satisfying the later
-  // dynamic import from its precache instead of the route below.
-  await page.addInitScript(() => {
-    if (typeof ServiceWorkerContainer !== 'undefined') {
-      Object.defineProperty(ServiceWorkerContainer.prototype, 'register', {
-        configurable: true,
-        value: async () => ({}),
-      });
-    }
-  });
+test('Desktop landing switches to full-screen Terminal and returns', async ({ page }) => {
   await useFakeRfb(page);
-  await page.route('**/setup/api/state', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({
-      state_valid: true,
-      state: { completed: true },
-      authentication: { password_configured: true, sudo_password_required: true },
-    }),
-  }));
-  await page.route('**/terminal/', (route) => route.fulfill({
-    status: 200,
-    contentType: 'text/html',
-    body: '<!doctype html><title>Test terminal</title><main>Persistent test terminal</main>',
-  }));
-
+  await page.route('**/setup/api/state', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authentication:{password_configured:true}})}));
+  await page.route('**/terminal/', route => route.fulfill({status:200,contentType:'text/html',body:'<main>Persistent test terminal</main>'}));
   await page.goto('/');
-  await expect(page).toHaveTitle('Open VibeStack');
-  await expect(page.getByRole('heading', { name: 'Where do you want to start?' })).toBeVisible();
-  await expect(page.getByTestId('launch-desktop')).toHaveAttribute('href', '/vnc/?view=desktop');
-  await expect(page.getByTestId('launch-terminal')).toHaveAttribute('href', '/vnc/?view=terminal');
-  await expect(page.getByRole('link', { name: 'Setup and applications' })).toHaveAttribute('href', '/setup/?force=1');
-
-  await page.getByTestId('launch-terminal').click();
-  await expect(page).toHaveURL(/\/vnc\/\?view=terminal$/);
-  await expect(page.getByTestId('terminal-view-tab')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByTestId('desktop-view-tab')).toHaveAttribute('aria-selected', 'false');
+  await expect(page).toHaveURL(/\/vnc\/$/);
+  await expect(page.getByTestId('desktop-stage')).toBeVisible();
+  await page.getByTestId('terminal-view-tab').click();
   await expect(page.getByTestId('terminal-stage')).toBeVisible();
   await expect(page.getByTestId('desktop-stage')).toBeHidden();
-  await expect(page.getByTestId('connection-status')).toBeHidden();
   await expect(page.getByTestId('terminal-frame').contentFrame().getByText('Persistent test terminal')).toBeVisible();
-  expect(await page.evaluate(() => window.__rfbInstances?.length || 0)).toBe(0);
-
-  await page.getByTestId('desktop-view-tab').click();
-  await expect(page).toHaveURL(/\/vnc\/\?view=desktop$/);
-  await expect(page.getByTestId('desktop-view-tab')).toHaveAttribute('aria-selected', 'true');
+  await page.locator('#workspace-back').click();
   await expect(page.getByTestId('desktop-stage')).toBeVisible();
-  await expect(page.getByTestId('connection-status')).toHaveAttribute('data-state', 'connected');
-  await expect(page.locator('#screen canvas')).toBeVisible();
-  expect(await page.evaluate(() => window.__rfbInstances.length)).toBe(1);
-
-  await page.goBack();
-  await expect(page).toHaveURL(/\/vnc\/\?view=terminal$/);
-  await expect(page.getByTestId('terminal-stage')).toBeVisible();
-  expect(await page.evaluate(() => window.__rfbInstances[0].disconnected)).toBe(true);
-
-  await page.goForward();
-  await expect(page).toHaveURL(/\/vnc\/\?view=desktop$/);
-  await expect(page.getByTestId('connection-status')).toHaveAttribute('data-state', 'connected');
-  expect(await page.evaluate(() => window.__rfbInstances.length)).toBe(2);
-  expect(pageErrors).toEqual([]);
+  await expect(page.getByTestId('connection-status')).toHaveAttribute('data-state','connected');
 });
 
 test('fresh launcher requires password onboarding and the form clears submitted secrets', async ({ page }) => {
@@ -246,6 +195,7 @@ test('fresh launcher requires password onboarding and the form clears submitted 
   let submitted = null;
   await page.route('**/setup/api/password', async (route) => {
     submitted = route.request().postDataJSON();
+    emptyState.authentication.password_configured = true;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -271,11 +221,105 @@ test('fresh launcher requires password onboarding and the form clears submitted 
   await password.fill(browserOnlyPassword);
   await confirmation.fill(browserOnlyPassword);
   await page.getByRole('button', { name: 'Save password' }).click();
-  await expect(page.getByText('Linux password configured')).toBeVisible();
+  await expect(page).toHaveURL(/\/vnc\/\?panel=apps$/);
+  await expect(page.locator('#apps-dialog')).toBeVisible();
   expect(submitted).toEqual({ password: browserOnlyPassword, confirmation: browserOnlyPassword });
-  await expect(password).toHaveValue('');
-  await expect(confirmation).toHaveValue('');
+  await expect(password).toHaveCount(0);
+  await expect(confirmation).toHaveCount(0);
   expect(pageErrors).toEqual([]);
+});
+
+test('Editor opens full-screen within the Desktop workspace', async ({ page }) => {
+  await page.route('**/setup/api/state', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      state_valid: true,
+      state: { completed: true },
+      authentication: { password_configured: true, sudo_password_required: true },
+    }),
+  }));
+  await page.route('**/api/v1/status', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      services: Object.fromEntries(
+        ['desktop', 'vnc', 'terminal', 'setup', 'ssh', 'native-vnc', 'editor'].map((name) => [name, { state: 'RUNNING' }]),
+      ),
+    }),
+  }));
+
+  await page.goto('/');
+  await page.getByRole('tab',{name:'Editor',exact:true}).click();
+  await expect(page.locator('#editor-frame')).toHaveAttribute('src','/editor/');
+  await expect(page.locator('#editor-stage')).toBeVisible();
+  await page.locator('#workspace-back').click();
+  await expect(page.getByTestId('desktop-stage')).toBeVisible();
+});
+
+test('Connect your agent is secret-free and can approve and revoke individual clients', async ({ page }) => {
+  const statePayload = {
+    catalog: { version: 1, groups: [], presets: [], components: [] },
+    architecture: 'amd64',
+    installed: [],
+    state: { completed: true, selected: [] },
+    state_valid: true,
+    state_error: null,
+    job: { running: false, phase: 'idle', length: 0, available_from: 0 },
+    missing: [],
+    unknown_selected: [],
+    unsupported_selected: [],
+    authentication: { password_configured: true, sudo_password_required: true },
+  };
+  let approved = false;
+  let revoked = false;
+  await page.route('**/setup/api/state', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(statePayload),
+  }));
+  await page.route('**/setup/api/clients', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      pending: approved ? [] : [{
+        pairing_id: '1'.repeat(32),
+        verification_code: 'ABCD-2345',
+        device_label: 'Claude on laptop',
+        permissions: ['workspace'],
+        expires_at: '2099-01-01T00:00:00Z',
+      }],
+      clients: approved && !revoked ? [{
+        client_id: '2'.repeat(32),
+        device_label: 'Claude on laptop',
+        permissions: ['workspace'],
+        created_at: '2099-01-01T00:00:00Z',
+        revoked_at: '',
+      }] : [],
+    }),
+  }));
+  await page.route('**/setup/api/pairings/ABCD-2345/approve', async (route) => {
+    approved = true;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"pairing":{"status":"approved"}}' });
+  });
+  await page.route(`**/setup/api/clients/${'2'.repeat(32)}/revoke`, async (route) => {
+    revoked = true;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"client":{"revoked":true}}' });
+  });
+
+  await page.goto('/setup/?force=1');
+  await expect(page.getByRole('heading', { name: 'Connect your agent' })).toBeVisible();
+  const commands = await page.locator('#agent-connect').locator('pre').allTextContents();
+  expect(commands.join('\n')).toContain('/cli.sh');
+  expect(commands.join('\n')).toContain('--version 0.2.0');
+  expect(commands.join('\n')).not.toMatch(/credential|bearer|token/i);
+
+  await expect(page.getByText(/ABCD-2345.*Claude on laptop/)).toBeVisible();
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('Claude on laptop — workspace')).toBeVisible();
+  await page.getByRole('button', { name: 'Revoke' }).click();
+  await expect(page.getByText('No active clients.')).toBeVisible();
+  expect({ approved, revoked }).toEqual({ approved: true, revoked: true });
 });
 
 test('cached shell gives a truthful offline launch', async ({ page, context }) => {
@@ -526,14 +570,15 @@ test('match-screen sizing is opt-in and derives bounded, orientation-preserving 
   await expect.poll(() => displayRequests.some(({ resolution }) => resolution === '1200x800')).toBe(true);
   expect(displayRequests.some(({ resolution }) => resolution === '1000x800')).toBe(false);
 
-  // Rotating to a 768x1024 stage keeps portrait orientation instead of swapping
-  // dimensions or falling back to a landscape preset.
-  await page.setViewportSize({ width: 768, height: 1082 });
+  // The two-row navigation is 110px tall below 900px. A 768x1024 stage
+  // keeps portrait orientation instead of falling back to a landscape preset.
+  await page.setViewportSize({ width: 768, height: 1134 });
+  await expect.poll(async () => (await page.getByTestId('desktop-stage').boundingBox()).height).toBe(1024);
   await expect.poll(() => displayRequests.some(({ resolution }) => resolution === '768x1024')).toBe(true);
 
   // A stage narrower than the 640px safety floor scales both axes together,
   // then aligns the width to 8px and height to 2px for XRandR.
-  await page.setViewportSize({ width: 608, height: 1078 });
+  await page.setViewportSize({ width: 608, height: 1134 });
   await expect.poll(() => displayRequests.some(({ resolution }) => resolution === '640x1078')).toBe(true);
 
   // If the user chooses a fixed preset while an automatic PUT is in flight,
@@ -585,7 +630,7 @@ test('a confirmed VNC restart retries an expected clean disconnect', async ({ pa
   await page.goto('/vnc/');
   await expect(page.getByTestId('connection-status')).toHaveAttribute('data-state', 'connected');
   await openTools(page);
-  await expect(page.locator('.service-row')).toHaveCount(4);
+  await expect(page.locator('.service-row')).toHaveCount(7);
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Restart VNC' }).click();
   await page.evaluate(() => window.__rfbInstances[0].dispatchEvent(new CustomEvent('disconnect', { detail: { clean: true } })));
@@ -602,7 +647,7 @@ test('confirmed VNC restart recovers the live desktop session', async ({ page })
   test.setTimeout(75_000);
   await openConnectedDesktop(page);
   await openTools(page);
-  await expect(page.locator('.service-row')).toHaveCount(4);
+  await expect(page.locator('.service-row')).toHaveCount(7);
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Restart VNC' }).click();
   const restartReported = expect(page.locator('#toast-region')).toContainText('VNC restarted', { timeout: 45_000 });

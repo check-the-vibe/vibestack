@@ -1,0 +1,598 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "VibeStack runner API",
+    "version": "1.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "clientBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "paths": {
+    "/.well-known/vibestack": {
+      "get": {
+        "operationId": "discoverRunner",
+        "responses": {
+          "200": {
+            "description": "Public inventory-free runner discovery."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/pairing/requests": {
+      "post": {
+        "operationId": "requestRunnerPairing",
+        "responses": {
+          "201": {
+            "description": "Expiring verification code and polling secret."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/pairing/requests/{id}/poll": {
+      "post": {
+        "operationId": "pollRunnerPairing",
+        "responses": {
+          "200": {
+            "description": "Pending or one-time credential."
+          }
+        }
+      }
+    },
+    "/api/v1/runner": {
+      "get": {
+        "operationId": "runnerCapabilities",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved templates, limits, routes, and launch contract."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/instances": {
+      "get": {
+        "operationId": "listInstances",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Instances owned by this principal."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInstance",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durable operation."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "template"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "template": {
+                    "type": "string"
+                  },
+                  "ports": {
+                    "type": "object",
+                    "properties": {
+                      "http": {
+                        "type": "integer"
+                      },
+                      "ssh": {
+                        "type": "integer"
+                      },
+                      "vnc": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "resources": {
+                    "type": "object",
+                    "properties": {
+                      "memory_bytes": {
+                        "type": "integer"
+                      },
+                      "nano_cpus": {
+                        "type": "integer"
+                      },
+                      "pids": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "project_drive": {
+                    "type": "string"
+                  },
+                  "file_drives": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "drive_id",
+                        "name"
+                      ],
+                      "properties": {
+                        "drive_id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+                        },
+                        "read_only": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      }
+                    }
+                  },
+                  "environment_set": {
+                    "type": "string"
+                  },
+                  "state_seed": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runner/instances/{id}": {
+      "get": {
+        "operationId": "inspectInstance",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Desired/observed/readiness and connection state."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/instances/{id}/{operation}": {
+      "post": {
+        "operationId": "operateInstance",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Start, stop, restart, or remove operation. Remove retains volumes."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/instances/{id}/update": {
+      "post": {
+        "operationId": "updateInstance",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Rollback-safe replacement operation using an approved image."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/operations": {
+      "get": {
+        "operationId": "listOperations",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounded operation history."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/operations/{id}": {
+      "get": {
+        "operationId": "inspectOperation",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Durable operation state."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/host": {
+      "get": {
+        "operationId": "runnerHostStatus",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selected Docker availability/version, memory/disk, approved images and owned instances with ports and attachments; no raw inspection."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/drives": {
+      "get": {
+        "operationId": "listRunnerDrives",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned registered drive metadata; no host paths."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRunnerDrive",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Register a named managed file volume. Host folder registration is local only."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runner/environment-sets": {
+      "get": {
+        "operationId": "listRunnerEnvironmentSets",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned environment-set IDs, names and keys only; values never reported."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRunnerEnvironmentSet",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Store immutable private values from the request body; reject runtime overrides."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "values"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "values": {
+                    "type": "object",
+                    "maxProperties": 128,
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/runner/snapshots": {
+      "get": {
+        "operationId": "listRunnerSnapshots",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owned stopped-state seeds, including readiness; volumes remain private."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        }
+      }
+    },
+    "/api/v1/runner/instances/{id}/attachments": {
+      "put": {
+        "operationId": "setRunnerAttachments",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atomically replace attachments only while Docker confirms stopped; writable ownership is checked at start."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "project_drive"
+                ],
+                "properties": {
+                  "project_drive": {
+                    "type": "string"
+                  },
+                  "file_drives": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "drive_id",
+                        "name"
+                      ],
+                      "properties": {
+                        "drive_id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+                        },
+                        "read_only": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/runner/instances/{id}/snapshot": {
+      "post": {
+        "operationId": "snapshotRunnerInstance",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Durable stopped-instance state copy; credentials and runtime locks excluded."
+          },
+          "401": {
+            "description": "Bearer authentication required."
+          },
+          "403": {
+            "description": "Permission denied."
+          },
+          "409": {
+            "description": "State, ownership, resource or attachment conflict."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ]
+      }
+    }
+  }
+}

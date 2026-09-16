@@ -24,14 +24,16 @@ body {
 .shell { max-width: 900px; margin: 0 auto; padding: 40px 24px 64px; }
 
 header { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+.brand { display: flex; align-items: center; gap: 16px; min-height: 44px; color: inherit; text-decoration: none; border-radius: 9px; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .sub { margin: 2px 0 0; color: var(--dim); font-size: 14px; }
 .mark {
   width: 34px; height: 34px; border-radius: 9px; flex: none;
   background: linear-gradient(140deg, var(--accent), #b8563a);
 }
-.links { margin-left: auto; display: flex; gap: 16px; }
-.links a { color: var(--dim); text-decoration: none; font-size: 14px; }
+.links { margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--dim); text-decoration: none; font-size: 14px; }
 .links a:hover { color: var(--text); }
 
 h2 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
@@ -133,6 +135,17 @@ button:disabled { opacity: .5; cursor: default; }
 
 footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; }
 
+.agent-connect { margin-top: 22px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.025); }
+.agent-connect h2 { margin-top: 0; }
+.command { overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #0a0c10; color: #dfe7f2; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.agent-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.agent-actions a { color: var(--accent); }
+.client-list { margin-top: 18px; }
+.client-list h3 { margin: 0 0 8px; font-size: 14px; }
+.client-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.client-row > span:last-child { display: flex; gap: 6px; }
+.compact { min-height: 34px; padding: 6px 10px; }
+
 @media (max-width: 620px) {
   .shell { padding: 24px 16px 48px; }
   header { align-items: flex-start; flex-wrap: wrap; }
@@ -143,3 +156,11 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
   .bar { align-items: stretch; flex-direction: column; }
   .actions { justify-content: flex-end; }
 }
+
+.back-desktop { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 20px; color: var(--text); text-decoration: none; }
+.apps-heading h2 { font-size: 30px; letter-spacing: -.03em; }
+.app-search { display: grid; gap: 8px; margin: 24px 0; color: var(--dim); }
+.app-search input { width: 100%; min-height: 48px; padding: 12px 16px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+.app-search input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+#step-choose > .bar { position: sticky; bottom: 12px; z-index: 2; background: var(--panel); padding: 16px; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 30px #0005; }
+.preset { text-align: left; min-height: 118px; }

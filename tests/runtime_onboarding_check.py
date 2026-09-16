@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disposable acceptance for password onboarding, Godot, and Flatpak.
+"""Disposable acceptance for onboarding, browser editor, Godot, and Flatpak.
 
 The random password is read once from stdin. It is never accepted through argv,
 printed, or written to the mounted VibeStack state. This probe must only run in
@@ -296,6 +296,43 @@ def verify_catalog_components() -> None:
     _validate_catalog_state(setup_state(), allow_running=False)
 
 
+def verify_browser_editor() -> None:
+    service = subprocess.run(
+        [
+            "/usr/bin/supervisorctl",
+            "-c",
+            "/etc/supervisor/supervisord.conf",
+            "status",
+            "code-server",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=15,
+        check=False,
+    )
+    require(service.returncode == 0, "browser editor service is not running")
+    require(b"RUNNING" in service.stdout, "browser editor service did not report RUNNING")
+    page = subprocess.run(
+        [
+            "/usr/bin/curl",
+            "--fail",
+            "--location",
+            "--max-time",
+            "30",
+            "--silent",
+            "--show-error",
+            "http://localhost/editor/",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=35,
+        check=False,
+    )
+    require(page.returncode == 0, "browser editor route is unavailable")
+    require(len(page.stdout) <= MAX_HTTP_RESPONSE, "browser editor response exceeded its bound")
+    require(b"code-server" in page.stdout.lower(), "browser editor returned unexpected content")
+
+
 def _persistent_directory_fd(directory: Path, home_link: Path) -> int:
     require(home_link.is_symlink(), "Godot persistent home path is not a symlink")
     require(
@@ -404,6 +441,23 @@ def configure(secret: bytearray) -> None:
     require(payload.get("authentication", {}).get("password_configured") is True, "password endpoint returned the wrong status")
     require(bytes(secret) not in raw, "password endpoint echoed plaintext")
     validate_persistent_hash(secret)
+    native_vnc = subprocess.run(
+        [
+            "/usr/bin/supervisorctl",
+            "-c",
+            "/etc/supervisor/supervisord.conf",
+            "status",
+            "native-vnc",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=15,
+        check=False,
+    )
+    require(
+        native_vnc.returncode == 0 and b"RUNNING" in native_vnc.stdout,
+        "native VNC did not start after the first Linux password was configured",
+    )
 
     wrong = bytearray(b"definitely-not-the-acceptance-password\n" * 3)
     rejected = run_sudo(wrong, ["/usr/bin/id", "-u"], timeout=30)
@@ -764,6 +818,7 @@ def verify_flatpak() -> None:
 
 def verify_initial_catalog_install() -> None:
     verify_catalog_components()
+    verify_browser_editor()
     create_persistent_sentinels()
     verify_godot()
     verify_flatpak()
@@ -776,6 +831,7 @@ def verify_restored_catalog(secret: bytearray, timeout_seconds: int) -> None:
     identity = require_sudo(secret, ["/usr/bin/id", "-u"], timeout=30)
     require(identity.stdout.strip() == b"0", "restored password no longer authenticates sudo")
     verify_catalog_components()
+    verify_browser_editor()
     verify_persistent_sentinels()
     verify_godot()
     verify_flatpak()
@@ -799,7 +855,7 @@ def main() -> int:
     if mode == "catalog-installed":
         require(len(sys.argv) == 2, "invalid acceptance mode")
         verify_initial_catalog_install()
-        print("PASS  catalog probes plus real Godot and Flatpak XFCE launches")
+        print("PASS  catalog probes, browser editor, and real Godot/Flatpak XFCE launches")
         return 0
     require(
         (mode in {"configure", "verify-restored"} and len(sys.argv) == 2)
@@ -817,7 +873,7 @@ def main() -> int:
             print("PASS  onboarding password restore and ephemeral apt boundary")
         else:
             verify_restored_catalog(secret, parse_restore_timeout(sys.argv[2]))
-            print("PASS  restored catalog, Godot/Flatpak GUI state, and Linux password")
+            print("PASS  restored catalog, editor, Godot/Flatpak GUI state, and Linux password")
     finally:
         for index in range(len(secret)):
             secret[index] = 0

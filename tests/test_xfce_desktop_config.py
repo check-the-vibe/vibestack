@@ -122,6 +122,10 @@ class XfceDesktopConfigTests(unittest.TestCase):
         }
         self.assertEqual(
             {
+                "vibestack-workspace-desktop.desktop",
+                "vibestack-terminal.desktop",
+                "vibestack-editor.desktop",
+                "vibestack-settings.desktop",
                 "vibestack-projects.desktop",
                 "vibestack-desktop.desktop",
                 "vibestack-logs.desktop",

@@ -18,6 +18,11 @@
       <Category>X-VibeStack-Action</Category>
     </Include>
     <Layout>
+      <Filename>vibestack-workspace-desktop.desktop</Filename>
+      <Filename>vibestack-terminal.desktop</Filename>
+      <Filename>vibestack-editor.desktop</Filename>
+      <Filename>vibestack-settings.desktop</Filename>
+      <Separator/>
       <Filename>vibestack-projects.desktop</Filename>
       <Filename>vibestack-desktop.desktop</Filename>
       <Filename>vibestack-logs.desktop</Filename>

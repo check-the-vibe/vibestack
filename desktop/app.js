@@ -2,7 +2,7 @@ import RFB from '/novnc/core/rfb.js';
 
 const PREFERENCES_KEY = 'vibestack.desktop.preferences.v1';
 const API_ROOT = '/api/v1';
-const SERVICES = ['desktop', 'vnc', 'terminal', 'setup'];
+const SERVICES = ['desktop', 'vnc', 'terminal', 'setup', 'ssh', 'native-vnc', 'editor'];
 const RETRY_DELAYS = [1_000, 2_000, 4_000, 8_000, 10_000];
 const VIEWPORT_RESIZE_DELAY = 650;
 const RENDER_PROFILES = Object.freeze({
@@ -27,6 +27,9 @@ const SERVICE_LABELS = {
   vnc: 'VNC',
   terminal: 'Terminal',
   setup: 'Setup',
+  ssh: 'SSH',
+  'native-vnc': 'Native VNC',
+  editor: 'Browser editor',
 };
 const MODIFIERS = {
   control: { keysym: 0xffe3, code: 'ControlLeft' },
@@ -56,6 +59,11 @@ const elements = {
   stage: $('desktop-stage'),
   terminalStage: $('terminal-stage'),
   terminalFrame: $('terminal-frame'),
+  editorStage: $('editor-stage'),
+  editorFrame: $('editor-frame'),
+  editorViewTab: $('editor-view-tab'),
+  appsDialog: $('apps-dialog'),
+  workspaceBack: $('workspace-back'),
   desktopViewTab: $('desktop-view-tab'),
   terminalViewTab: $('terminal-view-tab'),
   screen: $('screen'),
@@ -204,13 +212,15 @@ function websocketUrl() {
 }
 
 function workspaceViewFromLocation() {
-  return new URL(window.location.href).searchParams.get('view') === 'terminal' ? 'terminal' : 'desktop';
+  const view = new URL(window.location.href).searchParams.get('view');
+  return ['terminal', 'editor'].includes(view) ? view : 'desktop';
 }
 
 function workspaceHref(view) {
   const url = new URL(window.location.href);
   url.pathname = '/vnc/';
   url.searchParams.set('view', view);
+  url.searchParams.delete('panel');
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
@@ -219,10 +229,65 @@ function ensureTerminalFrame() {
   elements.terminalFrame.src = elements.terminalFrame.dataset.src || '/terminal/';
 }
 
+async function ensureEditorFrame() {
+  if (elements.editorFrame.hasAttribute('src')) return;
+  const message = $('editor-status');
+  try {
+    const status = await api('/status');
+    const ready = String(status.services?.editor?.state || '').toUpperCase() === 'RUNNING';
+    $('editor-unavailable').hidden = ready;
+    elements.editorFrame.hidden = !ready;
+    if (ready) elements.editorFrame.src = '/editor/';
+    else message.textContent = 'Editor is starting or needs a restart. Retry, or restart Editor in Menu → Tools → Services.';
+  } catch (_) {
+    message.textContent = 'Editor status is unavailable. Retry, or check the Editor service in Tools.';
+  }
+}
+
+async function loadApps() {
+  const summary = $('apps-summary');
+  const packs = $('apps-packs');
+  try {
+    const response = await fetch('/setup/api/state', {cache:'no-store', credentials:'same-origin'});
+    if (!response.ok) throw new Error('Unavailable');
+    const setup = await response.json();
+    const count = setup.installed?.length || 0;
+    summary.textContent = setup.job?.running ? 'An installation is running. Open Apps to follow its progress.' : `${count} installed app${count === 1 ? '' : 's'} and dependencies`;
+    packs.replaceChildren();
+    for (const pack of setup.catalog?.presets || []) {
+      if (!pack.components?.length) continue;
+      const link = document.createElement('a');
+      link.className = 'apps-pack';
+      const url = new URL('/setup/', window.location.href);
+      url.search = new URLSearchParams({force:'1',screen:'apps',pack:pack.id});
+      link.href = url.pathname + url.search;
+      const title = document.createElement('strong');
+      title.textContent = pack.name;
+      const detail = document.createElement('small');
+      detail.textContent = pack.description;
+      link.append(title, detail);
+      packs.append(link);
+    }
+  } catch (_) {
+    summary.textContent = 'App status is unavailable. Open Apps to retry.';
+  }
+}
+
+function applyPanelFromLocation() {
+  const panel = new URL(window.location.href).searchParams.get('panel');
+  if (panel === 'apps') {
+    openDialog(elements.appsDialog);
+    loadApps();
+  } else if (panel === 'settings') {
+    openDialog(elements.settingsDialog);
+    loadDisplaySettings();
+  }
+}
+
 function focusWorkspace() {
-  if (state.workspaceView === 'terminal') {
-    ensureTerminalFrame();
-    elements.terminalFrame.focus();
+  if (state.workspaceView !== 'desktop') {
+    if (state.workspaceView === 'terminal') ensureTerminalFrame();
+    (state.workspaceView === 'editor' ? elements.editorFrame : elements.terminalFrame).focus();
     return;
   }
   if (state.connected) state.rfb?.focus();
@@ -231,9 +296,10 @@ function focusWorkspace() {
 }
 
 function setWorkspaceView(view, { historyMode = null, focus = false, initial = false } = {}) {
-  const nextView = view === 'terminal' ? 'terminal' : 'desktop';
+  const nextView = ['terminal', 'editor'].includes(view) ? view : 'desktop';
   const previousView = state.workspaceView;
   const href = workspaceHref(nextView);
+  if (historyMode === 'push' && previousView !== 'desktop' && nextView !== 'desktop') historyMode = 'replace';
   if (historyMode === 'push' && `${window.location.pathname}${window.location.search}${window.location.hash}` !== href) {
     window.history.pushState({ vibestackView: nextView }, '', href);
   } else if (historyMode === 'replace') {
@@ -244,8 +310,10 @@ function setWorkspaceView(view, { historyMode = null, focus = false, initial = f
   elements.appShell.dataset.view = nextView;
   elements.stage.hidden = nextView !== 'desktop';
   elements.terminalStage.hidden = nextView !== 'terminal';
-  elements.skipLink.href = nextView === 'terminal' ? '#terminal-stage' : '#desktop-stage';
-  for (const tab of [elements.desktopViewTab, elements.terminalViewTab]) {
+  elements.editorStage.hidden = nextView !== 'editor';
+  elements.workspaceBack.hidden = nextView === 'desktop';
+  elements.skipLink.href = `#${nextView}-stage`;
+  for (const tab of [elements.desktopViewTab, elements.terminalViewTab, elements.editorViewTab]) {
     const selected = tab.dataset.workspaceView === nextView;
     tab.href = workspaceHref(tab.dataset.workspaceView);
     tab.setAttribute('aria-selected', String(selected));
@@ -260,12 +328,20 @@ function setWorkspaceView(view, { historyMode = null, focus = false, initial = f
     elements.focusButton.title = 'Focus browser terminal';
     cancelScheduledViewportMatch();
     if (!initial && previousView === 'desktop') disconnect();
+  } else if (nextView === 'editor') {
+    elements.desktopName.textContent = 'Editor';
+    document.title = 'Editor — VibeStack';
+    elements.focusButton.setAttribute('aria-label', 'Focus Editor');
+    elements.focusButton.title = 'Focus Editor';
+    cancelScheduledViewportMatch();
+    if (!initial && previousView === 'desktop') disconnect();
+    ensureEditorFrame();
   } else {
     elements.desktopName.textContent = 'Private desktop';
     document.title = 'VibeStack Desktop';
     elements.focusButton.setAttribute('aria-label', 'Focus remote desktop');
     elements.focusButton.title = 'Focus remote desktop';
-    if (!initial && previousView === 'terminal') manualConnect();
+    if (!initial && previousView !== 'desktop') manualConnect();
   }
 
   setInputControlsExpanded(false);
@@ -818,14 +894,40 @@ function renderServices(services = {}) {
     const status = document.createElement('small');
     status.textContent = info.detail || info.state;
     copy.append(name, status);
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'restart-button';
+    const running = info.state === 'running';
+    action.textContent = running ? 'Stop' : 'Start';
+    action.setAttribute('aria-label', `${running ? 'Stop' : 'Start'} ${SERVICE_LABELS[id]}`);
+    action.addEventListener('click', () => setServiceRunning(id, !running, action));
     const restart = document.createElement('button');
     restart.type = 'button';
     restart.className = 'restart-button';
     restart.textContent = 'Restart';
     restart.setAttribute('aria-label', `Restart ${SERVICE_LABELS[id]}`);
     restart.addEventListener('click', () => restartService(id, restart));
-    row.append(dot, copy, restart);
+    const buttons = document.createElement('span');
+    buttons.className = 'service-actions';
+    buttons.append(action, restart);
+    row.append(dot, copy, buttons);
     elements.serviceList.append(row);
+  }
+}
+
+async function setServiceRunning(id, running, button) {
+  if (!SERVICES.includes(id)) return;
+  if (!window.confirm(`${running ? 'Start' : 'Stop'} ${SERVICE_LABELS[id]}?`)) return;
+  button.disabled = true;
+  button.textContent = running ? 'Starting…' : 'Stopping…';
+  try {
+    await api(`/services/${encodeURIComponent(id)}/${running ? 'start' : 'stop'}`, { method: 'POST', body: '{}' });
+    toast(`${SERVICE_LABELS[id]} ${running ? 'started' : 'stopped'}`);
+    window.setTimeout(refreshStatus, 600);
+  } catch (error) {
+    toast(error.message, 'error');
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -1184,7 +1286,7 @@ function syncRenderProfile() {
 }
 
 function bindEvents() {
-  for (const tab of [elements.desktopViewTab, elements.terminalViewTab]) {
+  for (const tab of [elements.desktopViewTab, elements.terminalViewTab, elements.editorViewTab]) {
     tab.addEventListener('click', (event) => {
       event.preventDefault();
       setWorkspaceView(tab.dataset.workspaceView, { historyMode: 'push', focus: true });
@@ -1193,12 +1295,29 @@ function bindEvents() {
       const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
       if (!keys.includes(event.key)) return;
       event.preventDefault();
-      const nextView = ['ArrowRight', 'ArrowDown', 'End'].includes(event.key) ? 'terminal' : 'desktop';
-      setWorkspaceView(nextView, { historyMode: 'push' });
-      (nextView === 'terminal' ? elements.terminalViewTab : elements.desktopViewTab).focus();
+      const tabs = [elements.desktopViewTab, elements.terminalViewTab, elements.editorViewTab];
+      const index = tabs.indexOf(tab);
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (index + (['ArrowRight','ArrowDown'].includes(event.key) ? 1 : 2)) % 3;
+      setWorkspaceView(tabs[nextIndex].dataset.workspaceView, { historyMode: 'push' });
+      tabs[nextIndex].focus();
     });
   }
-  window.addEventListener('popstate', () => setWorkspaceView(workspaceViewFromLocation()));
+  window.addEventListener('popstate', () => {
+    document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+    setWorkspaceView(workspaceViewFromLocation());
+    applyPanelFromLocation();
+  });
+  $('editor-retry').addEventListener('click', ensureEditorFrame);
+  elements.workspaceBack.addEventListener('click', event => {
+    event.preventDefault();
+    if (window.history.state?.vibestackView && state.workspaceView !== 'desktop') window.history.back();
+    else setWorkspaceView('desktop', {historyMode:'replace', focus:true});
+  });
+  document.querySelectorAll('[data-open-apps]').forEach(button => button.addEventListener('click', (event) => {
+    event.preventDefault();
+    openDialog(elements.appsDialog);
+    loadApps();
+  }));
   elements.connectionAction.addEventListener('click', manualConnect);
   elements.inputControlsButton.addEventListener('click', toggleInputControls);
   elements.matchScreenButton.addEventListener('click', () => matchDesktopToViewport({ announce: true }));
@@ -1224,10 +1343,16 @@ function bindEvents() {
     elements.fullscreenButton.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
   });
 
-  elements.settingsButton.addEventListener('click', () => {
+  document.querySelectorAll('[data-open-settings]').forEach((button) => button.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (elements.toolsDialog.open) elements.toolsDialog.close();
     openDialog(elements.settingsDialog);
     loadDisplaySettings();
-  });
+  }));
+  document.querySelectorAll('[data-menu-view]').forEach((link) => link.addEventListener('click', (event) => {
+    event.preventDefault();
+    setWorkspaceView(link.dataset.menuView, { historyMode: 'push', focus: true });
+  }));
   elements.disconnectButton.addEventListener('click', () => {
     if (state.workspaceView === 'terminal') {
       setWorkspaceView('desktop', { historyMode: 'push', focus: true });
@@ -1471,13 +1596,27 @@ async function registerServiceWorker() {
   }
 }
 
-function initialize() {
+async function initialize() {
+  try {
+    const response = await fetch('/setup/api/state', {cache:'no-store', credentials:'same-origin'});
+    const setup = response.ok ? await response.json() : null;
+    if (setup?.authentication?.password_configured === false) {
+      window.location.replace('/setup/?force=1');
+      return;
+    }
+  } catch (_) { /* Keep the desktop usable during setup-service recovery. */ }
   resetVirtualKeyboardInput();
   syncSettingsControls();
   bindEvents();
   const initialView = workspaceViewFromLocation();
+  if (initialView !== 'desktop') {
+    const requested = window.location.pathname + window.location.search;
+    window.history.replaceState({vibestackView:'desktop'}, '', workspaceHref('desktop'));
+    window.history.pushState({vibestackView:initialView}, '', requested);
+  }
   setWorkspaceView(initialView, { initial: true });
   registerServiceWorker();
+  applyPanelFromLocation();
   if (initialView === 'desktop') connect();
   else setConnectionUi('disconnected', 'Desktop paused', 'Switch to Desktop when you want to open the graphical workspace.', { action: true });
 }

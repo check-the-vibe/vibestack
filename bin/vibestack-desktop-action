@@ -20,6 +20,8 @@ usage: vibestack-desktop-action ACTION
 
 Actions:
   projects          open /projects
+  workspace-desktop show the graphical desktop
+  editor            open the browser editor or its installer
   desktop           open the desktop folder
   logs              open persistent VibeStack logs
   setup             open setup and onboarding
@@ -248,7 +250,7 @@ case "$action" in
 esac
 
 case "$action" in
-  projects|desktop|logs|setup|agent-guide|automation-guide|flathub|flatpak|service-status|settings|terminal|file-manager|screenshot)
+  projects|desktop|workspace-desktop|editor|logs|setup|agent-guide|automation-guide|flathub|flatpak|service-status|settings|terminal|file-manager|screenshot)
     [[ $# -eq 0 ]] || { usage; exit 2; }
     LOG_ACTION="$action"
     ;;
@@ -281,6 +283,12 @@ trap log_result_on_exit EXIT
 case "$action" in
   projects)
     open_directory "${VIBESTACK_PROJECTS_DIR:-$DEFAULT_PROJECTS_DIR}"
+    ;;
+  workspace-desktop)
+    wmctrl -k on
+    ;;
+  editor)
+    open_url 'http://127.0.0.1/vnc/?view=editor'
     ;;
   desktop)
     mkdir -p "$HOME/Desktop"

@@ -79,6 +79,24 @@ SERVICE_LOGS: Mapping[str, str] = {
     "terminal": "/data/logs/vibestack/services/ttyd.log",
     "setup": "/data/logs/vibestack/services/vibestack-setup.log",
 }
+OPTIONAL_SERVICE_PROGRAMS: Mapping[str, str] = {
+    "ssh": "ssh",
+    "native-vnc": "native-vnc",
+    "editor": "code-server",
+}
+OPTIONAL_SERVICE_LOGS: Mapping[str, str] = {
+    "ssh": "/data/logs/vibestack/services/ssh.log",
+    "native-vnc": "/data/logs/vibestack/services/native-vnc.log",
+    "editor": "/data/logs/vibestack/services/code-server.log",
+}
+MANAGED_SERVICE_PROGRAMS: Mapping[str, str] = {
+    **SERVICE_PROGRAMS,
+    **OPTIONAL_SERVICE_PROGRAMS,
+}
+MANAGED_SERVICE_LOGS: Mapping[str, str] = {
+    **SERVICE_LOGS,
+    **OPTIONAL_SERVICE_LOGS,
+}
 
 DEFAULT_LOG_LIMIT = 100
 MAX_LOG_LIMIT = 200
@@ -149,7 +167,7 @@ class DisplayState:
 def require_service(service: str) -> str:
     """Return a known logical service or raise a safe client error."""
 
-    if service not in SERVICE_PROGRAMS:
+    if service not in MANAGED_SERVICE_PROGRAMS:
         raise ControlError("unknown_service", "Unknown logical service.", 404)
     return service
 
@@ -339,7 +357,7 @@ class ControlBackend:
         argv = ["/usr/bin/sudo", "-n", self.helper_path, *arguments]
         timeout = (
             HELPER_RESTART_TIMEOUT_SECONDS
-            if arguments and arguments[0] == "restart"
+            if arguments and arguments[0] in ("start", "restart")
             else COMMAND_TIMEOUT_SECONDS
         )
         try:
@@ -367,6 +385,16 @@ class ControlBackend:
         payload = self._run_helper(("restart", service))
         if payload.get("service") != service or payload.get("restarted") is not True:
             raise ControlError("service_restart_failed", "The service could not be restarted.", 502)
+        return payload
+
+    def set_service_state(self, service: str, running: bool) -> dict[str, Any]:
+        require_service(service)
+        action = "start" if running else "stop"
+        payload = self._run_helper((action, service))
+        expected = "RUNNING" if running else "STOPPED"
+        if payload.get("service") != service or payload.get("state") != expected:
+            raise ControlError("service_update_failed", "The service did not reach the requested state.", 502)
+        payload["operation"] = action
         return payload
 
     def service_logs(
@@ -509,7 +537,7 @@ class ControlBackend:
 
     def status_payload(self) -> dict[str, Any]:
         services: dict[str, Any] = {}
-        for service in SERVICE_PROGRAMS:
+        for service in MANAGED_SERVICE_PROGRAMS:
             try:
                 services[service] = self.service_status(service)
             except ControlError as exc:
@@ -691,7 +719,7 @@ def _supervisor_status(
     runner: Callable[..., subprocess.CompletedProcess[str]] = run_command,
 ) -> dict[str, Any]:
     service = require_service(service)
-    program = SERVICE_PROGRAMS[service]
+    program = MANAGED_SERVICE_PROGRAMS[service]
     proc = _run_supervisor(("status", program), runner=runner)
     if proc.returncode != 0:
         raise ControlError("supervisor_unavailable", "Supervisor status is unavailable.")
@@ -722,7 +750,7 @@ def helper_restart(
     runner: Callable[..., subprocess.CompletedProcess[str]] = run_command,
 ) -> dict[str, Any]:
     service = require_service(service)
-    program = SERVICE_PROGRAMS[service]
+    program = MANAGED_SERVICE_PROGRAMS[service]
     proc = _run_supervisor(
         ("restart", program),
         runner=runner,
@@ -741,8 +769,34 @@ def helper_restart(
     return payload
 
 
+def helper_set_state(
+    service: str,
+    running: bool,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = run_command,
+) -> dict[str, Any]:
+    service = require_service(service)
+    action = "start" if running else "stop"
+    program = MANAGED_SERVICE_PROGRAMS[service]
+    timeout = SUPERVISOR_RESTART_TIMEOUT_SECONDS if running else COMMAND_TIMEOUT_SECONDS
+    proc = _run_supervisor((action, program), runner=runner, timeout=timeout)
+    if proc.returncode != 0:
+        # Supervisor returns nonzero for an already-stopped/already-started
+        # service. Re-read truth before deciding that the idempotent request failed.
+        payload = _supervisor_status(service, runner=runner)
+        expected = "RUNNING" if running else "STOPPED"
+        if payload["state"] != expected:
+            raise ControlError("service_update_failed", "The service could not be updated.", 502)
+        return payload
+    payload = _supervisor_status(service, runner=runner)
+    expected = "RUNNING" if running else "STOPPED"
+    if payload["state"] != expected:
+        raise ControlError("service_update_failed", "The service did not reach the requested state.", 502)
+    return payload
+
+
 def helper_logs(service: str, cursor: int | None, limit: int) -> dict[str, Any]:
     service = require_service(service)
-    payload = read_log_page(SERVICE_LOGS[service], cursor, limit)
+    payload = read_log_page(MANAGED_SERVICE_LOGS[service], cursor, limit)
     payload["service"] = service
     return payload

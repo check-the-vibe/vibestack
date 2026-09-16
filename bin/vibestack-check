@@ -82,7 +82,7 @@ check "AC-4 content security policy"   bash -c 'curl -s -D - -o /dev/null http:/
 check "AC-40 compressed shell assets"  bash -c 'curl -s -H "Accept-Encoding: gzip" -D - -o /dev/null http://localhost/vnc/app.js | grep -qi "^content-encoding: gzip"'
 check "AC-5 stock UI not linked"       bash -c '! curl -fs http://localhost/vnc/ | grep -q "vnc.html"'
 check "AC-5 stock UI blocked"           bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" http://localhost/novnc/vnc.html) == 404 ]]'
-check "AC-3 / serves workspace launcher" bash -c 'curl -fs http://localhost/ | grep -F "Where do you want to start" >/dev/null'
+check "AC-3 / serves Desktop landing" bash -c 'curl -fs http://localhost/ | grep -F "Opening your desktop" >/dev/null'
 check "AC-48 external agent guide matches image" bash -c '
   curl -fs http://localhost/AGENTS.md | cmp - /usr/share/doc/vibestack/AGENTS.md
 '
@@ -102,6 +102,8 @@ check "AC-41 unknown Host rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{htt
 check "AC-41 terminal cross-origin WS rejected" ws_cross_origin_rejected http://localhost/terminal/ws tty
 check "AC-41 VNC cross-origin WS rejected" ws_cross_origin_rejected http://localhost/vnc/websockify binary
 check "AC-41 cross-origin static rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Origin: https://attacker.example" http://localhost/vnc/) == 403 ]]'
+check "AC-41 cross-site top-level navigation allowed" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: cross-site" -H "Sec-Fetch-Mode: navigate" -H "Sec-Fetch-Dest: document" http://localhost/) == 200 ]]'
+check "AC-41 extension top-level navigation allowed" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: cross-site" -H "Sec-Fetch-Mode: navigate" -H "Sec-Fetch-Dest: empty" http://localhost/) == 200 ]]'
 check "AC-41 cross-site setup rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: http://localhost" -H "Sec-Fetch-Site: same-site" --data "{}" http://localhost/setup/api/install) == 403 ]]'
 check "AC-44 direct websockify missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary
 check "AC-44 direct websockify wrong proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary wrong
@@ -122,7 +124,7 @@ check "AC-11 status contract" bash -c 'curl -fs http://localhost/api/v1/status |
 import json,sys
 d=json.load(sys.stdin)
 assert d[\"apiVersion\"] == \"1\"
-assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"terminal\",\"setup\"}
+assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"terminal\",\"setup\",\"ssh\",\"native-vnc\",\"editor\"}
 assert {\"uptimeSeconds\",\"disk\",\"display\"} <= set(d)
 "'
 check "AC-11 API no-store" bash -c 'curl -s -D - -o /dev/null http://localhost/api/v1/status | grep -qi "^cache-control: no-store"'

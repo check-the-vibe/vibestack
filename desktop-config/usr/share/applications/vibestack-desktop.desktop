@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Desktop
+Name=Desktop files
 Comment=Open files saved on the desktop
 Exec=/usr/local/bin/vibestack-desktop-action desktop
 Icon=user-desktop

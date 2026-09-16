@@ -485,6 +485,9 @@ def _load_state_locked(directory_fd):
             "state_invalid", "The saved setup state is not valid JSON."
         ) from exc
     _validate_state(state)
+    # This former optional component is now supplied by every base image.
+    # Read legacy selections without rewriting or invalidating unrelated state.
+    state["selected"] = [item for item in state["selected"] if item != "browser-editor"]
     return state
 
 

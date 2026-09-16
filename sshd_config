@@ -1,0 +1,18 @@
+Port 22
+ListenAddress 0.0.0.0
+Protocol 2
+HostKey /data/.vibestack-auth-v1/ssh_host_ed25519_key
+HostKey /data/.vibestack-auth-v1/ssh_host_rsa_key
+PermitRootLogin no
+PasswordAuthentication yes
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys .ssh/vibestack_authorized_keys
+KbdInteractiveAuthentication no
+UsePAM yes
+AllowUsers vibe
+X11Forwarding no
+AllowTcpForwarding yes
+GatewayPorts no
+PermitTunnel no
+PrintMotd no
+Subsystem sftp internal-sftp

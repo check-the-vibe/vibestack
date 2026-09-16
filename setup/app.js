@@ -10,6 +10,7 @@ const state = {
   logOffset: 0,
   poll: null,
   installFailed: false,
+  search: "",
 };
 
 const fmtSize = (mb) => (!mb ? '' : mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb + ' MB');
@@ -18,6 +19,89 @@ function show(step) {
   ['password', 'choose', 'install', 'done', 'error'].forEach((s) => {
     $('step-' + s).hidden = s !== step;
   });
+  $('agent-connect').hidden = step === 'password' || step === 'install' || step === 'error' || new URL(window.location.href).searchParams.get('screen') === 'apps';
+  if (!$('agent-connect').hidden) refreshClients();
+}
+
+function agentCommands() {
+  const origin = window.location.origin;
+  const install = `curl -fsSL '${origin}/cli.sh' | sh -s -- --version 0.2.0 --server '${origin}'`;
+  const connect = `vibestack connect --name my-workspace --url '${origin}'`;
+  $('agent-install-command').textContent = install;
+  $('agent-connect-command').textContent = connect;
+  return `${install}\n${connect}`;
+}
+
+function clientAction(label, handler) {
+  const button = document.createElement('button');
+  button.className = 'ghost compact';
+  button.type = 'button';
+  button.textContent = label;
+  button.onclick = handler;
+  return button;
+}
+
+async function refreshClients() {
+  try {
+    const data = await api('api/clients');
+    $('agent-client-error').hidden = true;
+    const pairingsHost = $('agent-pairings');
+    const clientsHost = $('agent-clients');
+    pairingsHost.replaceChildren();
+    clientsHost.replaceChildren();
+    const pairingTitle = document.createElement('h3');
+    pairingTitle.textContent = 'Pending approvals';
+    pairingsHost.appendChild(pairingTitle);
+    if (!data.pending.length) {
+      const empty = document.createElement('p');
+      empty.className = 'dim';
+      empty.textContent = 'No agent is waiting for approval.';
+      pairingsHost.appendChild(empty);
+    }
+    data.pending.forEach((pairing) => {
+      const row = document.createElement('div');
+      row.className = 'client-row';
+      const copy = document.createElement('span');
+      copy.textContent = `${pairing.verification_code} — ${pairing.device_label} (${pairing.permissions.join(', ')})`;
+      const actions = document.createElement('span');
+      actions.append(
+        clientAction('Approve', async () => {
+          await api(`api/pairings/${encodeURIComponent(pairing.verification_code)}/approve`, { method: 'POST' });
+          await refreshClients();
+        }),
+        clientAction('Deny', async () => {
+          await api(`api/pairings/${encodeURIComponent(pairing.verification_code)}/deny`, { method: 'POST' });
+          await refreshClients();
+        }),
+      );
+      row.append(copy, actions);
+      pairingsHost.appendChild(row);
+    });
+    const clientTitle = document.createElement('h3');
+    clientTitle.textContent = 'Paired clients';
+    clientsHost.appendChild(clientTitle);
+    const active = data.clients.filter((client) => !client.revoked_at);
+    if (!active.length) {
+      const empty = document.createElement('p');
+      empty.className = 'dim';
+      empty.textContent = 'No active clients.';
+      clientsHost.appendChild(empty);
+    }
+    active.forEach((client) => {
+      const row = document.createElement('div');
+      row.className = 'client-row';
+      const copy = document.createElement('span');
+      copy.textContent = `${client.device_label} — ${client.permissions.join(', ')}`;
+      row.append(copy, clientAction('Revoke', async () => {
+        await api(`api/clients/${encodeURIComponent(client.client_id)}/revoke`, { method: 'POST' });
+        await refreshClients();
+      }));
+      clientsHost.appendChild(row);
+    });
+  } catch (err) {
+    $('agent-client-error').textContent = err.message;
+    $('agent-client-error').hidden = false;
+  }
 }
 
 function fail(message) {
@@ -73,7 +157,7 @@ function applyPreset(preset) {
 function renderPresets() {
   const host = $('presets');
   host.innerHTML = '';
-  state.catalog.presets.forEach((preset) => {
+  state.catalog.presets.filter(preset => preset.components.length && matchesSearch(preset.name, preset.description, ...preset.components.map(id => componentById(id)?.name || ''))).forEach((preset) => {
     const btn = document.createElement('button');
     btn.className = 'preset';
     btn.type = 'button';
@@ -81,7 +165,7 @@ function renderPresets() {
     btn.querySelector('strong').textContent = preset.name;
     const unavailable = preset.unsupported_components || [];
     btn.querySelector('span').textContent =
-      preset.description +
+      preset.description + ` (${preset.components.length} apps and dependencies)` +
       (unavailable.length ? ' Unavailable here: ' + unavailable.join(', ') + '.' : '');
     const wanted = preset.components.filter((id) => isSupported(id) && !state.installed.includes(id));
     const matches = wanted.length === state.selected.size && wanted.every((id) => state.selected.has(id));
@@ -96,7 +180,7 @@ function renderGroups() {
   const implied = impliedDeps();
   host.innerHTML = '';
   state.catalog.groups.forEach((group) => {
-    const items = state.catalog.components.filter((c) => c.group === group.id);
+    const items = state.catalog.components.filter((c) => c.group === group.id && matchesSearch(c.name, c.description, group.name));
     if (!items.length) return;
     const section = document.createElement('div');
     section.className = 'group';
@@ -111,6 +195,7 @@ function renderGroups() {
       const checked = state.selected.has(component.id) || isImplied || isInstalled;
 
       const label = document.createElement('label');
+      label.id = `component-${component.id}`;
       label.className = 'item' + (checked && !isInstalled ? ' on' : '');
 
       const box = document.createElement('input');
@@ -152,9 +237,16 @@ function tag(text, kind) {
   return el;
 }
 
+function matchesSearch(...values) {
+  const words = state.search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const text = values.join(' ').toLocaleLowerCase();
+  return words.every(word => text.includes(word));
+}
+
 function render() {
   renderPresets();
   renderGroups();
+  $('search-empty').hidden = Boolean($('groups').children.length || $('presets').children.length);
   const chosen = pendingSelection();
   $('count').textContent = chosen.length === 1 ? '1 component selected' : chosen.length + ' components selected';
   const total = chosen.reduce((sum, id) => sum + (componentById(id)?.size_mb || 0), 0);
@@ -273,7 +365,7 @@ async function savePassword(event) {
       body: JSON.stringify({ password, confirmation }),
     });
     state.authentication = result.authentication;
-    show('choose');
+    window.location.replace('/vnc/?panel=apps');
   } catch (err) {
     $('password-error').textContent = err.message;
     $('password-error').hidden = false;
@@ -385,30 +477,35 @@ async function main() {
   $('btn-password-cancel').onclick = () => show('choose');
   $('btn-change-password').onclick = () => openPasswordStep(false);
   $('btn-install').onclick = () => startInstall().catch((err) => fail(err.message));
-  $('btn-skip').onclick = async () => {
-    try {
-      await api('api/skip', { method: 'POST' });
-      window.location.href = '/';
-    } catch (err) {
-      fail(err.message);
-    }
-  };
+  $('btn-skip').onclick = () => { window.location.href = '/vnc/?view=desktop'; };
+  $('app-search').addEventListener('input', event => { state.search = event.target.value; render(); });
   $('btn-more').onclick = () => {
     if (!state.installFailed) state.selected = new Set();
     state.installFailed = false;
     render();
     show('choose');
   };
+  $('btn-refresh-clients').onclick = refreshClients;
+  $('btn-copy-agent').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(agentCommands());
+      $('btn-copy-agent').textContent = 'Copied';
+      window.setTimeout(() => { $('btn-copy-agent').textContent = 'Copy starter commands'; }, 1500);
+    } catch (_error) {
+      $('agent-client-error').textContent = 'Clipboard access is unavailable; select and copy the commands above.';
+      $('agent-client-error').hidden = false;
+    }
+  };
+  agentCommands();
 
   const saved = Array.isArray(data.state?.selected) ? data.state.selected : [];
   const pending = saved.filter((id) => !state.installed.includes(id));
-  if (pending.length) {
+  const pack = new URL(window.location.href).searchParams.get('pack');
+  const preset = state.catalog.presets.find(item => item.id === pack);
+  if (preset) applyPreset(preset);
+  else {
     state.selected = new Set(pending);
     render();
-  } else {
-    const preset = state.catalog.presets[0];
-    if (preset) applyPreset(preset);
-    else render();
   }
 
   // A restore or install started before this page loaded: follow it. Password
@@ -428,10 +525,16 @@ async function main() {
   }
 
   if (data.state.completed) {
-    $('subtitle').textContent = 'Add or reinstall components.';
+    $('subtitle').textContent = 'Apps and packs for your workspace.';
   }
   if (!data.authentication.password_configured) openPasswordStep(true);
-  else show('choose');
+  else if (new URL(window.location.href).searchParams.get('screen') === 'password') openPasswordStep(false);
+  else {
+    show('choose');
+    if (window.location.hash === '#component-browser-editor') {
+      document.getElementById('component-browser-editor')?.scrollIntoView({block:'center'});
+    }
+  }
 }
 
 main();

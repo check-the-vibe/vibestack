@@ -54,22 +54,14 @@ class DesktopShellContractTests(unittest.TestCase):
             }.issubset(parser.ids)
         )
 
-    def test_root_launcher_offers_desktop_terminal_and_setup(self) -> None:
-        html = (ROOT / "launcher.html").read_text(encoding="utf-8")
-        parser = IdCollector()
-        parser.feed(html)
-        self.assertEqual(len(parser.ids), len(set(parser.ids)))
-        self.assertIn('href="/vnc/?view=desktop"', html)
-        self.assertIn('href="/vnc/?view=terminal"', html)
-        self.assertIn('href="/setup/?force=1"', html)
-        self.assertIn('href="/terminal/"', html)
-        self.assertIn('href="/AGENTS.md"', html)
-        self.assertNotIn("http://", html)
-        self.assertNotIn("https://", html)
+    def test_root_lands_on_desktop_and_only_forwards_supported_navigation(self) -> None:
         script = (ROOT / "launcher.js").read_text(encoding="utf-8")
-        self.assertIn("'/setup/api/state'", script)
-        self.assertIn("password_configured !== true", script)
-        self.assertIn("window.location.replace('/setup/?force=1')", script)
+        self.assertIn("new URL('/vnc/', source)", script)
+        self.assertIn("panel:['apps','settings']", script)
+        self.assertIn("window.location.replace", script)
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        for name in ("desktop-stage", "terminal-stage", "editor-stage", "apps-dialog", "settings-dialog"):
+            self.assertIn('id="' + name + '"', html)
 
     def test_workspace_view_tabs_and_terminal_frame_are_accessible(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")

@@ -663,6 +663,13 @@ class InstallerPinningContractTests(unittest.TestCase):
         self.assertIn('if ! ORDERED="$(VIBESTACK_CATALOG=', source)
         self.assertIn('say "component resolution failed"', source)
         self.assertIn('say "resolver returned unknown privileged component:', source)
+        self.assertIn("|build-essential|editors|", source)
+        core = (ROOT / "bin/vibestack-install-editor").read_text()
+        self.assertIn("sha256sum -c -", core)
+        self.assertIn("dpkg-deb -f", core)
+        self.assertIn("--max-filesize 268435456", core)
+        self.assertNotIn("supervisorctl", core)
+
 
     def test_privileged_resolver_rejects_unknown_original_arguments(self) -> None:
         script = resolver_source().replace(

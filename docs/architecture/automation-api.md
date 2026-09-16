@@ -9,9 +9,10 @@ existing control service remains a separate, narrow API on 7998 for the
 VibeStack shell's status, display, log, and allowlisted restart operations.
 
 The split is intentional. A control request cannot express an arbitrary
-command, file, application, process, or window. An automation bearer token,
-by contrast, is an explicit remote-code-execution credential with the same
-authority as a local `vibe` shell.
+command, file, application, process, or window. A paired client credential or
+compatible legacy automation token, by contrast, is an explicit
+remote-code-execution credential with the same authority as a local `vibe`
+shell.
 
 The runtime trust boundary is:
 
@@ -40,29 +41,49 @@ browser-direct-access guard, not a user credential.
 
 At first boot the service generates 32 random bytes and stores their encoded
 form in `~/.vibestack/automation.token` with mode `0600`. The `.vibestack`
-directory is persistent under `/data`. Authentication uses a constant-time
-comparison against exactly one `Authorization: Bearer` value.
+directory is persistent under `/data`. That legacy credential remains valid
+for compatibility. New clients pair through an expiring device flow and
+receive a separate revocable credential whose hash, device label, permissions,
+and timestamps are stored below the same private persistent state. Bearer
+comparisons are constant-time.
 
-Every route, including discovery, requires the bearer token. Requests also
-require one Host from the concrete loopback-or-multi-label-`*.ts.net`
-allowlist, with an optional valid port. The same check runs on the direct
+The pairing request and polling routes are the only unauthenticated automation
+routes. Every other route, including capability discovery, requires exactly one
+`Authorization: Bearer` value. A pending request lasts ten minutes, the number
+of pending records is bounded, and its short operator verification code cannot
+retrieve a credential: polling additionally requires the distinct high-entropy
+secret returned only to the requesting client. The credential is returned
+once after approval. Approval, denial, listing, and revocation are same-origin
+Setup operations; they never expose credential material.
+
+Requests also require one Host from the concrete loopback, valid multi-label
+`*.ts.net`, or operator-configured exact hostname/IP allowlist, with an optional
+valid port. `VIBESTACK_ALLOWED_HOSTS` is validated and rendered into a bounded
+literal nginx map before services start. The same check runs on the direct
 automation, setup, and control listeners, not only at nginx. If Origin is
-supplied its authority must match Host; cross-site fetch metadata is rejected.
-The scheme may differ across Tailscale TLS termination. The servers do not
-emit CORS opt-in headers. These browser checks reduce credential misuse but do
-not weaken or replace bearer authentication.
+supplied its authority must match Host. Cross-site and same-site fetch metadata
+is accepted only for an exact safe top-level `GET`/`HEAD`
+navigation: mode `navigate` and destination `document` or the
+extension-generated `empty`; cross-site subresources and mutations are rejected.
+The scheme may differ across Tailscale TLS termination. The servers
+do not emit CORS opt-in headers. These browser checks reduce credential misuse
+but do not weaken or replace bearer authentication.
 
-Before routing any surface, nginx accepts only loopback Host values or valid
-multi-label Tailscale MagicDNS names ending in `.ts.net`, with an optional
-port. Unknown hosts—including underscores, userinfo, slashes, malformed DNS
-labels, and lookalike suffixes—receive 421. This edge check closes DNS-rebinding
-access to the unauthenticated setup, terminal, desktop, and control surfaces;
+Before routing any surface, nginx accepts only loopback Host values, valid
+multi-label Tailscale MagicDNS names ending in `.ts.net`, or exact validated
+operator-configured hosts, with an optional port. Unknown hosts—including
+underscores, userinfo, slashes, malformed DNS labels, and lookalike suffixes—
+receive 421. This edge check closes DNS-rebinding access to the unauthenticated
+setup, terminal, desktop, and control surfaces;
 backend Host/Origin comparison remains defense in depth for mutations. The
 edge also permits an absent Origin for CLI clients, but otherwise requires one
 HTTP(S) Origin whose authority exactly matches the request Host
 case-insensitively. The scheme may differ across Tailscale TLS termination.
-Malformed, null, multiple, credential/path-bearing, or cross-site values fail
-before static, API, ttyd, or noVNC/WebSocket routing.
+Malformed, null, multiple, or credential/path-bearing values fail before
+static, API, ttyd, or noVNC/WebSocket routing. Safe top-level `GET`/`HEAD`
+navigations may carry `cross-site` or `same-site` with destination `document`
+or extension-generated `empty`; all other such fetch metadata fails at the
+edge.
 
 Responses use `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, and
 an `X-Request-ID`. At the public nginx boundary, nginx always overwrites any
@@ -133,13 +154,16 @@ windows, capture their current identity/state, and revalidate the XID before a
 minimize, maximize, or normal request. XIDs are ephemeral capabilities, not
 persistent application identifiers.
 
-## Desktop file confinement
+## Project and Desktop file confinement
 
-The file root is exactly `/home/vibe/Desktop`. Paths are decoded once and
-validated as relative UTF-8 components with a 4096-byte total limit. Each parent is
-walked descriptor-relative with `O_NOFOLLOW`; device, owner, directory/type,
-and link-count checks reject symlinks, mount crossings, hard links, and special
-files. The final regular file is opened relative to the verified parent.
+The two file roots are exactly `/home/vibe/Desktop` and `/projects`. Paths are
+decoded once and validated as relative UTF-8 components with a 4096-byte total
+limit. Each parent is walked descriptor-relative with `O_NOFOLLOW`; device,
+owner, directory/type, and link-count checks reject symlinks, mount crossings,
+hard links, and special files. The final regular file is opened relative to the
+verified parent. The same root selector is additive on command and shell jobs:
+old requests still default to Desktop, while new project-aware clients select
+`projects` explicitly and do not substitute Desktop on an older server.
 
 The HTTP handler accepts one bounded raw body (at most 16 MiB), and the file
 store writes it to a random same-directory temporary file, hashes and syncs
@@ -237,6 +261,11 @@ On every container start, the root bootstrap removes the exact
 | `POST /windows/{xid}/state` | `{state}` from minimized/maximized/normal. |
 | `GET|PUT /clipboard` | Raw UTF-8 text/plain, at most 1 MiB. |
 | `GET|HEAD|PUT /files/{path}` | Raw Desktop bytes, at most 16 MiB. |
+| `GET|HEAD|PUT /projects/{path}` | Raw `/projects` bytes with the same bounds and preconditions. |
+| `GET|POST /ssh-keys` | List fingerprints or add one bounded public key. Private keys are never accepted. |
+| `POST /ssh-keys/{id}/remove` | Remove one API-managed public key by stable ID. |
+| `POST /pairing/requests` | Request an expiring device pairing; unauthenticated and rate/bound limited. |
+| `POST /pairing/requests/{id}/poll` | Poll using the separate secret; deliver an approved credential once. |
 
 Unknown routes are 404, unsupported methods are 405, and exact-schema errors
 are 400. Authentication failure is 401. Preconditions, ranges, queue pressure,

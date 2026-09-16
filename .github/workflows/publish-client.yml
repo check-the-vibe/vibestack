@@ -1,0 +1,55 @@
+name: Publish VibeStack client and runner
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release-binaries:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./...
+      - name: Build release binaries and checksums
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test "$version" = "0.2.0"
+          mkdir dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            output="dist/vibestack_${version}_${os}_${arch}"
+            GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags='-s -w' -o "$output" ./cmd/vibestack
+            sha256sum "$output" > "$output.sha256"
+          done
+          for arch in amd64 arm64; do
+            output="dist/vibestack-runner_${version}_linux_${arch}"
+            GOOS=linux GOARCH="$arch" go build -trimpath -ldflags='-s -w' -o "$output" ./cmd/vibestack-runner
+            sha256sum "$output" > "$output.sha256"
+            package="dist/vibestack-runner_${version}_ubuntu_${arch}.tar.gz"
+            stage="dist/runner-package-$arch"
+            mkdir "$stage"
+            cp "$output" "$stage/vibestack-runner"
+            cp packaging/install-runner.sh packaging/vibestack-runner.service docs/RUNNER.md "$stage/"
+            tar -C "$stage" -czf "$package" .
+            sha256sum "$package" > "$package.sha256"
+            rm -rf "$stage"
+          done
+          cp cli.sh release-manifest.json packaging/install-runner.sh packaging/vibestack-runner.service dist/
+      - name: Publish versioned release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

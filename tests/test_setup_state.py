@@ -68,6 +68,17 @@ class SetupStateValidationTests(unittest.TestCase):
         lib.STATE_DIR = self.directory.name
         lib.STATE_PATH = str(Path(self.directory.name) / "setup.json")
 
+    def test_legacy_editor_selection_is_read_without_resetting_saved_state(self):
+        value = lib.default_state()
+        value["selected"] = ["browser-editor", "node"]
+        self.write_json(value)
+        original = self.state_path.read_bytes()
+        actual = lib.load_state()
+        self.assertEqual(actual["selected"], ["node"])
+        self.assertEqual(actual["auto_restore"], value["auto_restore"])
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(lib.unknown_for_state(CATALOG, actual), [])
+
     def tearDown(self):
         lib.STATE_DIR = self.old_state_dir
         lib.STATE_PATH = self.old_state_path

@@ -7,5 +7,5 @@ Exec=/usr/local/bin/vibestack-desktop-action terminal
 Icon=utilities-terminal
 Terminal=false
 StartupNotify=true
-Categories=System;TerminalEmulator;X-VibeStack-System;
+Categories=System;TerminalEmulator;X-VibeStack-System;X-VibeStack-Action;
 OnlyShowIn=XFCE;

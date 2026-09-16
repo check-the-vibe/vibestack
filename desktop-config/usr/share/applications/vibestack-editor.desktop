@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Editor
+Comment=Open the workspace editor
+Exec=/usr/local/bin/vibestack-desktop-action editor
+Icon=accessories-text-editor
+Terminal=false
+StartupNotify=true
+Categories=Utility;X-VibeStack-Action;
+OnlyShowIn=XFCE;

@@ -47,6 +47,9 @@ class PersistenceOwnershipTests(unittest.TestCase):
             self.assertFalse(sentinel.is_symlink())
             self.assertTrue((home / ".vibestack").is_symlink())
             self.assertTrue((data / "vibestack").is_dir())
+            self.assertTrue((home / ".ssh").is_symlink())
+            self.assertEqual(data / "ssh", (home / ".ssh").readlink())
+            self.assertEqual(0o700, (data / "ssh").stat().st_mode & 0o777)
             chatgpt_profile = home / ".config" / "Codex"
             self.assertTrue(chatgpt_profile.is_symlink())
             self.assertEqual(data / "chatgpt", chatgpt_profile.readlink())

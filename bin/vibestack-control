@@ -3,9 +3,14 @@
 
 This program is intended to be invoked through a narrowly-scoped sudo rule:
 
-    vibestack-control status  <desktop|vnc|terminal|setup>
-    vibestack-control restart <desktop|vnc|terminal|setup>
-    vibestack-control logs    <desktop|vnc|terminal|setup> [--cursor N] [--limit N]
+    vibestack-control status  <fixed-service>
+    vibestack-control start   <fixed-service>
+    vibestack-control stop    <fixed-service>
+    vibestack-control restart <fixed-service>
+    vibestack-control logs    <fixed-service> [--cursor N] [--limit N]
+
+The fixed IDs are defined in the packaged control library and currently cover
+the four core services plus SSH, native VNC, and the optional browser editor.
 """
 
 from __future__ import annotations
@@ -47,8 +52,8 @@ def _log_limit(value: str) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    choices = tuple(lib.SERVICE_PROGRAMS)
-    for command in ("status", "restart"):
+    choices = tuple(lib.MANAGED_SERVICE_PROGRAMS)
+    for command in ("status", "start", "stop", "restart"):
         subparser = commands.add_parser(command)
         subparser.add_argument("service", choices=choices)
     logs = commands.add_parser("logs")
@@ -67,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.command == "status":
             payload = lib.helper_status(arguments.service)
+        elif arguments.command == "start":
+            payload = lib.helper_set_state(arguments.service, True)
+        elif arguments.command == "stop":
+            payload = lib.helper_set_state(arguments.service, False)
         elif arguments.command == "restart":
             payload = lib.helper_restart(arguments.service)
         else:

@@ -68,6 +68,10 @@ class SetupAPITests(unittest.TestCase):
         server_module.lib.STATE_PATH = str(
             Path(self.state_directory.name) / "setup.json"
         )
+        self.old_client_store = server_module._client_store
+        server_module._client_store = server_module.WorkspaceClientStore(
+            str(Path(self.state_directory.name) / "client-state")
+        )
         with server_module._lock:
             server_module._job.update(
                 running=False,
@@ -81,6 +85,7 @@ class SetupAPITests(unittest.TestCase):
     def tearDown(self):
         server_module.lib.STATE_DIR = self.old_state_dir
         server_module.lib.STATE_PATH = self.old_state_path
+        server_module._client_store = self.old_client_store
         self.state_directory.cleanup()
         self.password_status_patcher.stop()
 
@@ -182,6 +187,45 @@ class SetupAPITests(unittest.TestCase):
         self.assertEqual("no-store", headers["Cache-Control"])
         self.assertEqual(configured, json.loads(raw)["authentication"])
         self.assertNotIn("hash", raw.decode("utf-8").lower())
+
+    def test_pairing_approval_listing_and_revocation_never_expose_credentials(self):
+        requested = server_module._client_store.request_pairing(
+            "setup test agent", ["workspace"]
+        )
+        status, _headers, raw = self.request("GET", "/api/clients")
+        self.assertEqual(200, status)
+        pending = json.loads(raw)
+        self.assertEqual(
+            requested["verification_code"], pending["pending"][0]["verification_code"]
+        )
+        self.assertNotIn(requested["polling_secret"].encode(), raw)
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/pairings/%s/approve" % requested["verification_code"],
+            body=b"{}",
+            headers={
+                "Content-Type": "application/json",
+                "Origin": "http://127.0.0.1:%d" % self.port,
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+        self.assertEqual(200, status)
+        self.assertEqual("approved", json.loads(raw)["pairing"]["status"])
+        delivered = server_module._client_store.poll(
+            requested["pairing_id"], requested["polling_secret"]
+        )
+
+        status, _headers, raw = self.request(
+            "POST",
+            "/api/clients/%s/revoke" % delivered["client_id"],
+            body=b"{}",
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(200, status)
+        self.assertIsNotNone(json.loads(raw)["client"]["revoked_at"])
+        self.assertNotIn(delivered["credential"].encode(), raw)
+        self.assertFalse(server_module._client_store.authenticate(delivered["credential"]))
 
     def test_password_can_be_set_and_replaced_without_current_password(self):
         secret = "Local sudo passphrase 42!"
@@ -338,6 +382,37 @@ class SetupAPITests(unittest.TestCase):
                 self.assertEqual(403, status)
                 self.assertEqual("cross_origin", json.loads(raw)["code"])
                 mutate.assert_not_called()
+
+    def test_cross_site_top_level_navigation_is_read_only_and_allowed(self):
+        catalog = {"version": 1, "groups": [], "presets": [], "components": []}
+        for destination in ("document", "empty"):
+            with (
+                self.subTest(destination=destination),
+                mock.patch.object(server_module.lib, "load_catalog", return_value=catalog),
+                mock.patch.object(server_module.lib, "installed_ids", return_value=[]),
+            ):
+                status, _headers, raw = self.request(
+                    "GET",
+                    "/api/state",
+                    headers={
+                        "Sec-Fetch-Site": "cross-site",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Sec-Fetch-Dest": destination,
+                    },
+                )
+                self.assertEqual(200, status, raw)
+
+        status, _headers, raw = self.request(
+            "GET",
+            "/api/state",
+            headers={
+                "Sec-Fetch-Site": "cross-site",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty",
+            },
+        )
+        self.assertEqual(403, status)
+        self.assertEqual("cross_origin", json.loads(raw)["code"])
 
     def test_dns_rebound_host_is_rejected_before_reads_or_mutations(self):
         attacker = "evil.test:%d" % self.port

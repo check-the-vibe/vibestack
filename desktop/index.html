@@ -16,6 +16,8 @@
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
   <link rel="stylesheet" href="app.css">
+  <script src="/vnc/walkthrough.js"></script>
+  <script src="/vnc/navigation.js" defer></script>
 </head>
 <body>
   <a class="skip-link" id="skip-link" href="#desktop-stage">Skip to workspace</a>
@@ -37,21 +39,25 @@
 
   <div class="app-shell" id="app-shell">
     <header class="topbar" data-testid="desktop-toolbar">
-      <div class="brand" aria-label="VibeStack desktop">
+      <a class="brand" href="/" aria-label="VibeStack Home">
         <span class="brand-mark" aria-hidden="true"><span></span></span>
         <span class="brand-copy">
           <strong>VibeStack</strong>
           <small id="desktop-name">Private desktop</small>
         </span>
-      </div>
+      </a>
 
-      <nav class="view-switcher" role="tablist" aria-label="Workspace view" data-testid="view-switcher">
+      <nav class="view-switcher" aria-label="Workspace navigation" data-testid="view-switcher">
+        <div class="workspace-tabs" role="tablist" aria-label="Workspace view">
         <a class="view-tab" id="desktop-view-tab" href="/vnc/?view=desktop" role="tab" aria-selected="true" aria-controls="desktop-stage" data-workspace-view="desktop" data-testid="desktop-view-tab">
           <svg aria-hidden="true"><use href="#i-desktop"></use></svg><span>Desktop</span>
         </a>
         <a class="view-tab" id="terminal-view-tab" href="/vnc/?view=terminal" role="tab" aria-selected="false" aria-controls="terminal-stage" data-workspace-view="terminal" data-testid="terminal-view-tab">
           <svg aria-hidden="true"><use href="#i-terminal"></use></svg><span>Terminal</span>
         </a>
+        <a class="view-tab" id="editor-view-tab" href="/vnc/?view=editor" data-workspace-view="editor" data-workspace-editor role="tab" aria-selected="false" aria-controls="editor-stage"><svg aria-hidden="true"><use href="#i-tools"></use></svg><span>Editor</span></a>
+        </div>
+        <button class="view-tab" type="button" data-open-settings aria-haspopup="dialog" aria-controls="settings-dialog"><svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></button>
       </nav>
 
       <div class="connection-pill" id="connection-pill" role="status" aria-live="polite" data-testid="connection-status">
@@ -60,6 +66,8 @@
       </div>
 
       <nav class="top-actions" aria-label="Workspace controls">
+        <a class="tool-button workspace-back" id="workspace-back" href="/vnc/?view=desktop" hidden>← Desktop</a>
+        <button class="tool-button" id="apps-button" type="button" data-open-apps aria-haspopup="dialog" aria-controls="apps-dialog">Apps</button>
         <button class="tool-button input-controls-toggle" id="input-controls-button" type="button" aria-label="Show desktop menu" aria-controls="input-controls-panel" aria-expanded="false" data-testid="input-controls-toggle">
           <svg><use href="#i-keyboard"></use></svg><span>Menu</span>
         </button>
@@ -72,6 +80,14 @@
       </nav>
 
       <div class="input-controls-panel" id="input-controls-panel" role="group" aria-label="Desktop menu" data-testid="input-controls-panel" hidden>
+        <nav class="menu-workspace-navigation" aria-label="Workspace destinations">
+          <a class="input-control-button menu-destination-button" href="/vnc/?view=desktop" data-menu-view="desktop">Desktop</a>
+          <a class="input-control-button menu-destination-button" href="/vnc/?view=terminal" data-menu-view="terminal">Terminal</a>
+          <a class="input-control-button menu-destination-button" href="/vnc/?view=editor" data-workspace-editor data-menu-view="editor">Editor</a>
+          <button class="input-control-button menu-destination-button" id="settings-button" type="button" data-open-settings aria-haspopup="dialog" aria-controls="settings-dialog" data-testid="open-settings">
+            <svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span>
+          </button>
+        </nav>
         <button class="input-control-button desktop-only-control" id="keyboard-button" type="button" aria-pressed="false">
           <svg><use href="#i-keyboard"></use></svg><span>Keyboard</span>
         </button>
@@ -88,9 +104,6 @@
           <svg><use href="#i-desktop"></use></svg><span>Match screen</span>
         </button>
         <span class="input-controls-divider desktop-only-control" aria-hidden="true"></span>
-        <button class="input-control-button menu-destination-button" id="settings-button" type="button" aria-haspopup="dialog" aria-controls="settings-dialog" data-testid="open-settings">
-          <svg><use href="#i-settings"></use></svg><span>Settings</span>
-        </button>
         <button class="input-control-button menu-destination-button" id="tools-button" type="button" aria-haspopup="dialog" aria-controls="tools-dialog" data-testid="open-tools">
           <svg><use href="#i-tools"></use></svg><span>Tools</span>
         </button>
@@ -114,7 +127,24 @@
     <main class="terminal-stage workspace-stage" id="terminal-stage" tabindex="-1" role="tabpanel" aria-labelledby="terminal-view-tab" data-testid="terminal-stage" hidden>
       <iframe class="terminal-frame" id="terminal-frame" title="VibeStack browser terminal" data-src="/terminal/" data-testid="terminal-frame"></iframe>
     </main>
+    <main class="editor-stage workspace-stage" id="editor-stage" tabindex="-1" role="tabpanel" aria-labelledby="editor-view-tab" hidden>
+      <div class="editor-unavailable" id="editor-unavailable" role="status"><h2>Editor</h2><p id="editor-status">Checking Editor…</p><button class="primary-button" id="editor-retry" type="button">Retry Editor</button><button class="secondary-button" type="button" data-open-settings>Open Settings</button></div>
+      <iframe class="terminal-frame" id="editor-frame" title="VibeStack Editor" allow="clipboard-read; clipboard-write" hidden></iframe>
+    </main>
   </div>
+
+  <dialog class="drawer" id="apps-dialog" aria-labelledby="apps-title" data-testid="apps-drawer">
+    <div class="drawer-shell">
+      <header class="drawer-header"><div><p class="eyebrow">Make this workspace yours</p><h2 id="apps-title">Apps</h2></div><button class="icon-button close-button" type="button" data-close-dialog aria-label="Close apps"><svg aria-hidden="true"><use href="#i-close"></use></svg></button></header>
+      <div class="drawer-content">
+        <p>Choose individual apps or start with a pack. You can add more whenever you need them.</p>
+        <a class="primary-button browse-apps" href="/setup/?force=1&screen=apps">Browse apps and packs</a>
+        <p id="apps-summary" role="status">Checking installed apps…</p>
+        <section aria-labelledby="apps-packs-title"><h3 id="apps-packs-title">Packs</h3><div class="apps-packs" id="apps-packs"></div></section>
+        <p><a href="/setup/?force=1#agent-connect-title">Connect your agent</a></p>
+      </div>
+    </div>
+  </dialog>
 
   <dialog class="drawer" id="settings-dialog" aria-labelledby="settings-title" data-testid="settings-drawer">
     <div class="drawer-layout">
@@ -123,6 +153,7 @@
         <button class="icon-button close-button" type="button" data-close-dialog aria-label="Close settings"><svg><use href="#i-close"></use></svg></button>
       </header>
       <div class="drawer-content">
+        <section class="settings-shortcuts"><button class="secondary-button" type="button" data-open-apps>Apps and packs</button><a href="/setup/?force=1&amp;screen=password">Change password</a></section>
         <section class="setting-section connection-setting" aria-labelledby="connection-heading">
           <div class="section-heading"><div><h3 id="connection-heading">Connection</h3><p id="settings-connection-note">The remote desktop connects automatically.</p></div></div>
           <button class="secondary-button" id="disconnect-button" type="button">Disconnect desktop</button>
@@ -199,7 +230,7 @@
         </div>
 
         <section class="setting-section" aria-labelledby="services-heading">
-          <div class="section-heading with-action"><div><h3 id="services-heading">Services</h3><p>Restart a component if it becomes unresponsive.</p></div>
+          <div class="section-heading with-action"><div><h3 id="services-heading">Services</h3><p>Start, stop, or restart persistent workspace services. Stopping native VNC leaves browser Desktop available.</p></div>
             <button class="icon-button" id="status-refresh" type="button" aria-label="Refresh system status" title="Refresh"><svg><use href="#i-refresh"></use></svg></button>
           </div>
           <div class="service-list" id="service-list" aria-live="polite"><p class="empty-state">Open Tools to load service status.</p></div>
@@ -214,6 +245,9 @@
               <option value="vnc">VNC</option>
               <option value="terminal">Terminal</option>
               <option value="setup">Setup</option>
+              <option value="ssh">SSH</option>
+              <option value="native-vnc">Native VNC</option>
+              <option value="editor">Browser editor</option>
             </select>
             <button class="secondary-button" id="log-refresh" type="button">Load</button>
           </div>
@@ -223,9 +257,12 @@
         </section>
 
         <section class="quick-links" aria-label="Open another VibeStack interface">
-          <a href="/terminal/" target="_blank" rel="noopener"><span><strong>Terminal</strong><small>Open the browser command line</small></span><svg><use href="#i-external"></use></svg></a>
-          <a href="/setup/?force=1" target="_blank" rel="noopener"><span><strong>Setup</strong><small>Add or restore components</small></span><svg><use href="#i-external"></use></svg></a>
+          <a href="/vnc/?view=desktop"><strong>Desktop</strong><svg aria-hidden="true"><use href="#i-desktop"></use></svg></a>
+          <a href="/vnc/?view=terminal"><strong>Terminal</strong><svg aria-hidden="true"><use href="#i-terminal"></use></svg></a>
+          <a href="/vnc/?view=editor" data-workspace-editor><strong>Editor</strong><svg aria-hidden="true"><use href="#i-tools"></use></svg></a>
+          <a href="/vnc/?panel=settings" data-open-settings><strong>Settings</strong><svg aria-hidden="true"><use href="#i-settings"></use></svg></a>
         </section>
+        <p><a href="/vnc/?panel=apps" data-open-apps>Apps and packs</a></p>
       </div>
     </div>
   </dialog>

@@ -194,6 +194,30 @@ class HTTPServiceTests(unittest.TestCase):
                 self.assertEqual("cross_origin", payload["code"])
         self.assertEqual([], self.backend.restart_calls)
 
+    def test_cross_site_top_level_navigation_is_read_only_and_allowed(self):
+        for destination in ("document", "empty"):
+            with self.subTest(destination=destination):
+                navigation = {
+                    "Sec-Fetch-Site": "cross-site",
+                    "Sec-Fetch-Mode": "navigate",
+                    "Sec-Fetch-Dest": destination,
+                }
+                status, _, payload = self.request(
+                    "GET", "/api/v1/status", headers=navigation
+                )
+                self.assertEqual(200, status, payload)
+
+        status, _, payload = self.request(
+            "GET",
+            "/api/v1/status",
+            headers={
+                "Sec-Fetch-Site": "cross-site",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty",
+            },
+        )
+        self.assertEqual((403, "cross_origin"), (status, payload["code"]))
+
     def test_dns_rebound_host_is_rejected_before_reads_or_mutations(self):
         attacker = "evil.test:%d" % self.port
         status, _, payload = self.request(

@@ -7,6 +7,9 @@
 #   ./startup.sh --data DIR       persistent tool state (default: ../vibestack-data)
 #   ./startup.sh --adopt-data      mark a safe pre-existing --data directory once
 #   ./startup.sh --projects DIR   host folder for /projects (default: <data>/projects)
+#   ./startup.sh --ssh-port 2222  publish SSH on host loopback (0 disables)
+#   ./startup.sh --vnc-port 5900  publish password-authenticated native VNC (0 disables)
+#   ./startup.sh --allowed-host NAME explicitly allow a custom browser hostname
 #   ./startup.sh --flatpak        allow nested Flatpak application sandboxes
 #   ./startup.sh --image TAG      build and run a named image tag
 #   ./startup.sh --no-build       run an image that was already validated
@@ -19,6 +22,9 @@ set -euo pipefail
 IMAGE_NAME="${VIBESTACK_IMAGE:-vibestack}"
 CONTAINER_NAME="${VIBESTACK_CONTAINER:-vibestack}"
 PORT="${VIBESTACK_PORT:-8080}"
+SSH_PORT="${VIBESTACK_SSH_PORT:-2222}"
+NATIVE_VNC_HOST_PORT="${VIBESTACK_NATIVE_VNC_PORT:-5900}"
+ALLOWED_HOSTS="${VIBESTACK_ALLOWED_HOSTS:-}"
 BIND_ADDRESS="${VIBESTACK_BIND_ADDRESS:-127.0.0.1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 DATA_DIR="${VIBESTACK_DATA:-${SCRIPT_DIR}/../vibestack-data}"
@@ -67,6 +73,12 @@ while [[ $# -gt 0 ]]; do
     --name=*) CONTAINER_NAME="${1#*=}"; shift ;;
     --port) PORT="$2"; shift 2 ;;
     --port=*) PORT="${1#*=}"; shift ;;
+    --ssh-port) SSH_PORT="$2"; shift 2 ;;
+    --ssh-port=*) SSH_PORT="${1#*=}"; shift ;;
+    --vnc-port) NATIVE_VNC_HOST_PORT="$2"; shift 2 ;;
+    --vnc-port=*) NATIVE_VNC_HOST_PORT="${1#*=}"; shift ;;
+    --allowed-host) ALLOWED_HOSTS="$2"; shift 2 ;;
+    --allowed-host=*) ALLOWED_HOSTS="${1#*=}"; shift ;;
     --bind) BIND_ADDRESS="$2"; shift 2 ;;
     --bind=*) BIND_ADDRESS="${1#*=}"; shift ;;
     --data) DATA_DIR="$2"; shift 2 ;;
@@ -74,7 +86,7 @@ while [[ $# -gt 0 ]]; do
     --projects) PROJECTS_DIR="$2"; shift 2 ;;
     --projects=*) PROJECTS_DIR="${1#*=}"; shift ;;
     *)
-      echo "Usage: $(basename "$0") [follow|check] [--bind ADDRESS] [--port N] [--data DIR] [--adopt-data] [--projects DIR] [--image TAG] [--name NAME] [--no-build] [--skip-setup] [--flatpak]" >&2
+      echo "Usage: $(basename "$0") [follow|check] [--bind ADDRESS] [--port N] [--ssh-port N|0] [--vnc-port N|0] [--allowed-host NAME] [--data DIR] [--adopt-data] [--projects DIR] [--image TAG] [--name NAME] [--no-build] [--skip-setup] [--flatpak]" >&2
       exit 1 ;;
   esac
 done
@@ -159,6 +171,17 @@ if [[ ! "$PORT" =~ ^[0-9]{1,5}$ ]] || (( PORT < 1 || PORT > 65535 )); then
   echo "[startup] Invalid port: ${PORT}" >&2
   exit 1
 fi
+for optional_port in "$SSH_PORT" "$NATIVE_VNC_HOST_PORT"; do
+  if [[ ! "$optional_port" =~ ^[0-9]{1,5}$ ]] || (( optional_port < 0 || optional_port > 65535 )); then
+    echo "[startup] Invalid optional host port: ${optional_port}" >&2
+    exit 1
+  fi
+done
+if (( SSH_PORT != 0 && (SSH_PORT == PORT || SSH_PORT == NATIVE_VNC_HOST_PORT) )) || \
+   (( NATIVE_VNC_HOST_PORT != 0 && NATIVE_VNC_HOST_PORT == PORT )); then
+  echo "[startup] HTTP, SSH, and native VNC host ports must be distinct." >&2
+  exit 1
+fi
 if [[ ! "$BIND_ADDRESS" =~ ^[A-Za-z0-9.-]+$ ]]; then
   echo "[startup] Invalid bind address: ${BIND_ADDRESS}" >&2
   exit 1
@@ -197,7 +220,7 @@ if [[ -e "$DATA_DIR" || -L "$DATA_DIR" ]]; then
           [[ -f "$existing_entry" && ! -L "$existing_entry" && \
              "$(stat -c '%h' -- "$existing_entry")" == "1" ]] || \
             data_path_error "VibeStack state file has an unsafe type: $existing_name" ;;
-        .vibestack-auth-v1|chatgpt|chrome|claude|claude-desktop|codex|flatpak|flatpak-apps|godot-config|godot-data|keyrings|logs|lost+found|opencode|opencode-config|projects|vibestack)
+        .vibestack-auth-v1|chatgpt|chrome|claude|claude-desktop|code-server-config|code-server-data|codex|flatpak|flatpak-apps|godot-config|godot-data|keyrings|logs|lost+found|opencode|opencode-config|projects|ssh|vibestack)
           [[ -d "$existing_entry" && ! -L "$existing_entry" ]] || \
             data_path_error "VibeStack state directory has an unsafe type: $existing_name" ;;
         *)
@@ -224,7 +247,10 @@ fi
 echo "[startup] Starting ${CONTAINER_NAME} on ${BIND_ADDRESS}:${PORT}"
 echo "[startup]   state:    ${DATA_DIR} -> /data"
 echo "[startup]   projects: ${PROJECTS_DIR} -> /projects"
-run_args=(-d --name "${CONTAINER_NAME}" --restart unless-stopped --hostname vibestack)
+run_args=(-d --name "${CONTAINER_NAME}" --restart unless-stopped --hostname vibestack \
+  --label dev.vibestack.launch-contract=1 \
+  --label dev.vibestack.runner.managed=false)
+[[ -n "$ALLOWED_HOSTS" ]] && run_args+=(-e "VIBESTACK_ALLOWED_HOSTS=$ALLOWED_HOSTS")
 [[ "${SKIP_SETUP}" == "true" ]] && run_args+=(-e VIBESTACK_SKIP_SETUP=1)
 if [[ "${FLATPAK_MODE}" == "true" ]]; then
   echo "[startup] Flatpak mode: nested app sandboxes enabled for this trusted container"
@@ -277,10 +303,19 @@ if docker ps -a --format '{{.Names}}' | grep -Fxq "${CONTAINER_NAME}"; then
 fi
 trap 'restore_previous 130' INT TERM
 
+publish_args=(-p "${BIND_ADDRESS}:${PORT}:80")
+(( SSH_PORT == 0 )) || publish_args+=(-p "${BIND_ADDRESS}:${SSH_PORT}:22")
+(( NATIVE_VNC_HOST_PORT == 0 )) || publish_args+=(-p "${BIND_ADDRESS}:${NATIVE_VNC_HOST_PORT}:5901")
+
 if ! docker run "${run_args[@]}" \
     --shm-size=1g \
     --pids-limit="$PIDS_LIMIT" \
-    -p "${BIND_ADDRESS}:${PORT}:80" \
+    "${publish_args[@]}" \
+    -e "VIBESTACK_INSTANCE_NAME=${CONTAINER_NAME}" \
+    -e "VIBESTACK_PUBLIC_PORT=${PORT}" \
+    -e "VIBESTACK_SSH_PORT=${SSH_PORT}" \
+    -e "VIBESTACK_NATIVE_VNC_PORT=${NATIVE_VNC_HOST_PORT}" \
+    -e "VIBESTACK_PUBLIC_URL=${VIBESTACK_PUBLIC_URL:-http://${BIND_ADDRESS}:${PORT}}" \
     -v "${DATA_DIR}:/data" \
     -v "${PROJECTS_DIR}:/projects" \
     "${IMAGE_NAME}" >/dev/null; then
@@ -405,6 +440,8 @@ done
 echo "[startup] Setup:    http://${BIND_ADDRESS}:${PORT}/setup/"
 echo "[startup] Terminal: http://${BIND_ADDRESS}:${PORT}/terminal/"
 echo "[startup] Desktop:  http://${BIND_ADDRESS}:${PORT}/vnc/"
+(( SSH_PORT == 0 )) || echo "[startup] SSH:      ssh -p ${SSH_PORT} vibe@${BIND_ADDRESS}"
+(( NATIVE_VNC_HOST_PORT == 0 )) || echo "[startup] VNC:      ${BIND_ADDRESS}:${NATIVE_VNC_HOST_PORT} (Linux login)"
 
 if [[ "${CHECK}" == "true" ]]; then
   if ! docker exec -u vibe "${CONTAINER_NAME}" vibestack-check --live --display --restart; then

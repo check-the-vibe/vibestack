@@ -39,24 +39,37 @@ require() {
 run_fast_tests() {
   require python3
   require node
+  require go
   (
     cd "$REPO_ROOT"
     python3 -m unittest discover -s tests -v
+    go test ./...
     node --check desktop/app.js
     node --check desktop/launcher.js
     node --check desktop/service-worker.js
+    node --check desktop/navigation.js
+    node --check desktop/walkthrough.js
     node --check setup/app.js
+    node --test tests/walkthrough-privacy.test.mjs
     python3 -m py_compile \
-      automation/automationlib.py automation/server.py \
+      automation/automationlib.py automation/server.py automation/sshkeys.py \
+      common/vibestack_auth.py common/vibestack_hosts.py \
       bin/vibestack-api-token bin/vibestack-automation-check bin/vibestack-bootstrap \
       bin/vibestack-control bin/vibestack-password bin/vibestack-setup \
-      control/server.py proxy/websockify_auth.py setup/server.py setup/setuplib.py \
+      control/server.py control/walkthrough.py proxy/websockify_auth.py setup/server.py setup/setuplib.py \
+      bin/vibestack-wallpaper bin/vibestack-walkthrough \
       tests/runtime_onboarding_check.py
     bash -n bin/vibestack-app bin/vibestack-check bin/vibestack-desktop-action bin/vibestack-dev \
       bin/vibestack-flatpak \
-      bin/vibestack-healthcheck bin/vibestack-install bin/vibestack-persist \
-      bin/vibestack-welcome startup.sh xfce-startup entrypoint.sh
+      bin/vibestack-healthcheck bin/vibestack-install bin/vibestack-install-editor bin/vibestack-persist \
+      bin/vibestack-volume-init bin/vibestack-welcome cli.sh \
+      packaging/install-runner.sh startup.sh xfce-startup entrypoint.sh
     python3 -m json.tool desktop/manifest.webmanifest >/dev/null
+    python3 -m json.tool api/workspace.openapi.json >/dev/null
+    python3 -m json.tool api/runner.openapi.json >/dev/null
+    python3 -m json.tool api/command-coverage.json >/dev/null
+    python3 -m json.tool contracts/launch-v1.json >/dev/null
+    python3 -m json.tool release-manifest.json >/dev/null
     git diff --check HEAD
   )
 }
@@ -202,8 +215,8 @@ run_acceptance() (
     < "$acceptance_password_file"
 
   # Exercise all durable acceptance routes. Their saved selection, exact
-  # probes, Flatpak sandbox, and Godot's real X11 editor must all work before
-  # the container is replaced.
+  # probes, browser editor, Flatpak sandbox, and Godot's real X11 editor must
+  # all work before the container is replaced.
   docker exec -u vibe "$acceptance_container" \
     vibestack-setup install godot build-essential flatpak
   # Install one real stable-Flathub GUI only in the disposable state. This
@@ -212,7 +225,7 @@ run_acceptance() (
   docker exec -u vibe "$acceptance_container" \
     /usr/bin/env HOME=/home/vibe USER=vibe LOGNAME=vibe \
       XDG_DATA_HOME=/home/vibe/.local/share \
-      /usr/bin/flatpak --user install --noninteractive \
+      /usr/bin/flatpak --user install --noninteractive --no-static-deltas \
         flathub org.gnome.Calculator
   docker exec "$acceptance_container" \
     python3 /tmp/vibestack-runtime-onboarding-check.py catalog-installed

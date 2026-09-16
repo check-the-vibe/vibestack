@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "labels": {
+    "managed": "dev.vibestack.runner.managed",
+    "instance": "dev.vibestack.runner.instance",
+    "contract": "dev.vibestack.launch-contract"
+  },
+  "container_ports": {
+    "http": 80,
+    "ssh": 22,
+    "native_vnc": 5901
+  },
+  "mounts": {
+    "data": "/data",
+    "projects": "/projects",
+    "file_drives": "/mnt/drives/<name>"
+  },
+  "defaults": {
+    "bind": "127.0.0.1",
+    "pids": 1024,
+    "restart_policy": "unless-stopped",
+    "shm_size_bytes": 1073741824
+  },
+  "flatpak": {
+    "environment": "VIBESTACK_FLATPAK_ENABLED=1",
+    "security_options": [
+      "seccomp=unconfined",
+      "apparmor=unconfined",
+      "systempaths=unconfined"
+    ],
+    "privileged": false,
+    "capabilities_added": []
+  },
+  "health": "/usr/local/bin/vibestack-healthcheck",
+  "remove_retains_volumes": true,
+  "storage": {
+    "registered_drive_ids": true,
+    "private_state": "/data",
+    "attachments_change_while": "stopped",
+    "writable_drive_active_desktops": 1,
+    "environment_sets": "private immutable owner-scoped sets; runtime overrides rejected",
+    "state_seeds": "independent stopped-state copies; fresh automation/pairing/SSH host identity",
+    "remove_retains_snapshots": true
+  },
+  "workspace_metadata": {
+    "public_environment": [
+      "VIBESTACK_INSTANCE_NAME",
+      "VIBESTACK_PUBLIC_URL",
+      "VIBESTACK_PUBLIC_PORT",
+      "VIBESTACK_SSH_PORT",
+      "VIBESTACK_NATIVE_VNC_PORT"
+    ],
+    "wallpaper": "/run/vibestack/runtime/wallpaper.png",
+    "core_editor": "code-server, preinstalled, autostart, loopback port 8443"
+  }
+}

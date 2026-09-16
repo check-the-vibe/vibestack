@@ -2,8 +2,9 @@
 
 VibeStack exposes its live XFCE desktop through a privileged REST API. It can
 run commands in the graphical session, capture screenshots, start and stop
-known applications, list and change the state of windows, transfer arbitrary Desktop files,
-and read or replace the X11 clipboard.
+known applications, list and change the state of windows, transfer arbitrary
+Desktop or project files, manage API-owned SSH public keys, and read or replace
+the X11 clipboard.
 
 The API is designed for a local coding agent on the Docker host or an
 authorized agent on the same private tailnet. It is not a public service.
@@ -13,13 +14,14 @@ The version-matched operating guide is available inside the desktop at
 
 ## Authentication and URLs
 
-Every request below `/api/v1/automation` requires:
+The pairing request and poll endpoints are the only unauthenticated bootstrap
+routes. Every other request below `/api/v1/automation` requires:
 
 ```text
 Authorization: Bearer <automation-token>
 ```
 
-The persistent 256-bit token is created at
+The persistent 256-bit legacy token is created at
 `/home/vibe/.vibestack/automation.token`, backed by
 `/data/vibestack/automation.token`, with mode `0600`. It grants the full
 authority of the `vibe` account, including shell execution and Desktop files.
@@ -40,7 +42,7 @@ channel. Unset `VIBESTACK_TOKEN` when finished.
 
 The installed `vibestack-api-token` helper has four explicit operations:
 `ensure` creates a missing token without printing it, `show` prints the current
-secret for deliberate provisioning, `rotate` atomically replaces and prints a
+secret for deliberate compatibility provisioning, `rotate` atomically replaces and prints a
 new secret, and `path` prints only its location. The automation service rereads
 the file for every request, so rotation invalidates the old token immediately
 without a restart:
@@ -65,12 +67,32 @@ vibestack_curl() {
 vibestack_curl -fsS "$API"
 ```
 
+For ordinary agent use, install the compiled client from `/cli.sh`, run
+`vibestack connect`, and approve its short code in Setup. The polling secret is
+separate from that code, expires with the request, and is never stored in
+plaintext. Each delivered client credential is independently revocable in
+Setup. Existing automation tokens remain valid.
+
 Do not use Tailscale Funnel or bind the container directly to the public
 internet. Requests receive `Cache-Control: no-store` and `X-Request-ID`.
 Retain that ID when debugging. An `Origin` header is optional for non-browser
 clients; if supplied, it must match the request host. Host is restricted to
-loopback or a valid multi-label `*.ts.net` MagicDNS name, including on direct
-backend-port requests. CORS is not enabled.
+loopback, a valid multi-label `*.ts.net` MagicDNS name, or an exact hostname/IP
+configured by the operator through `VIBESTACK_ALLOWED_HOSTS`, including on
+direct backend-port requests. CORS is not enabled.
+
+Public pairing routes:
+
+```text
+POST /api/v1/automation/pairing/requests
+  {"device_label":"laptop","permissions":["workspace"]}
+POST /api/v1/automation/pairing/requests/{id}/poll
+  {"polling_secret":"high-entropy value from the first response"}
+```
+
+The approval code alone cannot poll or retrieve a credential. Requests expire
+after ten minutes, pending requests are bounded, and a credential is delivered
+once. Approval/revocation is a same-origin Setup action.
 
 ## Capabilities
 
@@ -104,7 +126,10 @@ vibestack_curl -fsS -X POST \
 Both return `202 Accepted` with `{ "job": ... }`. Keep the submission
 response's `X-Request-ID`: the shared audit log uses that same ID for the
 event emitted when the asynchronous job reaches a terminal state. Optional
-`cwd` is relative to the Desktop root; `env` can add bounded ordinary
+`root` is `desktop` or `projects`, and `cwd` is relative to that root. Older
+requests default to Desktop for compatibility; the compiled CLI deliberately
+defaults new project work to projects and reports an older server that lacks
+the capability. `env` can add bounded ordinary
 environment variables but cannot replace `HOME`, `PATH`, `DISPLAY`,
 `XAUTHORITY`, D-Bus, XDG runtime, or
 other protected session values. Commands inherit the live XFCE environment by
@@ -129,6 +154,31 @@ The service allows at most four running jobs and 32 queued jobs. Timeouts are
 1–300 seconds. Each stdout and stderr stream is capped at 4 MiB; output and
 metadata persist privately below `~/.vibestack/automation/jobs` for bounded
 post-action inspection.
+
+## Project and Desktop files
+
+`GET`, `HEAD`, and `PUT` are equivalent below these distinct roots:
+
+```text
+/api/v1/automation/files/{path}       /home/vibe/Desktop
+/api/v1/automation/projects/{path}    /projects
+```
+
+Both preserve raw bytes, support one bounded byte range, publish ETags, and
+support `If-Match`/`If-None-Match` conditional writes. Files are limited to 16
+MiB. Relative paths reject traversal, symlinks, hard links, special files, and
+mount crossings. V1 intentionally has no delete operation. The projects root
+is independently mounted so managed instances retain project data separately
+from `/data`.
+
+## SSH public keys
+
+`GET /ssh-keys` returns key IDs, types, comments, and SHA-256 fingerprints;
+key bodies are not returned. `POST /ssh-keys` accepts exactly one bounded
+`public_key`, and `POST /ssh-keys/{id}/remove` accepts `{}`. Managed keys are
+stored in `~/.ssh/vibestack_authorized_keys`; sshd also reads the user's normal
+`authorized_keys`, which the API never rewrites. Private keys must remain on
+the customer device.
 
 ## Software discovery and installation
 
@@ -332,3 +382,55 @@ visible to make operational debugging possible.
 
 Architecture and security details are in
 [`docs/architecture/automation-api.md`](architecture/automation-api.md).
+
+### Manual walkthrough trace
+
+Open setup/Home/the desktop shell with `?walkthrough=1` to enable metadata-only
+browser diagnostics for that tab; `walkthrough=0` disables it. Fixed page/step,
+button, HTTP timing/status and socket/error-class events are posted to the
+same-origin `POST /api/v1/diagnostics/events` control endpoint. It rejects raw text
+and unknown fields and rate-limits submissions. Events are untrusted diagnostics,
+not authenticated user actions. Read the rotating canonical
+`/data/logs/vibestack/services/vibestack-control.log` locally; there is no new
+remote log-read route. Never add form values, tokens, query strings, clipboard
+contents, terminal data or exception messages to this trace. Host operators can
+use `bin/vibestack-walkthrough` from the source checkout to collect a sanitized
+trace and apply/roll back explicit development patches; see `docs/DEVELOPMENT.md`.
+
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
+The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
+amd64/arm64 package checksums and identities are verified during image build;
+Supervisor starts it automatically, and container health includes it. Apps and
+packs exclude the former `browser-editor` component. Legacy saved selections
+ignore that retired ID without resetting other selections; editor configuration
+and extensions retain their existing persistent mounts.
+
+Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
+Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only
+`VIBESTACK_INSTANCE_NAME`, sanitized `VIBESTACK_PUBLIC_URL`, published web/SSH/VNC
+ports, and `/projects`. The runner supplies these reserved values; standalone
+startup derives them from its name and port flags. Set `VIBESTACK_PUBLIC_URL`
+locally when standalone uses a different private HTTPS origin. URL credentials,
+paths, queries, fragments and arbitrary environment variables are never drawn.
+No startup terminal or automatic shell banner is opened. `vibestack-welcome`
+remains available as an explicit compatibility command.

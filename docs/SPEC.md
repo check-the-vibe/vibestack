@@ -8,6 +8,11 @@ primitives, and operational services are built in. On first boot a setup
 wizard asks which optional components to install. This keeps the base small,
 keeps the choice with the user, and gives us one place to grow onboarding.
 
+After the upstream base's signature-verified package bootstrap installs its CA
+trust store, official Ubuntu archive, security, and ARM ports URLs use HTTPS.
+Setup and restoration retain TLS certificate and APT signature verification;
+repository identities, suites, components, and signing keys are unchanged.
+
 ## 1. Goals
 
 1. Give VibeStack full ownership of the visible browser desktop while retaining
@@ -29,6 +34,10 @@ keeps the choice with the user, and gives us one place to grow onboarding.
 9. Publish one version-matched operating guide inside the image and over the
    private web surface so local and external agents discover the same commands,
    menus, APIs, logs, package workflows, and trust boundaries.
+10. Give Linux and macOS agents a compiled, profile-aware client for workspace
+    automation and give Linux Docker hosts a separate durable instance runner.
+11. Make `/projects` the explicit durable root for new agent work while keeping
+    the existing Desktop file contract compatible.
 
 ## 2. Non-goals (this iteration)
 
@@ -47,6 +56,8 @@ keeps the choice with the user, and gives us one place to grow onboarding.
 - OpenAI Computer Use, which is absent from the Linux build. The Codex
   extension is installed anyway so it works when OpenAI enables it.
 - Audio, GPU passthrough, Wayland, or an unmeasured TigerVNC migration.
+- A runner dashboard, arbitrary remote image builds, agent-supplied host
+  mounts, raw Docker API access, or hostile multi-tenant isolation.
 
 ## 3. Architecture
 
@@ -59,7 +70,8 @@ Ubuntu 24.04 LTS with only what the desktop and interfaces need:
   upstream release. VibeStack does not ship the upstream UI as its interface.
 - XFCE named components rather than the `xfce4` metapackage: xfwm4, xfdesktop4,
   xfce4-panel, xfce4-settings, xfce4-terminal, thunar.
-- nginx, supervisor, python3, tmux, git, nano, vim-tiny, sudo, openssl.
+- nginx, supervisor, OpenSSH server, python3, tmux, git, nano, vim-tiny, sudo,
+  openssl.
 - gnome-keyring with libsecret, D-Bus, xdg-utils.
 - scrot, xclip, xdotool, wmctrl, xprop, Xauthority, and GTK/X11 utilities so
   agents can see and drive the desktop out of the box.
@@ -73,14 +85,17 @@ Everything else is a catalog component.
 |---|---|
 | `/setup/` | Linux password and component onboarding; redirects to `/` once both are complete. |
 | `/terminal/` | ttyd attached to tmux session `main`. |
+| `/editor/` | Optional same-origin code-server browser editor. |
 | `/vnc/` | VibeStack-owned shell with Desktop and embedded Terminal views. |
 | `/vnc/websockify` | Same-origin RFB WebSocket endpoint. |
 | `/novnc/core/`, `/novnc/vendor/` | Pinned upstream runtime modules, not UI. |
 | `/api/v1/` | Same-origin, loopback-backed desktop control API. |
-| `/api/v1/automation` | Bearer-authenticated command and desktop automation API. |
-| `/AGENTS.md`, `/AUTOMATION.md` | Non-cacheable version-matched agent operating guide and full REST reference. |
+| `/api/v1/automation` | Bearer-authenticated command and desktop/project automation API. |
+| `/.well-known/vibestack` | Public kind, stable identity, versions, API roots, docs and pairing discovery; never credentials or inventory. |
+| `/AGENTS.md`, `/CLI.md`, `/AUTOMATION.md`, `/RUNNER.md` | Non-cacheable version-matched guides. |
+| `/cli.sh`, `/skills/vibestack/SKILL.md` | Secret-free client bootstrap and portable agent skill. |
 | `/manifest.webmanifest`, `/service-worker.js`, `/icons/` | PWA resources. |
-| `/` | Static workspace launcher with Desktop, Terminal, and Setup destinations. |
+| `/` | Opens Desktop; supported panel/view query parameters are preserved. Header logos return here. |
 
 Redirects are relative, so the host and port the client used are preserved.
 Dynamic interfaces and API responses are never service-worker cached.
@@ -123,8 +138,10 @@ remote size from the rendered desktop stage in CSS pixels, preserves the stage
 orientation, debounces viewport changes and pauses while the page is hidden or
 a browser text field/software keyboard owns the viewport. Fit scaling remains
 enabled as the local presentation fallback; `RFB.resizeSession` remains false.
-Tools exposes four logical service cards, bounded logs and confirmed restart
-actions.
+Tools exposes core service cards, bounded logs and confirmed restart actions.
+The same control contract manages SSH, native VNC, and core editor
+services with explicit start/stop/restart operations. Stopping native VNC does
+not stop the independent browser desktop path.
 
 Inside XFCE, the stock application tree is replaced by a VibeStack menu with
 VibeStack Actions, Coding, Create & Review, Applications, and System collections.
@@ -164,11 +181,12 @@ proxies `/api/v1/`. Responses are JSON and `Cache-Control: no-store`.
 | `GET /api/v1/display` | Current resolution, preset modes and dynamic-resize bounds/alignment. |
 | `PUT /api/v1/display` | Set one bounded and aligned resolution. |
 | `GET /api/v1/logs/{service}?cursor=&limit=` | Read bounded, sanitized service logs. |
-| `POST /api/v1/services/{service}/restart` | Restart one allowlisted logical service. |
+| `POST /api/v1/services/{service}/{operation}` | Start, stop, or restart one allowlisted logical service. |
 
-The logical IDs are `desktop`, `vnc`, `terminal` and `setup`; fixed code maps
-them to supervisor programs and log paths. A narrow helper performs only those
-supervisor operations. XRandR changes run as `vibe`, use a validated connected
+The core logical IDs are `desktop`, `vnc`, `terminal` and `setup`; optional IDs
+are `ssh`, `native-vnc`, and `editor`. Fixed code maps them to supervisor
+programs and log paths. A narrow helper performs only those supervisor
+operations. XRandR changes run as `vibe`, use a validated connected
 output name, and accept dimensions from 640x480 through 1920x1200 with widths
 aligned to 8 pixels and heights to 2. Existing presets remain available; other
 valid sizes are generated with `cvt`, attached to the parsed output, applied
@@ -186,15 +204,19 @@ replace the private-network authorization boundary.
 ### 3.5 Automation API
 
 A second Python standard-library service runs as `vibe` on
-`127.0.0.1:7997`; nginx proxies `/api/v1/automation`. Every route requires the
-persistent 256-bit bearer token in `~/.vibestack/automation.token`, including
-capability discovery. Responses are non-cacheable and carry a request ID that
-correlates nginx access and redacted automation audit events.
+`127.0.0.1:7997`; nginx proxies `/api/v1/automation`. Pairing request/poll are
+the only unauthenticated bootstrap routes. All other routes accept either the
+compatible persistent 256-bit token in `~/.vibestack/automation.token` or a
+separately revocable paired-client credential, including capability discovery.
+Responses are non-cacheable and carry a request ID that correlates nginx access
+and redacted automation audit events.
 
 The API exposes asynchronous argv and explicit-shell jobs, persisted bounded
 stdout/stderr pages, cancellation, PNG screenshots, a fixed application
 catalog, EWMH window list/minimize/maximize/normal operations, UTF-8 X11
-clipboard access, and raw binary `GET`/`HEAD`/`PUT` files below the Desktop.
+clipboard access, raw binary `GET`/`HEAD`/`PUT` files below the Desktop and
+`/projects`, and API-owned SSH public-key management. Commands can select
+Desktop or project root for a confined working directory.
 Commands inherit the live Xauthority/D-Bus/keyring environment and target
 display `:0` without caller-supplied session variables.
 
@@ -214,8 +236,9 @@ limit. Nginx overwrites a fixed `X-VibeStack-Proxy` marker on terminal and RFB
 WebSocket proxying. ttyd requires the header and matching Origin/Host authority;
 websockify rejects missing, wrong, or duplicate markers before connecting to
 VNC. The marker prevents direct browser use of the container-loopback ports
-but is not a user credential. The automation token is full `vibe` authority,
-not a sandbox; private Tailscale Serve remains a required outer boundary.
+but is not a user credential. An automation or workspace-client credential is
+full `vibe` authority, not a sandbox; private Tailscale Serve remains a required
+outer boundary.
 
 ### 3.6 Component catalog
 
@@ -334,6 +357,9 @@ The UI is three plain files, kept separate so they can be restyled freely:
 | `POST /api/skip` | Mark setup complete, install nothing |
 | `POST /api/complete` | Mark setup complete with what is already installed |
 | `POST /api/reset` | Clear state so the wizard returns |
+| `GET /api/clients` | Pending pairings and revocable client metadata; never credentials |
+| `POST /api/pairings/{code}/approve|deny` | Resolve one expiring verification code |
+| `POST /api/clients/{id}/revoke` | Revoke one paired client credential |
 
 The wizard has no application login and is therefore tailnet-private. Its first
 step requires a 12–256 UTF-8-byte Linux password before presenting component
@@ -346,8 +372,9 @@ state, or browser storage.
 Setup can invoke only the fixed `vibestack-install` and `vibestack-password`
 helpers through restricted passwordless sudo rules. Normal terminal sudo uses
 the user-created password. The arbitrary automation surface is separate and
-always requires its bearer token. Setup, control, and automation enforce the same loopback or
-multi-label `*.ts.net` Host allowlist on their direct listeners as nginx does,
+always requires its bearer token. Setup, control, and automation enforce the
+same loopback, multi-label `*.ts.net`, or operator-configured exact Host
+allowlist on their direct listeners as nginx does,
 so a DNS-rebound browser origin cannot bypass the edge Host boundary.
 
 The image contains no default Linux password and builds `vibe` in a locked
@@ -466,6 +493,8 @@ auto-restore component set both converge.
 | `~/.local/share/keyrings` | `keyrings/` |
 | `~/.gitconfig`, `~/.bash_history` | `gitconfig`, `bash_history` |
 | Linux password hash (no home link) | `.vibestack-auth-v1/vibe.shadow` |
+| Paired-client hashes and workspace identity | `vibestack/client-auth.json`, `vibestack/workspace-id` |
+| API-managed SSH public keys | `ssh/vibestack_authorized_keys` |
 
 Stale Chromium `Singleton*` locks in persisted profiles are cleared at boot, and
 the container runs with a fixed hostname, so recreated containers reopen them.
@@ -480,8 +509,9 @@ desktop as `VibeStack Logs`. The immutable image guide is available at
 `/home/vibe/AGENTS.md`. Fresh Codex, Claude Code, and OpenCode profiles receive
 links to the packaged guide only when the user has not already created the
 corresponding instruction or Codex override file; existing instructions are
-never replaced. Nginx serves the same file at `/AGENTS.md`, with the longer
-automation reference at `/AUTOMATION.md`.
+never replaced. Nginx serves the same file at `/AGENTS.md`, with `/CLI.md`,
+`/AUTOMATION.md`, `/RUNNER.md`, the portable skill, and the client bootstrap
+beside it.
 
 ### 3.11 Session
 
@@ -492,8 +522,69 @@ XDG runtime directory, root-owned host capability markers, and mode-0600
 session environment used by automation. That session publishes per-user and
 system Flatpak export directories in `XDG_DATA_DIRS` for menu discovery.
 The empty keyring unlock is not the Linux password used by PAM or sudo.
-On first boot the desktop terminal greets the user with the setup URL; the ttyd
-shell prints the same banner until setup completes.
+Startup opens the desktop without an interactive terminal or automatic banner.
+Its generated background identifies the workspace and its published ports.
+
+### 3.12 Client, SSH, editor, and native VNC
+
+The compiled Go `vibestack` client runs on Linux and macOS amd64/arm64 without
+Docker, Go, Python, Node, sudo, or agent configuration. Named profiles store an
+origin, stable server identity, kind, optional custom CA, and credential in a
+user-only file. When several profiles match a command, the client requires an
+explicit `--profile`; it never guesses an instance. HTTPS certificate
+validation is mandatory except for loopback HTTP development, server origins
+cannot contain reverse-proxy subpaths, and credentials are never forwarded to
+an origin-changing redirect.
+
+`cli.sh` downloads a versioned release binary and its published SHA-256 over
+HTTPS, checks the digest, then atomically installs to a user-owned directory
+(default `~/.local/bin`). It never edits shell profiles or uses sudo, and a
+failed download or verification preserves an existing binary. HTTPS
+authenticates delivery; the checksum is an integrity check, not an independent
+publisher signature.
+
+OpenSSH listens on container port 22 and supports the user-created full Linux
+password plus public keys. The public-key API writes only its separate managed
+file; the user's ordinary `authorized_keys` is not replaced and private keys
+never enter VibeStack. Native VNC listens separately on container port 5901 and
+uses PAM/full Linux-password remote login. Its root process disables MIT-SHM
+capture because the X server belongs to `vibe`; password authentication becomes
+usable once onboarding unlocks that account. The browser VNC service remains
+independent. code-server is included in the base image, starts automatically, and is proxied at `/editor/`;
+desktop VS Code is expected to use Remote SSH rather than a second in-container
+desktop editor install.
+
+### 3.13 Docker host runner
+
+`vibestack-runner` is a separate Linux Go daemon with an authenticated API and
+local administrative CLI; it is not the in-container command-job runner. It
+alone accesses the local Docker Unix socket. It stores a stable identity,
+approved immutable image IDs, instance ownership/intent, ports/resources,
+credential hashes, operations, and Serve mappings in SQLite under
+`/var/lib/vibestack-runner`, with private workspace credentials in separate
+mode-0600 files. Full design details are in
+[`docs/architecture/runner.md`](architecture/runner.md).
+
+Each managed instance gets independent named `/data` and `/projects` volumes,
+loopback-only HTTP/SSH/VNC ports, bounded CPU/memory/PIDs, and labels from the
+shared versioned launch contract. The runner reconciles known records with
+Docker inspection and never adopts unknown containers. Agents select only
+operator-approved templates; they cannot submit builds, host mounts, networks,
+capabilities, or raw Docker options.
+
+Create/update operations are durable, conflicting operations serialize per
+instance, and idempotency keys are scoped to the owning principal. Remove
+retains volumes by default; purge is an explicit local-only operation. Update
+retains the prior container until candidate health and saved application
+restoration succeed, then commits the new generation. Failure restarts the old
+generation and preserves data, subject to the documented limitation that
+container rollback cannot undo arbitrary data migrations.
+
+When enabled, Tailscale Serve management changes only exact mappings recorded
+by the runner and never uses a global reset. Runner mediation resolves a
+recorded instance server-side and forwards only supported workspace API paths;
+it never accepts an arbitrary proxy destination or releases the workspace
+credential.
 
 ## 4. Acceptance criteria
 
@@ -508,10 +599,10 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-2 `/vnc/` serves the VibeStack shell, contains no stock noVNC controls,
   imports the pinned RFB module, and reaches ServerInit through
   `/vnc/websockify`.
-- AC-3 `/` serves the workspace launcher and its Desktop, Terminal, and Setup
-  destinations after complete onboarding, while incomplete password/setup state
-  routes to `/setup/`; `/vnc` redirects relatively to `/vnc/` and preserves
-  the client's host and port.
+- AC-3 `/` opens Desktop, requesting password setup only when needed. Successful
+  password setup opens the Apps sidebar. Query `panel=apps` forces that sidebar;
+  Apps opens the full-screen searchable catalog with pack selection. Terminal and
+  Editor each have a full workspace view and a return path to Desktop.
 - AC-4 `/manifest.webmanifest`, `/service-worker.js`, shell assets, icons and
   required `/novnc/` modules return correct content types. Obsolete `/ui/`,
   `/admin/` and `/mcp` paths return 404.
@@ -550,12 +641,13 @@ marked physical are release checks performed on an iPadOS 17+ device.
 
 - AC-11 The control server runs as `vibe`, binds only `127.0.0.1`, is exposed at
   `/api/v1/`, returns versioned JSON and sends `Cache-Control: no-store`.
-- AC-12 Status returns uptime, disk, display and all four logical services while
+- AC-12 Status returns uptime, disk, display and all core plus configured
+  optional logical services while
   degrading an individual failed probe to unknown rather than failing the
   complete response.
-- AC-13 Only `desktop`, `vnc`, `terminal` and `setup` are accepted. Status,
-  restart and log calls map to fixed supervisor programs and paths; unknown
-  IDs run no command.
+- AC-13 Only `desktop`, `vnc`, `terminal`, `setup`, `ssh`, `native-vnc`, and
+  `editor` are accepted. Status, start/stop/restart and log calls map to fixed
+  supervisor programs and paths; unknown IDs run no command.
 - AC-14 Mutations require bounded, exact JSON and matching Host/Origin, reject
   cross-origin and CORS requests, serialize concurrent work and return stable
   `{code,message}` errors.
@@ -617,7 +709,7 @@ marked physical are release checks performed on an iPadOS 17+ device.
   exact remote, and real Godot/Flatpak XFCE windows.
 - AC-29 xfwm4, xfdesktop and the keyring daemon run; the login keyring is
   unlocked; `/run/vibestack/session.env` describes the authorized live X11
-  session; the welcome banner names the setup URL.
+  session; the background identifies the workspace and no welcome terminal opens.
 
 **Install, CI and release**
 
@@ -636,7 +728,8 @@ marked physical are release checks performed on an iPadOS 17+ device.
 
 **Automation, logging, performance and desktop experience**
 
-- AC-33 Every automation route, including discovery, rejects a missing or
+- AC-33 Except for bounded pairing request/poll, every automation route,
+  including capability discovery, rejects a missing, revoked, expired, or
   incorrect bearer token; valid responses are non-cacheable, have a server
   request ID, enforce Host/matching optional Origin, and expose no CORS opt-in.
 - AC-34 Argv and explicit-shell submissions create asynchronous jobs with the
@@ -646,10 +739,11 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-35 Screenshots return valid PNG bytes or atomically save a confined `.png`;
   application start/stop accepts only fixed catalog IDs; window actions accept
   only freshly revalidated XIDs and minimized/maximized/normal state.
-- AC-36 Desktop file GET/HEAD/PUT preserves arbitrary bytes, enforces 16 MiB
-  objects and 8 MiB ranges, implements ETags/preconditions and atomic writes,
-  and rejects traversal, symlinks, hard links, mount crossings and special
-  files. No file delete route exists.
+- AC-36 Desktop and project file GET/HEAD/PUT preserve arbitrary bytes, enforce
+  16 MiB objects and 8 MiB ranges, implement ETags/preconditions and atomic
+  writes, and reject traversal, symlinks, hard links, mount crossings and
+  special files. Command working directories select the same explicit roots.
+  No file delete route exists.
 - AC-37 Clipboard GET/PUT round-trips up to 1 MiB of UTF-8 `text/plain` and
   deliberately manages the X11 CLIPBOARD owner process.
 - AC-38 `/data/logs/vibestack` persists bounded nginx JSON access, service, and
@@ -666,9 +760,13 @@ marked physical are release checks performed on an iPadOS 17+ device.
   or added capabilities, and publishes a fresh root-owned capability marker.
   `vibe` has password-authenticated general sudo and exactly three fixed
   passwordless helpers.
-  Nginx rejects non-loopback/non-`.ts.net` Hosts and rejects any supplied
-  Origin or fetch metadata that is not strictly same-authority/same-origin
-  before HTTP or WebSocket routing.
+  Nginx rejects Hosts outside loopback, valid multi-label `.ts.net`, or the
+  bounded operator-configured exact allowlist, and rejects any supplied Origin
+  that is not strictly same-authority before HTTP or WebSocket routing.
+  Cross-site/same-site fetch metadata is accepted only for a safe top-level
+  `GET`/`HEAD` with mode `navigate` and destination `document` or
+  extension-generated `empty`; subresources, mutations, and WebSocket upgrades
+  remain rejected.
 - AC-40 noVNC rendering profiles apply 7/2, 9/2 and 5/6 quality/compression
   pairs; websockify has an idle heartbeat; compositor/XDamage/24-bit/shm
   choices remain intact; Docker health performs one cheap Supervisor probe;
@@ -704,12 +802,115 @@ marked physical are release checks performed on an iPadOS 17+ device.
   makes setup fail closed, remains detectable after an incomplete rollback, and
   is reconciled from durable state (or to a locked account when absent) before
   unprivileged services start on the next container boot.
-- AC-48 `/AGENTS.md` and `/AUTOMATION.md` return the exact packaged files as
-  non-cacheable UTF-8 Markdown; `/AGENTS.md` and `/home/vibe/AGENTS.md` inside
-  the image point to the same canonical operating guide.
+- AC-48 `/AGENTS.md`, `/CLI.md`, `/AUTOMATION.md`, `/RUNNER.md`, the skill, and
+  `/cli.sh` return the exact packaged files without credentials; Markdown is
+  non-cacheable UTF-8 and `/AGENTS.md` plus `/home/vibe/AGENTS.md` inside the
+  image point to the same canonical operating guide.
 - AC-49 Flatpak is unavailable without the verified per-boot marker. In
   explicit mode, stable Flathub's URL is exact, persistence/export paths and
   the XFCE portal backend exist, bubblewrap succeeds, search returns the known
   smoke ID, both `flatpak+https` and `.flatpakref` resolve to bounded
   stable-Flathub review handlers, and the installed app survives replacement
   and opens a real window.
+- AC-50 The client installer handles Linux/macOS amd64/arm64, verifies the
+  versioned checksum, installs atomically without sudo/profile edits, gives PATH
+  guidance, and preserves an existing binary on download/checksum failure.
+- AC-51 Workspace and runner pairing require both an expiring verification code
+  approval and a separate polling secret. Credentials are delivered once,
+  stored user-only, individually revocable, permission-checked, and absent from
+  URLs, command arguments, documentation, onboarding prompts, and shared logs.
+- AC-52 Client commands cover every operation in the published API
+  specifications, preserve binary bytes, surface request/job/operation IDs and
+  remote exit status, reject incompatible versions, and require explicit
+  selection when multiple profiles exist.
+- AC-53 A managed two-instance journey creates independent data/project
+  volumes, credentials, resources, loopback ports, and browser origins; uploads
+  project bytes, executes work, retrieves results, stops/removes containers
+  while retaining volumes, and permits only a separate local purge.
+- AC-54 Runner create/update idempotency survives client disconnect/retry;
+  reconciliation handles restart during provisioning, external Docker change,
+  occupied ports, and leftover candidates without adopting unknown containers
+  or disturbing another owner.
+- AC-55 Replacement does not remove the old generation before candidate health
+  and application restoration succeed. Failure preserves data and restarts the
+  old generation; release notes state that application-data migrations require
+  compatible rollback or backup.
+- AC-56 SSH accepts the configured Linux password and independent public keys;
+  native VNC requires the full Linux password and can stop without interrupting
+  browser desktop; editor state survives data reuse and desktop VS Code can use
+  Remote SSH. Private SSH keys never enter the workspace.
+- AC-57 A real Claude Code session in its documented execution environment can
+  install the skill without overwriting existing guidance, pair an explicit
+  profile, discover capabilities, complete a `/projects` work cycle, and
+  retrieve the result. Physical-device and external-agent checks are explicitly
+  recorded when the current test environment cannot perform them.
+
+## Runner reusable-state extension
+
+Runner API 1.1 additively exposes authenticated `/api/v1/runner/host`, `/drives`,
+`/environment-sets`, `/snapshots`, `/instances/{id}/attachments` and
+`/instances/{id}/snapshot`. The existing launch contract v1 gains optional
+registered-ID storage selection and a 1 GiB shared-memory default. Desktop
+`/data` is private; project/file drives are separately registered and retained.
+Attachments change while stopped and writable drives have one active desktop.
+Environment values remain private and cannot override runner runtime settings.
+Stopped-state seeds preserve password hashes/application caches/keyrings while
+regenerating workspace tokens, pairing identities and SSH host keys; operation
+logs and runtime locks are excluded. Snapshot copies are independent and require
+compatible application images. Remote ownership checks apply to every resource.
+
+The broker serves configured-origin `/AGENTS.md` and its OpenAPI document;
+harnesses must explicitly load the guide. No dashboard, automatic password
+interception, live credential synchronization or onboarding redesign is added.
+Systemd host installation and real selected-service sign-in reuse remain separate
+acceptance gates. See [RUNNER.md](RUNNER.md) and [DEVELOPMENT.md](DEVELOPMENT.md).
+
+### Opt-in manual walkthrough diagnostics
+
+`/vnc/walkthrough.js` is loaded by setup, Home and the desktop shell. The
+`walkthrough=1` tab setting enables bounded metadata events posted to
+`POST /api/v1/diagnostics/events`; `walkthrough=0` disables it. This narrow control
+route uses the existing private-network/same-origin boundary, bounded JSON input,
+strict enum/numeric fields and a global 200-events/10-second limit. It accepts no
+arbitrary text or content and exposes no log-reading endpoint. Supervisor rotates
+its output in `/data/logs/vibestack/services/vibestack-control.log`. The host
+walkthrough helper combines sanitized metadata into a private rotating JSONL
+trace and supports explicitly targeted ephemeral source patches with backups.
+
+Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
+Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
+sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
+onboarding was completed earlier. The same parameters work on `/vnc/`.
+After a successful password submission, Setup opens `/vnc/?panel=apps`.
+
+Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
+Packs reuse the existing catalog presets; choosing a pack selects its supported
+components, and Install submits the existing durable install operation. Search
+never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
+without installing it. Password changes remain available from Settings at
+`/setup/?force=1&screen=password`.
+
+Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
+workspace beneath its navigation. Their Back control and browser Back return to
+Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
+services remain separate same-origin frames. If Editor is unavailable, its view
+offers service recovery instead of loading a broken frame. No new API authority or
+storage migration is introduced. Patches and later image updates must preserve
+existing `/data`, `/projects`, attached drives, passwords and saved selections.
+
+The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
+amd64/arm64 package checksums and identities are verified during image build;
+Supervisor starts it automatically, and container health includes it. Apps and
+packs exclude the former `browser-editor` component. Legacy saved selections
+ignore that retired ID without resetting other selections; editor configuration
+and extensions retain their existing persistent mounts.
+
+Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
+Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only
+`VIBESTACK_INSTANCE_NAME`, sanitized `VIBESTACK_PUBLIC_URL`, published web/SSH/VNC
+ports, and `/projects`. The runner supplies these reserved values; standalone
+startup derives them from its name and port flags. Set `VIBESTACK_PUBLIC_URL`
+locally when standalone uses a different private HTTPS origin. URL credentials,
+paths, queries, fragments and arbitrary environment variables are never drawn.
+No startup terminal or automatic shell banner is opened. `vibestack-welcome`
+remains available as an explicit compatibility command.

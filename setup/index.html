@@ -3,23 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VibeStack setup</title>
+<title>VibeStack Apps</title>
 <link rel="stylesheet" href="style.css">
+  <script src="/vnc/walkthrough.js"></script>
+  <script src="/vnc/navigation.js" defer></script>
 </head>
 <body>
 <div class="shell">
   <header>
+    <a class="brand" href="/" aria-label="VibeStack Home">
     <div class="mark" aria-hidden="true"></div>
     <div>
       <h1>VibeStack</h1>
-      <p class="sub" id="subtitle">Choose what to install on this machine.</p>
+      <p class="sub" id="subtitle">Apps and packs for your workspace.</p>
     </div>
-    <nav class="links">
-      <a href="/terminal/" target="_blank" rel="noopener">Terminal</a>
-      <a href="/vnc/" target="_blank" rel="noopener">Desktop</a>
+    </a>
+    <nav class="links" aria-label="Workspace navigation">
+      <a href="/vnc/?view=desktop">Desktop</a>
+      <a href="/vnc/?view=terminal">Terminal</a>
+      <a href="/vnc/?view=editor" data-workspace-editor>Editor</a>
+      <a href="/vnc/?panel=settings">Settings</a>
     </nav>
   </header>
 
+  <a class="back-desktop" aria-label="Back to Desktop" href="/vnc/?view=desktop">← Back to Desktop</a>
   <main>
     <!-- Step 1: Linux password -->
     <section id="step-password" hidden>
@@ -61,19 +68,23 @@
 
     <!-- Step 2: choose -->
     <section id="step-choose" hidden>
-      <div class="security-row">
+      <div class="security-row" hidden>
         <div>
           <strong>Linux password configured</strong>
           <span class="dim">Required by normal <code>sudo</code> commands in both terminals.</span>
         </div>
         <button class="ghost" id="btn-change-password" type="button">Change password</button>
       </div>
+      <div class="apps-heading"><div><p class="eyebrow">Make it yours</p><h2>Apps and packs</h2><p class="dim">Start with a pack, or pick just what you need.</p></div></div>
+      <label class="app-search" for="app-search"><span>Search apps and packs</span><input id="app-search" type="search" placeholder="Search apps, tools, or packs…" autocomplete="off"></label>
+      <h3>Packs</h3>
       <div class="presets" id="presets"></div>
+      <p id="search-empty" class="dim" hidden>No apps or packs match your search.</p>
       <div class="groups" id="groups"></div>
       <div class="bar">
         <div class="summary"><span id="count">0 selected</span><span id="size" class="dim"></span></div>
         <div class="actions">
-          <button class="ghost" id="btn-skip">Skip for now</button>
+          <button class="ghost" id="btn-skip">Back to Desktop</button>
           <button class="primary" id="btn-install">Install</button>
         </div>
       </div>
@@ -94,9 +105,26 @@
         <div class="summary dim">You can reopen this page any time to add components.</div>
         <div class="actions">
           <button class="ghost" id="btn-more">Add more</button>
-          <a class="primary button" href="/">Choose a workspace</a>
+          <a class="primary button" href="/">Back to Desktop</a>
         </div>
       </div>
+    </section>
+
+    <section id="agent-connect" class="agent-connect" hidden aria-labelledby="agent-connect-title">
+      <p class="eyebrow">Optional</p>
+      <h2 id="agent-connect-title">Connect your agent</h2>
+      <p class="dim">Install the client on the computer where the agent session actually runs, then request pairing. A local Claude Desktop session uses your local client; a Claude Code session reached over SSH needs the client and private-network access on that SSH host.</p>
+      <pre id="agent-install-command" class="command"></pre>
+      <pre id="agent-connect-command" class="command"></pre>
+      <p class="field-note">These commands contain the workspace URL and client version only. Approval and credentials are handled separately.</p>
+      <div class="agent-actions">
+        <button class="ghost" id="btn-copy-agent" type="button">Copy starter commands</button>
+        <button class="ghost" id="btn-refresh-clients" type="button">Refresh requests</button>
+        <a href="/CLI.md" target="_blank" rel="noopener">CLI reference</a>
+      </div>
+      <p id="agent-client-error" class="form-error" role="alert" hidden></p>
+      <div id="agent-pairings" class="client-list" aria-live="polite"></div>
+      <div id="agent-clients" class="client-list"></div>
     </section>
 
     <section id="step-error" hidden>
@@ -105,9 +133,7 @@
     </section>
   </main>
 
-  <footer class="dim">
-    State lives in <code>~/.vibestack/setup.json</code>. Reset it with <code>vibestack-setup reset</code>.
-  </footer>
+
 </div>
 <script src="app.js"></script>
 </body>

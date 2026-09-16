@@ -18,7 +18,9 @@ the current memory-backed Xvfb display. See Canonical's
 and [kernel lifecycle](https://ubuntu.com/kernel/lifecycle).
 
 The implementation keeps the existing narrow desktop-control service separate
-and adds a token-authorized automation service. A bearer token grants the full
+and adds a bearer-authenticated automation service. Legacy automation tokens
+remain compatible, while approved devices receive individually revocable
+client credentials through pairing. Either credential grants the full
 authority of the `vibe` account, including command execution, desktop contents,
 files, and clipboard. It must be handled like a password.
 
@@ -77,7 +79,8 @@ The automation release therefore:
 - keeps the installer, control, and password helpers on a narrow passwordless
   sudo allowlist, locks the account before onboarding, and requires the
   user-chosen Linux password for every other sudo command;
-- requires a persistent 256-bit bearer token on every automation request;
+- requires either the compatible persistent 256-bit token or an approved,
+  individually revocable paired credential on every automation request;
 - retains one valid Host, matching optional Origin, no-CORS, body limits,
   timeouts, concurrency caps, and nginx-generated edge request IDs;
 - keeps host publishing on `127.0.0.1` and remote access behind private
@@ -87,19 +90,22 @@ X.Org's [security guidance](https://www.x.org/wiki/Development/Documentation/Sec
 and [server manual](https://www.x.org/docs/man/man.pdf) warn that `-ac` disables
 host access control and describe cookie authorization. Tailscale documents
 that Serve strips spoofed identity headers and adds verified tailnet identity
-only when the backend is kept on localhost; the bearer token remains required
-for both human and tagged-machine callers. See
+only when the backend is kept on localhost; workspace bearer authentication
+remains required for both human and tagged-machine callers. See
 [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve).
 
 ## File boundary
 
-The convenience file API exposes only the Desktop root in V1. Paths are UTF-8
-relative components with a bounded total encoded length. The implementation walks
-parents with directory file descriptors and `O_NOFOLLOW`, checks device,
-ownership, type, and link count, and opens the final object relative to the
-verified parent. The handler bounds one raw upload body before the file store
-writes it to a random same-directory temporary file, hashes and syncs it, then
-atomically replaces the target. This follows the race
+The convenience file API exposes two explicit roots with the same safety
+contract: the compatibility Desktop root at `/files`, and durable project work
+at `/projects`. Paths are UTF-8 relative components with a bounded total encoded
+length. Command requests select `desktop` or `projects`; clients never silently
+substitute Desktop when an older server lacks project support. The
+implementation walks parents with directory file descriptors and `O_NOFOLLOW`,
+checks device, ownership, type, and link count, and opens the final object
+relative to the verified parent. The handler bounds one raw upload body before
+the file store writes it to a random same-directory temporary file, hashes and
+syncs it, then atomically replaces the target. This follows the race
 considerations in the Linux kernel's
 [path-lookup documentation](https://www.kernel.org/doc/html/latest/filesystems/path-lookup.html).
 
