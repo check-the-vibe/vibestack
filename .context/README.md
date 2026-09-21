@@ -44,9 +44,9 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-004](tickets/VST-004.md) | Four feature specifications and development plan | [VST-004](branches/VST-004.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
-contains no status column. The first two records are retrospective; the workflow
-becomes checked-in policy only when this change reaches main. The feature queue
-now links four draft specifications and planned tickets, not implemented features.
+contains no status column. The first two records are retrospective. The workflow and four draft
+specifications reached main on 2026-09-21. The feature queue links planned
+implementation work; checking in a specification does not implement it.
 
 Future tickets VST-005 through VST-016 are indexed in their
 [specification plans](specifications/README.md). They are unassigned and have no

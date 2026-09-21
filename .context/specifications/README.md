@@ -18,9 +18,10 @@ choices and unresolved decisions. No feature implementation is implied.
 
 ## Review together
 
-All four drafts are on `codex/vst-004-feature-specifications` (PR #10), owned by
-VST-004. There is no separate branch for each specification yet. Implementation
-branches will be created when their individual tickets begin.
+All four drafts are checked into main, authored under VST-004. PR #10 was
+closed after direct integration at the user's request on 2026-09-21. There is
+no separate branch for each specification. Implementation branches are created
+when their individual tickets begin; VST-008 is next.
 
 Review one specification at a time in this order:
 
