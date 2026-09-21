@@ -227,6 +227,7 @@ separately specified feature if a concrete user journey requires it.
 | --- | --- | --- | --- | --- |
 | [VST-005](../tickets/VST-005.md) | Static host and authenticated workspace service foundation | VST-008 | AC-01, AC-02, AC-04 | nginx routes, shared auth and static boundary |
 | [VST-006](../tickets/VST-006.md) | Capability registration and extension authoring | VST-005, VST-008 | AC-02, AC-03 | One extension, schema/registration and dispatcher checks |
+| [VST-017](../tickets/VST-017.md) | Codespaces resume storage and authenticated readiness repair | VST-005, VST-011 | AC-01, AC-04, AC-06 | Preserving migration, stop/resume and outer rebuild |
 | [VST-007](../tickets/VST-007.md) | Codespaces integration and complete service acceptance | VST-009, VST-013 | AC-01, AC-02, AC-03, AC-04, AC-05, AC-06 | Real HTTP/MCP clients, extension demo, fresh start and rollback |
 
 These planned tickets are rescoped, not completed. SPEC-003 implements the MCP

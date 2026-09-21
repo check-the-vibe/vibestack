@@ -45,13 +45,13 @@ at `/workspaces/vibestack` and the nested desktop sees that same Git repository
 at `/projects/vibestack`. Inspect and commit or otherwise preserve any in-flight
 changes before switching; never reset them to make a switch succeed.
 
-For the VST-008 branch prepared from main:
+For a ticket branch, substitute its registered branch and ticket below:
 
 ```bash
 git status --short --branch
 git fetch origin
-git switch codex/vst-008-capability-contract
-code .context/tickets/VST-008.md
+git switch codex/vst-017-codespaces-resume
+code .context/tickets/VST-017.md
 ```
 
 Git tracks the existing remote branch automatically if it is not yet local.
@@ -81,7 +81,7 @@ Copilot's terminal is in the **outer Codespace**, not the graphical desktop.
 The current checkout is already visible inside VibeStack at `/projects/vibestack`;
 use `docker exec -u vibe -w /projects/vibestack vibestack-codespaces ...` to
 run tools against that source in the desktop environment. For other projects, add
-`/workspaces/.vibestack-codespaces/vibestack/projects` to the Codespaces editor
+`/vibestack-runtime/vibestack/projects` to the Codespaces editor
 (or substitute the actual repository-directory name). This is the same tree as
 `/projects` inside VibeStack. Run desktop-side tools as `vibe`, for example:
 
@@ -101,14 +101,16 @@ still supported; removing it would be a separate product change.
 - `.devcontainer/devcontainer.json` supplies Ubuntu 24.04 tooling, Node 22,
   Go 1.26.4 and an isolated Docker-in-Docker daemon.
 - `onCreateCommand` installs Ubuntu’s complete `python3` package; the base image
-  only supplies a minimal interpreter without modules such as `json`.
+  only supplies a minimal interpreter without modules such as `json`. It checks
+  the runtime volume is mounted and sets ownership on its mount root only.
 - `updateContentCommand` installs browser-test dependencies and runs
   `python3 .devcontainer/codespaces.py prepare`, building `vibestack:codespaces`
-  from the checked-out source with Docker's layer cache.
+  from the checked-out source with Docker's layer cache. Preparation creates no
+  runtime identity, credentials or desktop state; prebuilds must not clone them.
 - `waitFor: onCreateCommand` lets the editor connect before that preparation
   finishes. `postStartCommand` subsequently runs the helper's `start` action.
 - Startup waits for Docker, uses a lifecycle lock, creates the desktop through
-  the existing launcher with `--mount-source`, and checks Docker health plus HTTP with the forwarded
+  the existing launcher with `--mount-source`, and checks Docker health plus public `/healthz` with the forwarded
   hostname. It resumes an unchanged container; a changed image or hostname uses
   the launcher's replacement/rollback flow. Unexpected mounts stop the operation. Older containers without the source
   mount are replaced once; a nonempty or symlinked destination is rejected so
@@ -164,15 +166,54 @@ validation remains strict.
 
 ## Persistence and fast creation
 
-State lives outside the repository at
-`/workspaces/.vibestack-codespaces/<repository-directory>/data`, with a sibling
-`projects` directory. They are bind-mounted as `/data` and `/projects`. The source
-checkout is an additional nested bind at `/projects/<repository-directory>`;
-it is not copied into that projects directory. Files under
-`/workspaces` survive stopping and rebuilding a Codespace; deleting the Codespace
-deletes its storage. Commit source and export important desktop work separately.
-Docker images/cache are rebuildable; the helper rebuilds a missing image. See
-[Codespaces persistence](https://docs.github.com/en/codespaces/developing-in-a-codespace/persisting-environment-variables-and-temporary-files).
+The outer Dev Container mounts the named volume
+`vibestack-runtime-${devcontainerId}` at `/vibestack-runtime`. State lives at
+`/vibestack-runtime/<repository-directory>/data`, with a sibling `projects`
+directory, bind-mounted into the desktop as `/data` and `/projects`. The source
+checkout remains in `/workspaces` and is a separate nested bind at
+`/projects/<repository-directory>`. Runtime data is kept outside the workspace
+tree so its root-private ownership does not depend on workspace ownership changes.
+The variable/mount pattern follows the official
+[Docker-in-Docker feature](https://github.com/devcontainers/features/blob/main/src/docker-in-docker/devcontainer-feature.json);
+actual Codespaces stop/resume and outer rebuild persistence must still be tested.
+
+The volume has a non-secret `.volume-id`; a matching witness remains at
+`/workspaces/.vibestack-codespaces/<repository-directory>/runtime-volume-id`.
+If the volume is missing, empty, or different after a rebuild, startup stops
+instead of generating replacement credentials or silently losing user state.
+Restore the original volume; do not delete the witness to suppress the check.
+The volume is Codespace storage, not a backup. Commit source and export important
+desktop work separately before deleting a Codespace. Docker images/cache are
+rebuildable; the helper builds a missing image. GitHub separately documents
+[workspace persistence](https://docs.github.com/en/codespaces/developing-in-a-codespace/persisting-environment-variables-and-temporary-files).
+
+### Existing Codespaces: migrate once
+
+An old workspace-backed installation deliberately stops with an explicit
+migration message. First rebuild the outer Dev Container to install the volume.
+Inspect the existing container's mounts and the original data before continuing:
+
+```bash
+docker inspect vibestack-codespaces --format '{{json .Mounts}}'
+python3 .devcontainer/codespaces.py migrate
+python3 .devcontainer/codespaces.py start
+```
+
+`migrate` checks the original directories, state marker and container mounts,
+stops the old container, and copies `data` and `projects` with `sudo cp -a`,
+preserving ownership, permissions and secrets. It records the volume identity
+and the exact original location. The original tree is retained, and source is
+never copied or recursively chowned. Startup replaces the old bind through the
+launcher's normal rollback path. A failed/partial copy is left for inspection;
+the command refuses to overwrite any existing destination or identity.
+
+Migration does **not** repair credential ownership. If bootstrap reports unsafe
+state, inspect only file types, owners and modes first. In particular,
+`/data/.vibestack-auth-v1` and its private files must be root-owned; do not
+recursively chown `/data`, adopt user-owned credentials automatically, display
+private keys/password hashes, or reset the desktop to bypass a failure.
+An operator must establish the provenance of affected files before a targeted
+repair. Record that repair separately from automatic startup evidence.
 
 For shorter creation times, configure **Settings → Codespaces → Prebuilds** for
 the intended branch and region. GitHub runs through `updateContentCommand` during

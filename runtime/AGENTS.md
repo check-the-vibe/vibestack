@@ -34,6 +34,9 @@ REST operations are not automatically tools; check the capability catalog.
   repository-directory name); other projects remain under `/projects`. Source
   edits affect the outer editor immediately. No outer credentials or Docker
   socket are injected; run authenticated Git operations in the Codespaces editor.
+  Outer runtime storage is `/vibestack-runtime/<repository-directory>` in a
+  dedicated volume. Missing storage or unsafe ownership requires operator
+  investigation; do not reset state or recursively chown it to make startup pass.
 - The legacy `/setup/` UI, `/terminal/` and `/vnc/` rely on the private boundary.
   Every API/setup operation also requires a workspace credential or browser
   session; browser mutations need CSRF protection. Existing paired credentials

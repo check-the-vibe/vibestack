@@ -24,6 +24,9 @@
   "runArgs": [
     "--shm-size=1g"
   ],
+  "mounts": [
+    "source=vibestack-runtime-${devcontainerId},target=/vibestack-runtime,type=volume"
+  ],
   "remoteUser": "vscode",
   "hostRequirements": {
     "cpus": 4,
@@ -39,7 +42,7 @@
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },
-  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3",
+  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3 && mountpoint -q /vibestack-runtime && sudo install -d -o vscode -g vscode -m 0750 /vibestack-runtime",
   "updateContentCommand": "npm ci && npx playwright install --with-deps chromium && python3 .devcontainer/codespaces.py prepare",
   "postStartCommand": "python3 .devcontainer/codespaces.py start",
   "waitFor": "onCreateCommand"

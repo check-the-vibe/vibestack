@@ -63,7 +63,9 @@ on a branch containing the Codespaces configuration. The source opens in the
 Codespaces editor; VibeStack builds and starts automatically on forwarded port
 **8080**. Keep that port **Private** and open it for the desktop web interface.
 The same Git checkout is writable at `/projects/vibestack` inside the desktop;
-other projects keep their separate persistent storage.
+other projects and desktop data use the named runtime volume at
+`/vibestack-runtime/vibestack`. Existing Codespaces require the guide's explicit
+migration after rebuilding the outer Dev Container; missing storage fails safely.
 The minimum machine is **4 cores / 16 GB RAM**. First creation needs time to build;
 full Python installs before the editor opens, and the desktop build continues
 in the background. See

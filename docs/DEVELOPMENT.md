@@ -55,7 +55,10 @@ Docker-in-Docker daemon. In GitHub Codespaces it requests at least 4 cores and
 starts `vibestack-codespaces` on loopback port 8080. The source editor can attach
 while preparation runs. The checkout is shared read/write at
 `/projects/<repository-directory>` inside the desktop through `--mount-source`;
-other projects retain their separate persistent directory. GitHub's private forwarding supplies remote HTTPS;
+other projects retain their separate persistent directory. Desktop data and
+projects use the outer named volume at `/vibestack-runtime/<repository-directory>`;
+a workspace witness detects missing or replaced storage. Existing Codespaces
+require the documented explicit migration after an outer rebuild. GitHub's private forwarding supplies remote HTTPS;
 no Tailscale is needed there. Local Dev Containers skip desktop autostart.
 Read [the Codespaces context](../.context/github-codespaces.md) before changing
 this workflow, especially its persistent paths and real-Codespaces test gates.
@@ -357,6 +360,8 @@ the saved auto-restore component set to converge. It automatically restores
 the prior container if either phase fails. The rollback container is removed
 only after base services and saved applications are ready. The restore wait is
 bounded by `VIBESTACK_RESTORE_TIMEOUT_SECONDS` (3600 seconds by default).
+The restoration probe runs as `vibe` against the fixed private setup listener
+at `127.0.0.1:7999/api/state`; it does not bypass authentication on a public API.
 Unreadable, structurally invalid, future-version, or catalog-unknown saved
 state fails this gate immediately and keeps/restores the rollback container;
 it is never treated as an empty successful selection.

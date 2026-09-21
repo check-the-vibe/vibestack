@@ -374,7 +374,9 @@ component_restore_status() {
 import json
 from urllib.request import urlopen
 
-with urlopen("http://127.0.0.1/setup/api/state", timeout=10) as response:
+# This is an operator-local probe, not an unauthenticated browser API. Its
+# fixed loopback backend remains private to the desktop account.
+with urlopen("http://127.0.0.1:7999/api/state", timeout=10) as response:
     payload = json.load(response)
 
 def fail(reason):

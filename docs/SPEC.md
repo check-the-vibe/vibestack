@@ -48,7 +48,11 @@ automation-token and SSH directories to `0700`; token safety checks stay enabled
 Only its loopback HTTP port 8080 is forwarded, using GitHub's Private visibility
 and the exact environment-derived hostname in the existing Host allowlist.
 Desktop state and projects persist outside the source checkout under
-`/workspaces/.vibestack-codespaces/<repository-directory>/`. Startup resumes an
+`/vibestack-runtime/<repository-directory>/` in an outer named volume. A non-secret
+volume identity and witness under `/workspaces/.vibestack-codespaces/` detect lost
+or replaced storage; startup refuses a silent reset. Old workspace-backed state
+requires an explicit preserving migration; credential ownership is never
+automatically adopted. Startup probes public `/healthz` after Docker health and resumes an
 unchanged desktop and rebuild/replacement preserves those mounts. The checkout
 is additionally mounted read/write at `/projects/<repository-directory>`, including
 Git metadata. Codespaces environment credentials and Docker socket are not mounted. First builds

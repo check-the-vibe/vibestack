@@ -42,7 +42,7 @@ fi
 if [[ "$1" == "inspect" && "${2:-}" == "--format" ]]; then
   echo healthy
 fi
-if [[ "$1" == "exec" && "$*" == *"setup/api/state"* ]]; then
+if [[ "$1" == "exec" && "$*" == *"127.0.0.1:7999/api/state"* ]]; then
   echo "${RESTORE_TEST_STATUS:-not-required}"
 fi
 exit 0

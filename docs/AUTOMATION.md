@@ -19,6 +19,11 @@ The version-matched operating guide is available inside the desktop at
 
 ## Authentication and URLs
 
+Codespaces lifecycle readiness uses public `/healthz`; private API operations
+still require credentials. Desktop data lives in the outer `/vibestack-runtime`
+volume, with an explicit preserving migration for older workspace-backed state.
+See [the Codespaces guide](https://github.com/check-the-vibe/vibestack/blob/main/.context/github-codespaces.md).
+
 In GitHub Codespaces, use `http://127.0.0.1:8080` from the Codespaces terminal,
 with container name `vibestack-codespaces`. Remote browser access uses GitHub's
 Private forwarded port; external API clients additionally need GitHub forwarding

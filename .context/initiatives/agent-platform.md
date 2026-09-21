@@ -29,6 +29,7 @@ corresponding feature contracts and migration work are implemented.
 - [VST-001: Codespaces](../tickets/VST-001.md)
 - [VST-002: agent access foundation](../tickets/VST-002.md)
 - [VST-003: context workflow](../tickets/VST-003.md)
+- [VST-017: Codespaces resume and storage repair](../tickets/VST-017.md), identified during hosted MCP verification
 
 The combined agent-access proposal was removed at the user's request. The four
 feature specifications above are the planning entry points; architecture choices
