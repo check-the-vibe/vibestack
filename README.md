@@ -571,3 +571,7 @@ or `--password-stdin`, applying the password only after provisioning. Linux
 passwords are per-desktop and do not gate browser access. SSH/native VNC remain
 host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
 See [shared access, password, MCP and rollout contract](docs/RUNNER.md#shared-tailnet-broker-and-remote-mcp).
+
+For ongoing development, [reuse the same Codespace across ticket branches](.context/github-codespaces.md#reuse-this-codespace-for-the-next-ticket).
+The shared source checkout changes with Git; running image services change only
+after a validated rebuild/deployment.

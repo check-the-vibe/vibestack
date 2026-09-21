@@ -16,6 +16,10 @@ records the current host/resource inventory, isolated display-latency results,
 and the compatibility/performance gates for a graphics-server change. These
 experiments do not replace image acceptance or authorize a live migration.
 
+Ticket branches can reuse an existing Codespace. Source files are shared with
+the desktop immediately, while image services need deliberate tested deployment.
+See [branch switching in Codespaces](../.context/github-codespaces.md#reuse-this-codespace-for-the-next-ticket).
+
 ## Prerequisites
 
 - Docker Engine with permission to build, run, inspect, and exec containers.

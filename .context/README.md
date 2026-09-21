@@ -42,12 +42,14 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-002](tickets/VST-002.md) | Existing broker/access foundation and source mount PR | [VST-002](branches/VST-002.md) |
 | [VST-003](tickets/VST-003.md) | Context and ticket workflow | [VST-003](branches/VST-003.md) |
 | [VST-004](tickets/VST-004.md) | Four feature specifications and development plan | [VST-004](branches/VST-004.md) |
+| [VST-008](tickets/VST-008.md) | Operation inventory and shared capability contract | [VST-008](branches/VST-008.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft
 specifications reached main on 2026-09-21. The feature queue links planned
 implementation work; checking in a specification does not implement it.
 
-Future tickets VST-005 through VST-016 are indexed in their
-[specification plans](specifications/README.md). They are unassigned and have no
-execution branches yet. Edit those specifications to shape the features.
+Tickets VST-005 through VST-016 are indexed in their
+[specification plans](specifications/README.md). VST-008 has the owning branch
+above; other future tickets have no execution branch yet. Read each ticket for
+its current phase and next action.

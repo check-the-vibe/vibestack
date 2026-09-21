@@ -5,11 +5,11 @@ Maintained project context. Last checked against official documentation:
 
 ## Open and use
 
-Create a Codespace from the branch containing this configuration using GitHub's
+Create a Codespace from `main` using GitHub's
 **Code → Codespaces → Create codespace**, or use
 [the VibeStack creation page](https://codespaces.new/check-the-vibe/vibestack).
-Choose that branch under the creation options until these changes reach main.
-An existing Codespace needs **Codespaces: Rebuild Container** to apply changes.
+The automatic startup configuration is checked into main.
+An existing Codespace needs **Codespaces: Rebuild Container** when its Dev Container configuration changes.
 
 The configuration requests at least **4 CPU cores and 16 GB RAM**. GitHub normally
 selects the smallest eligible machine; larger choices remain available, subject
@@ -33,6 +33,36 @@ persistent projects directory. This shares the checkout, including any files
 you put in it; it does not forward Codespaces environment credentials, the
 outer home directory, or the Docker socket. Git authentication remains in the
 outer Codespace.
+
+## Reuse this Codespace for the next ticket
+
+Keep the same Codespace when moving between ticket branches. Its checkout remains
+at `/workspaces/vibestack` and the nested desktop sees that same Git repository
+at `/projects/vibestack`. Inspect and commit or otherwise preserve any in-flight
+changes before switching; never reset them to make a switch succeed.
+
+For the VST-008 branch prepared from main:
+
+```bash
+git status --short --branch
+git fetch origin
+git switch codex/vst-008-capability-contract
+code .context/tickets/VST-008.md
+```
+
+Git tracks the existing remote branch automatically if it is not yet local.
+Create later branches from the intended base under the [ticket workflow](workflow.md).
+A branch switch changes source files immediately in both environments and does
+not recreate the Codespace or desktop container. Existing desktop state and
+installed applications remain in the same persistent paths.
+
+Running image services still use the code copied into the existing image.
+After source/runtime changes, follow `docs/DEVELOPMENT.md` to test, build and
+accept a disposable candidate, then deliberately rebuild the desktop with
+`python3 .devcontainer/codespaces.py rebuild`. Documentation-only branch changes
+need no image rebuild. Changes to `.devcontainer/devcontainer.json` or its
+features require the outer **Codespaces: Rebuild Container** operation.
+Never treat switching Git branches alone as deploying new server behavior.
 
 ## Copilot and desktop development
 

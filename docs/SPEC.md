@@ -963,3 +963,11 @@ or `--password-stdin`, applying the password only after provisioning. Linux
 passwords are per-desktop and do not gate browser access. SSH/native VNC remain
 host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
 See [shared access, password, MCP and rollout contract](RUNNER.md#shared-tailnet-broker-and-remote-mcp).
+
+## Codespaces branch reuse
+
+The same Codespace can host successive ticket branches. `/workspaces/vibestack`
+and `/projects/vibestack` inside the desktop refer to one checkout; switching
+branches updates source without recreating the desktop or its persistent state.
+Image-copied service code requires a deliberate tested rebuild. See the
+[operating steps](../.context/github-codespaces.md#reuse-this-codespace-for-the-next-ticket).
