@@ -5,6 +5,10 @@ Future feature specifications and their ticket plans live in
 [`.context`](../.context/README.md), governed by [its workflow](../.context/workflow.md).
 Drafts and queue entries do not change the implemented contract. Main records
 checked-in state; feature branches additionally carry their in-flight work.
+The next service's [capability contract](architecture/capability-contract.md)
+defines registration, authentication, errors and limits. Its
+[inventory](../contracts/capability-inventory-v1.json) separates current source
+support from proposed mappings; future routes are not implemented by this document.
 
 VibeStack is a Docker image that gives people and AI coding tools a full Linux
 desktop through a browser and an authenticated desktop-automation API.
@@ -85,15 +89,11 @@ See [Codespaces operation and verification](../.context/github-codespaces.md).
 
 ### 3.1 Base image
 
-The [OS and desktop automation guide](OS-AND-DESKTOP-AUTOMATION.md) records
-the kernel/userspace distinction, desktop component choices and available
-query/action interfaces with verified examples.
-The [desktop performance study](research/desktop-performance-and-base-system.md)
-evaluates alternative display stacks and base-system choices; its prototypes
-are not changes to the current runtime contract.
-The [language/library research](research/desktop-automation-frameworks.md)
-assesses possible extensions; its proposed workers and MCP tools are not
-part of the implemented API contract.
+The [Linux desktop automation research](research/linux-desktop-automation.md)
+records the kernel/userspace distinction, desktop choices and execution primitives.
+The [desktop rendering audit](research/performance-audit.md) documents the
+measured stack and adopted noVNC improvements. These historical records do not
+claim that the planned API/MCP extensions are already implemented.
 
 Ubuntu 24.04 LTS with only what the desktop and interfaces need:
 

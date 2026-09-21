@@ -30,20 +30,20 @@ local API.
 The base image includes the desktop, browser interfaces, automation runtime,
 and core code editor. Optional coding agents, browsers and other applications
 are installed by you from a catalog. The full specification is in
-[docs/SPEC.md](docs/SPEC.md). For the kernel, Ubuntu/XFCE choices, and practical
-recipes to query and drive the desktop, read
-[Operating system and desktop automation](docs/OS-AND-DESKTOP-AUTOMATION.md).
-See the [desktop performance and base-system study](docs/research/desktop-performance-and-base-system.md)
-for live measurements and the VNC replacement experiment.
-The [automation library comparison](docs/research/desktop-automation-frameworks.md)
-evaluates Python, Go, Rust and TypeScript options for future desktop and MCP
-capabilities against the current specification.
+[docs/SPEC.md](docs/SPEC.md). Read the checked-in
+[Linux desktop automation research](docs/research/linux-desktop-automation.md)
+for the Ubuntu/XFCE choices and execution primitives, and the
+[desktop rendering audit](docs/research/performance-audit.md) for measurements
+and adopted noVNC improvements.
 
 ## Run
 
 Development plans, feature specifications and branch-owned tickets live in
 [`.context`](.context/README.md). Read its [operating instructions](.context/workflow.md)
 to distinguish checked-in main state from work in flight.
+The [capability contract](docs/architecture/capability-contract.md) and
+[source inventory](contracts/capability-inventory-v1.json) guide the next API/MCP
+implementation. Their target mappings are not claims of deployed endpoints.
 
 ### GitHub Codespaces
 

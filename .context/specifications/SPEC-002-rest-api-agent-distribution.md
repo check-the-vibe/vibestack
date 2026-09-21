@@ -197,7 +197,7 @@ deprecation before removal. API contract tests and coverage checks run in CI.
 
 ## Open decisions
 
-- D1: Final capability definition, route/CLI invocation conventions, error schema and operation limits; resolve in VST-008 against the small extension example in SPEC-001.
+- D1 resolved in VST-008: use the [versioned capability contract](../../docs/architecture/capability-contract.md), compiled Go registration, existing operation IDs, generic capability invocation and explicit compatibility adapters. The [example definition](../../docs/architecture/examples/project_summary.json) validates schemas and bounded inputs/outputs; runtime four-surface acceptance remains in VST-006/VST-010/VST-013.
 - D2: Public origin, release owner, provenance verification and supported compatibility window; blocks installer release, not the inventory pass.
 - D3: Which legacy routes need a deprecation window versus permanent aliases? Resolve before changing any existing route.
 - D4: Which desktop applications and agent harnesses are supported initially, and how can each fetch the guide and authenticate through a private Codespaces gateway? Resolve the client/bootstrap matrix in VST-009 with SPEC-003 before claiming end-to-end one-URL access. The one-URL entry point and four-surface capability requirement are user decisions, not open alternatives.
@@ -217,6 +217,8 @@ before SPEC-004's chat UI exists. VST-009/VST-010 record their portion; linked
 instructions or mocked transports alone do not complete those criteria.
 
 ## Decision history
+
+- 2026-09-21: VST-008 audited 64 existing operations, including 12 setup operations omitted from published OpenAPI. Adopted the shared definition, authentication context, errors, limits and per-operation retry rules in the capability contract. Source availability and target mappings remain distinct; this decision does not mark future adapters deployed.
 
 - 2026-09-21: Stable REST, guidance and installer URLs are user-requested. Preserve implemented v1 paths while specifying a separate public broker contract.
 

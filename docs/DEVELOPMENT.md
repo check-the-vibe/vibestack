@@ -5,20 +5,22 @@ debugging VibeStack. The goal is to validate a candidate image independently,
 then deliberately move the live private Tailscale-served desktop to it without
 losing state or masking regressions.
 
-For the OS and desktop component choices, host/kernel distinction, and verified
-system-query, input, window and application recipes, see
-[Operating system and desktop automation](OS-AND-DESKTOP-AUTOMATION.md).
-The [library and MCP evaluation](research/desktop-automation-frameworks.md)
-separates current capabilities from candidate extensions and defines the
-disposable prototype checks required before adding dependencies.
-The [desktop performance study](research/desktop-performance-and-base-system.md)
-records the current host/resource inventory, isolated display-latency results,
-and the compatibility/performance gates for a graphics-server change. These
-experiments do not replace image acceptance or authorize a live migration.
+For the OS choices, host/kernel distinction and existing execution primitives,
+see [Linux desktop automation research](research/linux-desktop-automation.md).
+The [desktop rendering audit](research/performance-audit.md) records the measured
+stack and adopted noVNC improvements. Historical measurements do not replace
+image acceptance or authorize a live migration.
 
 Ticket branches can reuse an existing Codespace. Source files are shared with
 the desktop immediately, while image services need deliberate tested deployment.
 See [branch switching in Codespaces](../.context/github-codespaces.md#reuse-this-codespace-for-the-next-ticket).
+
+For API/MCP changes, read [the shared capability contract](architecture/capability-contract.md)
+and keep [the operation inventory](../contracts/capability-inventory-v1.json)
+aligned with actual handlers. `go test ./contracts` validates the example
+registration and schemas; Python source checks catch published API/CLI mapping
+and setup-route omissions. These checks are part of `bin/vibestack-dev test`.
+They do not replace live authentication or transport-parity acceptance.
 
 ## Prerequisites
 

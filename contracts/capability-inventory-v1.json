@@ -1,0 +1,3021 @@
+{
+  "inventory_version": 1,
+  "audited_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",
+  "scope": "source inventory, not a deployed capability catalog",
+  "surface_states": [
+    "implemented",
+    "unavailable",
+    "human-only"
+  ],
+  "operations": [
+    {
+      "id": "recordWorkspaceDiagnostic",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/diagnostics/events",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/diagnostics/events",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "Authenticated metadata-only diagnostic transport; never a model tool accepting raw content.",
+        "cli": "Authenticated metadata-only diagnostic transport; never a model tool accepting raw content.",
+        "mcp": "Authenticated metadata-only diagnostic transport; never a model tool accepting raw content.",
+        "web": "Authenticated metadata-only diagnostic transport; never a model tool accepting raw content."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "discoverWorkspace",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "sanitized-discovery",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /.well-known/vibestack",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack doctor",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /.well-known/vibestack",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "transport-control",
+        "cli": "transport-control",
+        "mcp": "transport-control",
+        "web": "transport-control"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "workspaceCapabilities",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capabilities",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "workspaceCapabilities",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "requestWorkspacePairing",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway; public pairing request or secret-bound poll",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/pairing/requests",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack connect",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/pairing/requests",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "pollWorkspacePairing",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway; public pairing request or secret-bound poll",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/pairing/requests/{id}/poll",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack connect",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/pairing/requests/{id}/poll",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "one-time-delivery",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "submitArgvCommand",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/commands",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack exec",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/commands",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "submitArgvCommand",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "command",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "optional_runner_proxy_tool": "workspace_command",
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "submitShellCommand",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/shell",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack shell",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/shell",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "submitShellCommand",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "command",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "getWorkspaceJob",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/jobs/{id}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack jobs get",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/jobs/{id}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "getWorkspaceJob",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "optional_runner_proxy_tool": "workspace_job",
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "getWorkspaceJobOutput",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/jobs/{id}/output",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack jobs output",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/jobs/{id}/output",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "getWorkspaceJobOutput",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "job-output",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "optional_runner_proxy_tool": "workspace_output",
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "cancelWorkspaceJob",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/jobs/{id}/cancel",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack jobs cancel",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/jobs/{id}/cancel",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "cancelWorkspaceJob",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "captureWorkspaceScreenshot",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/screenshot",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack screenshot",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/screenshot",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "captureWorkspaceScreenshot",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read-or-write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "optional_runner_proxy_tool": "workspace_screenshot",
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "listWorkspaceApplications",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/applications",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack apps list",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/applications",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "listWorkspaceApplications",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "operateWorkspaceApplication",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/applications/{id}/{operation}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack apps start|stop",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/applications/{id}/{operation}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "operateWorkspaceApplication",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "listWorkspaceWindows",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/windows",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack windows list",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/windows",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "listWorkspaceWindows",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "setWorkspaceWindowState",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/windows/{id}/state",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack windows state",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/windows/{id}/state",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "setWorkspaceWindowState",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "readWorkspaceClipboard",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/clipboard",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack clipboard get",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/clipboard",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "disabled-by-default: owner enables credential-adjacent tools explicitly; otherwise return human handoff to authenticated REST/CLI",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "writeWorkspaceClipboard",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "PUT /api/v1/automation/clipboard",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack clipboard set",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: PUT /api/v1/automation/clipboard",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "disabled-by-default: owner enables credential-adjacent tools explicitly; otherwise return human handoff to authenticated REST/CLI",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "readDesktopFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/files/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files --desktop get",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/files/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "readDesktopFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "headDesktopFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "HEAD /api/v1/automation/files/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files --desktop head",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: HEAD /api/v1/automation/files/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "headDesktopFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "writeDesktopFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "PUT /api/v1/automation/files/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files --desktop put",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: PUT /api/v1/automation/files/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "writeDesktopFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "etag-precondition",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "readProjectFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/projects/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files get",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/projects/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "readProjectFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "headProjectFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "HEAD /api/v1/automation/projects/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files head",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: HEAD /api/v1/automation/projects/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "headProjectFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "writeProjectFile",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "PUT /api/v1/automation/projects/{path}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack files put",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: PUT /api/v1/automation/projects/{path}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "writeProjectFile",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "etag-precondition",
+      "limit_profile": "file",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "listWorkspaceSSHKeys",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/automation/ssh-keys",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack ssh-keys list",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/automation/ssh-keys",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "disabled-by-default: owner enables credential-adjacent tools explicitly; otherwise return human handoff to authenticated REST/CLI",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "addWorkspaceSSHKey",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/ssh-keys",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack ssh-keys add",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/ssh-keys",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "disabled-by-default: owner enables credential-adjacent tools explicitly; otherwise return human handoff to authenticated REST/CLI",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "removeWorkspaceSSHKey",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-bearer",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/automation/ssh-keys/{id}/remove",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack ssh-keys remove",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/automation/ssh-keys/{id}/remove",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "disabled-by-default: owner enables credential-adjacent tools explicitly; otherwise return human handoff to authenticated REST/CLI",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "automation",
+      "source": "automation/server.py",
+      "verification": [
+        "tests/test_automation_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "workspaceStatus",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/status",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack status",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/status",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "workspaceStatus",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "getWorkspaceDisplay",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/display",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack display get",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/display",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "getWorkspaceDisplay",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "setWorkspaceDisplay",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "PUT /api/v1/display",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack display set",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: PUT /api/v1/display",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "setWorkspaceDisplay",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "operateWorkspaceService",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/services/{service}/{operation}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack services start|stop|restart",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/services/{service}/{operation}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "operateWorkspaceService",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "readWorkspaceServiceLog",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/logs/{service}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack logs",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/logs/{service}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "readWorkspaceServiceLog",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "control/server.py",
+      "verification": [
+        "tests/test_control_api.py"
+      ],
+      "published_schema": "api/workspace.openapi.json"
+    },
+    {
+      "id": "discoverRunner",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "sanitized-discovery",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /.well-known/vibestack",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack doctor",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /.well-known/vibestack",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "requestRunnerPairing",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "pairing-bootstrap-with-human-approval",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/pairing/requests",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack connect",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/pairing/requests",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "pollRunnerPairing",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "pairing-bootstrap-with-human-approval",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/pairing/requests/{id}/poll",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack connect",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/pairing/requests/{id}/poll",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "one-time-delivery",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "runnerCapabilities",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capabilities",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "templates_list",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "listInstances",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/instances",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances list",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "instances_list",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/instances",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "createInstance",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/instances",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances create",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "instance_create",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/instances",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "required-idempotency-key",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "inspectInstance",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/instances/{id}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances inspect",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "instance_inspect",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/instances/{id}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "operateInstance",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/instances/{id}/{operation}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances start|stop|restart|remove",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "instance_action",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/instances/{id}/{operation}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "updateInstance",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/instances/{id}/update",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances update",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/instances/{id}/update",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "listOperations",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/operations",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack operations list",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/operations",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "inspectOperation",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/operations/{id}",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack operations",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "operation_get",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/operations/{id}",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "runnerHostStatus",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/host",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "host_inspect",
+          "reason": "Optional host-runner tool.",
+          "next_action": "Use a separately authenticated runner connection."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/host",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "listRunnerDrives",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/drives",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/drives",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "createRunnerDrive",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/drives",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/drives",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "listRunnerEnvironmentSets",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/environment-sets",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/environment-sets",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "createRunnerEnvironmentSet",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/environment-sets",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/environment-sets",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "listRunnerSnapshots",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/runner/snapshots",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/runner/snapshots",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "setRunnerAttachments",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "PUT /api/v1/runner/instances/{id}/attachments",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: PUT /api/v1/runner/instances/{id}/attachments",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "snapshotRunnerInstance",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/instances/{id}/snapshot",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Not registered by the existing runner MCP adapter.",
+          "next_action": "Optional host component only: use its explicit REST/CLI route; do not add host tools to the workspace MCP server."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/instances/{id}/snapshot",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "setInstancePassword",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/runner/instances/{id}/password",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack instances password",
+          "reason": "Published CLI coverage.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/runner/instances/{id}/password",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/server.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "runnerMCP",
+      "authority": "host",
+      "kind": "compatibility-only",
+      "current_authentication": "runner-configured-principal",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /mcp",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic raw HTTP command only; no dedicated operation subcommand.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "/mcp",
+          "reason": "Protocol endpoint, not a tool itself.",
+          "next_action": "Connect an MCP client with the runner authentication mode."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /mcp",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "preserve optional runner route",
+        "cli": "compatibility-only",
+        "mcp": "compatibility-only",
+        "web": "compatibility-only"
+      },
+      "effect": "read-or-write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "runner",
+      "source": "runner/mcp.go",
+      "verification": [
+        "runner/server_test.go"
+      ],
+      "published_schema": "api/runner.openapi.json"
+    },
+    {
+      "id": "workspaceSetupState",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /setup/api/state",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /setup/api/state",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "workspaceSetupState",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "workspaceSetupDiscovery",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /setup/api/discovery",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /setup/api/discovery",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "alias of sanitized discoverWorkspace",
+        "cli": "alias of sanitized discoverWorkspace",
+        "mcp": "alias of sanitized discoverWorkspace",
+        "web": "alias of sanitized discoverWorkspace"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "listWorkspaceClients",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /setup/api/clients",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter. Client administration requires owner authority.",
+          "next_action": "Use the private setup client list; VST-012 must preserve owner-only authorization."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /setup/api/clients",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "owner-only compatibility route and shared capability",
+        "cli": "owner-only generic capability call",
+        "mcp": "owner-only listWorkspaceClients",
+        "web": "same owner-authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "workspaceInstallOutput",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /setup/api/log",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /setup/api/log",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "workspaceInstallOutput",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "approveWorkspacePairing",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/pairings/{code}/approve",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/pairings/{code}/approve",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "denyWorkspacePairing",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/pairings/{code}/deny",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/pairings/{code}/deny",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "revokeWorkspaceClient",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/clients/{id}/revoke",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/clients/{id}/revoke",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "setLinuxPassword",
+      "authority": "workspace",
+      "kind": "human-handoff",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/password",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Credential bootstrap, approval or secret submission must not enter model tool arguments/results.",
+          "next_action": "Complete the secure human/local-operator flow and then reconnect."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/password",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "human-handoff",
+        "cli": "human-handoff",
+        "mcp": "human-handoff",
+        "web": "human-handoff"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "installWorkspaceComponents",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/install",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/install",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "authenticated compatibility route and shared capability",
+        "cli": "existing command plus generic capability call",
+        "mcp": "installWorkspaceComponents",
+        "web": "same authenticated REST operation"
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "skipWorkspaceSetup",
+      "authority": "workspace",
+      "kind": "retiring-ui-state",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/skip",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/skip",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "cli": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "mcp": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "web": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "completeWorkspaceSetup",
+      "authority": "workspace",
+      "kind": "retiring-ui-state",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/complete",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/complete",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "cli": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "mcp": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "web": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    },
+    {
+      "id": "resetWorkspaceSetup",
+      "authority": "workspace",
+      "kind": "retiring-ui-state",
+      "current_authentication": "private-gateway-and-origin",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /setup/api/reset",
+          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
+          "next_action": "Use the existing documented client and authentication boundary."
+        },
+        "cli": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No published workspace CLI mapping.",
+          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "No direct workspace MCP adapter.",
+          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /setup/api/reset",
+          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "next_action": "Use the existing private origin and the same API authentication."
+        }
+      },
+      "target": {
+        "rest": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "cli": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "mcp": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags.",
+        "web": "Retire with SPEC-004; preserve installation selections and protected auth/provider state. Do not reintroduce old UI setup flags."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "setup",
+      "source": "setup/server.py",
+      "verification": [
+        "tests/test_setup_api.py"
+      ]
+    }
+  ],
+  "browser_transports": [
+    {
+      "route": "/vnc/websockify",
+      "current": "private desktop WebSocket",
+      "target": "authenticated desktop transport kept for the desktop canvas; no legacy navigation",
+      "source": "nginx.conf"
+    },
+    {
+      "route": "/terminal/",
+      "current": "private ttyd UI/WebSocket",
+      "target": "remove in VST-016; commands remain available through the shared command capability",
+      "source": "nginx.conf"
+    },
+    {
+      "route": "/editor/",
+      "current": "private code-server UI/WebSocket",
+      "target": "remove in VST-016; source editing uses the outer Codespace editor",
+      "source": "nginx.conf"
+    },
+    {
+      "route": "/setup/",
+      "current": "private setup UI",
+      "target": "remove legacy UI in VST-016; supported setup operations become authenticated capability/human handoff flows in the overlay",
+      "source": "nginx.conf"
+    }
+  ],
+  "limit_profiles": {
+    "automation": {
+      "json_body_bytes": 1052672,
+      "tool_output_bytes": 2097152,
+      "source": "automation/automationlib.py"
+    },
+    "command": {
+      "argv_entries": 256,
+      "shell_bytes": 262144,
+      "timeout_seconds_default": 30,
+      "timeout_seconds_max": 300,
+      "output_per_stream_bytes": 4194304,
+      "source": "automation/automationlib.py; automation/runner.py",
+      "argument_total_bytes": 65536,
+      "worker_count": 4,
+      "queue_capacity": 32,
+      "environment_entries": 64,
+      "environment_bytes": 65536
+    },
+    "job-output": {
+      "page_bytes": 262144,
+      "max_cursor_bytes": 4194304,
+      "source": "automation/runner.py"
+    },
+    "file": {
+      "raw_file_bytes": 16777216,
+      "range_bytes": 8388608,
+      "source": "automation/files.py"
+    },
+    "control": {
+      "json_body_bytes": 4096,
+      "log_page_bytes": 65536,
+      "log_lines": 200,
+      "source": "control/server.py; control/controllib.py"
+    },
+    "setup": {
+      "json_body_bytes": 65536,
+      "log_page_bytes": 65536,
+      "components": 128,
+      "source": "setup/server.py"
+    },
+    "runner": {
+      "mcp_request_bytes": 1048576,
+      "mcp_result_bytes": 16777216,
+      "source": "runner/mcp.go"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "contract_version": 1,
+  "id": "project_summary",
+  "description": "Inspect bounded immediate project metadata without executing repository code.",
+  "permission": "workspace",
+  "effect": "read",
+  "retry": "safe-read",
+  "timeout_ms": 5000,
+  "request_bytes": 4096,
+  "response_bytes": 16384,
+  "input_schema": {
+    "type": "object", "additionalProperties": false, "required": ["project"],
+    "properties": {
+      "project": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+      "max_entries": {"type": "integer", "minimum": 1, "maximum": 1000, "default": 100}
+    }
+  },
+  "output_schema": {
+    "type": "object", "additionalProperties": false,
+    "required": ["project", "exists", "entry_count", "truncated"],
+    "properties": {
+      "project": {"type": "string", "maxLength": 128},
+      "exists": {"type": "boolean"},
+      "entry_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+      "truncated": {"type": "boolean"}
+    }
+  },
+  "rest": {"method": "POST", "path": "/api/v1/project-summary"},
+  "mcp_policy": "enabled"
+}

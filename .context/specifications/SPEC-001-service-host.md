@@ -218,8 +218,8 @@ separately specified feature if a concrete user journey requires it.
 ## Open decisions
 
 - D1: Supported remote MCP clients and their authentication needs; choose the smallest proven token/OAuth integration in SPEC-003. This gates claiming those clients work, not the static/service prototype.
-- D2: Confirm the proposed Go registration/layout during VST-008 using one small extension. The acceptance gate is adding a capability without editing authentication or deployment topology.
-- D3: Set initial request/operation limits from existing workspace defaults; record credential revocation behavior and the static publish path before runtime implementation.
+- D2 resolved in VST-008: adopt compiled Go registration and the [shared capability contract](../../docs/architecture/capability-contract.md), validated against the `project_summary` definition. The running extension and transport parity remain VST-006/VST-010 acceptance; a schema fixture is not a shipped tool.
+- D3 resolved for implementation: the shared contract defines bounded defaults and preserved legacy limits, per-request/tool-call revocation and restricted persistent service state. Static publication is `web/public/` in source, packaged separately from repository/data/project roots. VST-005 must prove these boundaries in the running image.
 
 ## Project plan
 
@@ -234,6 +234,8 @@ adapter/client checks; VST-007 records the combined result after those checks.
 No future chat implementation is required to verify HTTP access from a browser.
 
 ## Decision history and references
+
+- 2026-09-21: VST-008 fixed the registration and operation contract with a harmless schema example and source inventory. Retain all supported v1 API aliases during this implementation series; old UI routes/flags retire only under VST-016. New limits and authentication rules require runtime tests before deployment claims.
 
 - 2026-09-21: User replaced the fleet-broker outcome with static files, authenticated API/MCP and extensibility. Removed enrollment/tunnel/registry requirements and rewrote SPEC-001 around one workspace service. Historical work remains in Git.
 - 2026-09-21: Code inspection found existing nginx file/proxy routes, bearer workspace APIs and Go MCP SDK usage. The topology and authoring workflow above are design recommendations, not implemented behavior.

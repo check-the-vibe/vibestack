@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VibeStack compiled capability registration metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "id", "description", "permission", "effect", "retry", "timeout_ms", "request_bytes", "response_bytes", "input_schema", "output_schema", "rest", "mcp_policy"],
+  "properties": {
+    "contract_version": {"const": 1},
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"},
+    "description": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "permission": {"enum": ["workspace", "owner"]},
+    "effect": {"enum": ["read", "write", "read-or-write"]},
+    "retry": {"enum": ["safe-read", "inspect-before-retry", "etag-precondition", "required-idempotency-key", "one-time-delivery"]},
+    "timeout_ms": {"type": "integer", "minimum": 1, "maximum": 300000},
+    "request_bytes": {"type": "integer", "minimum": 2, "maximum": 25165824},
+    "response_bytes": {"type": "integer", "minimum": 2, "maximum": 25165824},
+    "input_schema": {"type": "object", "required": ["type"], "properties": {"type": {"const": "object"}}},
+    "output_schema": {"type": "object", "required": ["type"], "properties": {"type": {"const": "object"}}},
+    "rest": {
+      "type": "object", "additionalProperties": false, "required": ["method", "path"],
+      "properties": {
+        "method": {"enum": ["GET", "HEAD", "POST", "PUT", "DELETE"]},
+        "path": {"type": "string", "pattern": "^/api/v1/[A-Za-z0-9_/{}/-]+$", "maxLength": 256}
+      }
+    },
+    "mcp_policy": {"enum": ["enabled", "owner-opt-in", "human-only"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"retry": {"const": "safe-read"}}}, "then": {"properties": {"effect": {"const": "read"}}}}
+  ]
+}
