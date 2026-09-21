@@ -21,16 +21,17 @@ import (
 )
 
 type Config struct {
-	Store         *Store
-	PublicURL     string
-	AllowedHosts  []string
-	StaticRoot    string
-	AutomationURL string
-	ControlURL    string
-	SetupURL      string
-	ProjectsRoot  string
-	Capabilities  []capabilities.Registration
-	Audit         func(AuditEvent)
+	Store           *Store
+	PublicURL       string
+	AllowedHosts    []string
+	StaticRoot      string
+	AutomationURL   string
+	ControlURL      string
+	SetupURL        string
+	ProjectsRoot    string
+	Capabilities    []capabilities.Registration
+	Audit           func(AuditEvent)
+	EnableProviders bool
 }
 
 type session struct {
@@ -52,6 +53,7 @@ type Server struct {
 	operations []legacyRoute
 	projects   *os.Root
 	registry   *capabilities.Registry
+	providers  providerManager
 }
 
 func NewServer(cfg Config) (*Server, error) {
@@ -88,11 +90,23 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, mux: http.NewServeMux(), static: root, slots: make(chan struct{}, 32), sessions: make(map[string]session)}
 	s.client = &http.Client{Timeout: 60 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }, Transport: &http.Transport{Proxy: nil, DisableCompression: true, MaxIdleConns: 16, IdleConnTimeout: 30 * time.Second, ResponseHeaderTimeout: 30 * time.Second}}
+	if cfg.EnableProviders {
+		if err := s.startProviderManager(); err != nil {
+			root.Close()
+			return nil, err
+		}
+	}
 	if err := s.registerLegacy(); err != nil {
+		if s.providers != nil {
+			s.providers.Close()
+		}
 		root.Close()
 		return nil, err
 	}
 	if err := s.registerCapabilities(); err != nil {
+		if s.providers != nil {
+			s.providers.Close()
+		}
 		if s.projects != nil {
 			s.projects.Close()
 		}
@@ -115,6 +129,9 @@ func NewServer(cfg Config) (*Server, error) {
 }
 
 func (s *Server) Close() error {
+	if s.providers != nil {
+		s.providers.Close()
+	}
 	s.client.CloseIdleConnections()
 	if s.projects != nil {
 		s.projects.Close()

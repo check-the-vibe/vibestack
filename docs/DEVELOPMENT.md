@@ -79,6 +79,24 @@ automation-token and SSH directories `0700`, including on resumed state.
 
 ## Fast edit loop
 
+Provider adapters live in `internal/providers/`, with registry bindings in
+`service/providers.go`. Read [their contract](architecture/provider-runtimes.md)
+before changing native protocols, approvals or persistence. `go test -race
+./internal/providers ./service` covers concurrent activation, uncertain outcomes,
+approval scope and authenticated dispatch. The disposable `accept` gate runs
+`tests/provider-runtime-check.mjs`: real catalog installs, native private
+transports, REST/CLI/MCP activation, status, stop and reactivation. It makes no
+model call and uses no human account; it cannot establish signed-in chat support.
+Use the exact catalog binaries for native protocol checks. Never copy a host's
+provider credentials into a fixture. Live sign-in and real turns are a separate
+human handoff, recorded in VST-014/VST-015.
+
+Provider metadata is `/data/vibestack/provider-runtime-v1.json`, owned by `vibe`
+with the workspace store's `0600` atomic-write policy. Native auth/history stays
+in the existing `/data/codex`, `/data/opencode-config` and `/data/opencode`
+mappings. Stop the managed runtime before investigating its database with another
+writer. Restart restores selected processes, never prior prompts or approvals.
+
 Capabilities follow [EXTENSIONS.md](EXTENSIONS.md): one compiled registration and
 handler, generated `/api/capabilities.openapi.json`, generic
 `POST /api/v1/capabilities/{id}/invoke`, shared authorization and validation.

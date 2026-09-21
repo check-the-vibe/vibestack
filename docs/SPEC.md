@@ -50,6 +50,26 @@ identifier, including re-encoding expansion. Serialized tool results reserve
 bound; nginx upstream replay is disabled for API and MCP requests. These bounds
 do not change durable-job cancellation or retry semantics.
 
+The workspace service manages Codex 0.153.4 over private stdio and OpenCode
+1.18.29 over authenticated loopback HTTP. Registered provider operations use the
+same external grants, identity checks and browser CSRF policy as other
+capabilities. They select fixed catalog IDs; no caller-supplied installer,
+executable, environment or backend URL is accepted. Installation, process,
+authentication and completed-turn readiness remain distinct. A model listing is
+configuration, not proof of working credentials or quota. The source contract
+and measured support boundaries are in
+[provider runtimes](architecture/provider-runtimes.md).
+
+Conversation metadata and prompt digests persist in the protected workspace
+store. Text/events are bounded transient buffers; native providers retain their
+own histories and authentication under existing data mappings. Restart reports
+unfinished turns as unknown and never resubmits them. Human approvals bind one
+native request to its exact conversation/operation, are consumed once, and are
+excluded from MCP. An incomplete action preview can only be declined. Native
+tools run with the full `vibe` account's authority; workspace API path restrictions
+do not sandbox their executions. No new public provider port is exposed. The
+chat overlay and removal of existing UI/services remain VST-015/VST-016 work.
+
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup
 wizard asks which optional components to install. This keeps the base small,

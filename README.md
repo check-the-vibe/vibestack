@@ -15,6 +15,14 @@ checks; their execution state is recorded in [VST-013](.context/tickets/VST-013.
 The launcher-declared source checkout supports project file and command APIs
 even when its bind mount uses a different filesystem from other projects.
 
+The workspace service also manages pinned Codex and OpenCode runtimes inside
+the desktop. Authenticated provider capabilities install, activate, inspect and
+stop them; conversation operations use their native agent loops. See the
+[provider contract](docs/architecture/provider-runtimes.md) and
+[API reference](docs/AUTOMATION.md#provider-runtimes). A running process or model
+listing does not prove that sign-in, quota or a model turn works. Current evidence
+is recorded in [VST-014](.context/tickets/VST-014.md); the chat overlay is separate work.
+
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:
 

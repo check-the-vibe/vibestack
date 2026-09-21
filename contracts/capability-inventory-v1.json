@@ -3581,6 +3581,523 @@
         "service/capabilities_test.go",
         "tests/runtime_service_check.py"
       ]
+    },
+    {
+      "id": "listProviders",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/providers",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call listProviders --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "listProviders",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/providers",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "getProviderStatus",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/providers/status",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call getProviderStatus --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "getProviderStatus",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/providers/status",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "activateProvider",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/providers/activate",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call activateProvider --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "activateProvider",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/providers/activate",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "stopProvider",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/providers/stop",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call stopProvider --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "stopProvider",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/providers/stop",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "openProviderApp",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations; owner required",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/providers/open-app",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call openProviderApp --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Owner-only human handoff; excluded from MCP.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/providers/open-app",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        }
+      },
+      "target": {
+        "rest": "Human owner operation; excluded from model tools.",
+        "cli": "Human owner operation; excluded from model tools.",
+        "mcp": "Human owner operation; excluded from model tools.",
+        "web": "Human owner operation; excluded from model tools."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "listProviderConversations",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/provider-conversations",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call listProviderConversations --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "listProviderConversations",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: GET /api/v1/provider-conversations",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "createProviderConversation",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/provider-conversations/create",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call createProviderConversation --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "createProviderConversation",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/provider-conversations/create",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "write",
+      "retry": "required-idempotency-key",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "submitProviderMessage",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/provider-conversations/submit",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call submitProviderMessage --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "submitProviderMessage",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/provider-conversations/submit",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "write",
+      "retry": "required-idempotency-key",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "readProviderEvents",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/provider-conversations/events",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call readProviderEvents --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "readProviderEvents",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/provider-conversations/events",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "interruptProviderTurn",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/provider-conversations/interrupt",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call interruptProviderTurn --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "mcp": {
+          "state": "implemented",
+          "entry": "interruptProviderTurn",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/provider-conversations/interrupt",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Inspect provider/conversation state before submitting work; do not replay uncertain turns."
+        }
+      },
+      "target": {
+        "rest": "Shared compiled provider capability and existing authentication.",
+        "cli": "Shared compiled provider capability and existing authentication.",
+        "mcp": "Shared compiled provider capability and existing authentication.",
+        "web": "Shared compiled provider capability and existing authentication."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
+    },
+    {
+      "id": "answerProviderApproval",
+      "authority": "workspace",
+      "kind": "shared-capability",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations; owner required",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/provider-conversations/approval",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack capability call answerProviderApproval --input FILE",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Owner-only human handoff; excluded from MCP.",
+          "next_action": "Use the owner-authenticated human interface."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "same-origin HTTP: POST /api/v1/provider-conversations/approval",
+          "reason": "Registered provider operation in branch source; real-provider acceptance and hosted deployment are tracked in VST-014.",
+          "next_action": "Use the owner-authenticated human interface."
+        }
+      },
+      "target": {
+        "rest": "Human owner operation; excluded from model tools.",
+        "cli": "Human owner operation; excluded from model tools.",
+        "mcp": "Human owner operation; excluded from model tools.",
+        "web": "Human owner operation; excluded from model tools."
+      },
+      "effect": "write",
+      "retry": "one-time-delivery",
+      "limit_profile": "provider",
+      "source": "service/providers.go",
+      "verification": [
+        "service/providers_test.go",
+        "internal/providers/manager_test.go",
+        ".context/tickets/VST-014.md"
+      ]
     }
   ],
   "browser_transports": [
@@ -3654,6 +4171,15 @@
       "mcp_request_bytes": 1048576,
       "mcp_result_bytes": 16777216,
       "source": "runner/mcp.go"
+    },
+    "provider": {
+      "request_bytes": 131072,
+      "response_bytes": 524288,
+      "timeout_seconds": 30,
+      "conversation_limit": 32,
+      "operations_per_conversation": 32,
+      "events_per_conversation": 256,
+      "event_buffer_bytes": 1048576
     }
   },
   "baseline_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",

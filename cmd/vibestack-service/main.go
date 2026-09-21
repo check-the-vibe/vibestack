@@ -119,7 +119,7 @@ func run(args []string) error {
 	if err != nil || (host != "localhost" && (net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback())) {
 		return errors.New("the service must listen on loopback")
 	}
-	server, err := service.NewServer(service.Config{Store: s, PublicURL: *public, StaticRoot: *static, ProjectsRoot: *projects, Audit: func(event service.AuditEvent) { json.NewEncoder(os.Stderr).Encode(event) }, AllowedHosts: strings.Split(os.Getenv("VIBESTACK_ALLOWED_HOSTS"), ","), AutomationURL: "http://127.0.0.1:7997", ControlURL: "http://127.0.0.1:7998", SetupURL: "http://127.0.0.1:7999"})
+	server, err := service.NewServer(service.Config{Store: s, PublicURL: *public, StaticRoot: *static, ProjectsRoot: *projects, EnableProviders: true, Audit: func(event service.AuditEvent) { json.NewEncoder(os.Stderr).Encode(event) }, AllowedHosts: strings.Split(os.Getenv("VIBESTACK_ALLOWED_HOSTS"), ","), AutomationURL: "http://127.0.0.1:7997", ControlURL: "http://127.0.0.1:7998", SetupURL: "http://127.0.0.1:7999"})
 	if err != nil {
 		return err
 	}
@@ -128,6 +128,7 @@ func run(args []string) error {
 	if err != nil {
 		return errors.New("workspace listener unavailable")
 	}
+	server.StartProviders()
 	httpServer := &http.Server{Handler: server, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 35 * time.Second, WriteTimeout: 330 * time.Second, IdleTimeout: 65 * time.Second, MaxHeaderBytes: 16 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()

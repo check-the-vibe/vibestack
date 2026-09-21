@@ -28,7 +28,7 @@ func TestWorkspaceToolCoverageMatchesInventoryAndGrants(t *testing.T) {
 	if err := json.Unmarshal(data, &inventory); err != nil {
 		t.Fatal(err)
 	}
-	excluded := map[string]bool{"readWorkspaceClipboard": true, "writeWorkspaceClipboard": true, "listWorkspaceSSHKeys": true, "addWorkspaceSSHKey": true, "removeWorkspaceSSHKey": true, "listWorkspaceClients": true}
+	excluded := map[string]bool{"openProviderApp": true, "answerProviderApproval": true, "readWorkspaceClipboard": true, "writeWorkspaceClipboard": true, "listWorkspaceSSHKeys": true, "addWorkspaceSSHKey": true, "removeWorkspaceSSHKey": true, "listWorkspaceClients": true}
 	want := map[string]bool{"project_summary": true}
 	for _, operation := range inventory.Operations {
 		if operation.Authority != "workspace" || operation.Kind != "shared-capability" {

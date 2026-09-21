@@ -33,6 +33,7 @@ func (s *Server) registerCapabilities() error {
 	}
 	workspace, workspaceIDs := s.workspaceRegistrations()
 	registrations := append(capabilities.Builtins(s.projects), workspace...)
+	registrations = append(registrations, s.providerRegistrations()...)
 	registrations = append(registrations, s.cfg.Capabilities...)
 	var ids, routes []string
 	for _, route := range s.operations {

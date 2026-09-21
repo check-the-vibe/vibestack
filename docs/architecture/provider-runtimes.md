@@ -1,94 +1,130 @@
-# Provider runtime implementation decisions
+# In-container provider runtimes
 
-VST-014 working design, 21 September 2026. This document does not claim that
-provider activation, chat or login is implemented. Product requirements and
-acceptance remain in [SPEC-004](../../.context/specifications/SPEC-004-chat-agent-interface.md).
+This is the VST-014 source contract. See [the ticket](../../.context/tickets/VST-014.md)
+for exact verification and deployment evidence, and
+[SPEC-004](../../.context/specifications/SPEC-004-chat-agent-interface.md) for the
+complete overlay outcome. Native startup has been exercised without an account;
+signed-in model turns, real approval delivery and the overlay remain unverified.
 
-## Integration boundary
+## Topology and authority
 
-Use the existing Go workspace service and capability registry. Add reviewed
-provider operations there, so REST, generic CLI, browser requests and allowed
-MCP tools share grants, schemas, limits and audit metadata. Do not introduce
-another externally accessible service or an independent model loop.
+The existing Go workspace service owns the provider manager. REST, generic CLI,
+browser requests and permitted MCP tools use its compiled registry, grants,
+identity checks, limits and payload-free audit records. No new external listener
+or VibeStack model loop is introduced. Native providers run their own agent loops
+as `vibe`, with the account's full authority, including persistent application
+stores. File API path restrictions do not confine native execution. This remains
+a trusted single-user desktop.
 
-The provider manager runs as `vibe`. It launches fixed, installed executables
-inside VibeStack and retains one managed process per selected provider. Install
-through the existing setup catalog API, which already records selections and
-restores packages. Caller-supplied executable paths, installer URLs, arguments,
-environment maps and backend origins are not accepted.
+Activation selects only a known provider ID. The manager uses the existing
+catalog installer, probes the pinned version, launches a fixed executable/argv
+and checks its native protocol. Caller-supplied installers, environment maps,
+arguments and backend origins are rejected. A minimal child environment excludes
+outer Codespace credentials and host accounts. Project choice selects an existing
+non-symlink immediate child of `/projects`; it is a working directory, not a
+native sandbox guarantee.
 
-Track installation, activation, process, authentication and successful-turn
-readiness independently. An activation operation survives client disconnects;
-concurrent activation reuses it. A process or health endpoint alone must never
-be labelled ready to chat. Stop is explicit and reports active turn outcomes.
-
-## Version and transport checks
-
-| Runtime | Existing catalog pin | Required probe before support is claimed |
+| Runtime | Catalog pin | Private connection |
 | --- | --- | --- |
-| Codex | `@openai/codex` 0.153.4 | Generate this executable's schema, complete stdio initialization, inspect authentication, then exercise a streamed turn, approval and interrupt |
-| OpenCode | `opencode-ai` 1.18.29 | Inspect its actual OpenAPI and event schemas; verify authenticated loopback health, model configuration, a streamed session, approval and abort |
+| Codex | `@openai/codex` 0.153.4 | `codex app-server --listen stdio://`; JSONL initialize, account/model, thread/turn and approvals |
+| OpenCode | `opencode-ai` 1.18.29 | `opencode --pure serve`; ephemeral IPv4 loopback HTTP with Basic authentication and `/global/event` SSE |
 
-Codex documents JSONL over stdio, an initialization exchange, version-specific
-schema generation, account methods, thread/turn methods and server-originated
-approval requests. Prefer this private transport; verify every field against the
-pinned binary rather than relying on the current documentation alone.
-[Official Codex App Server reference](https://learn.chatgpt.com/docs/app-server).
+Codex threads use `workspace-write`, `on-request` and the human reviewer. Only
+one-action command/file decisions are supported; stdin, other environments,
+remembered grants and unknown requests fail closed. File approvals need a complete
+matching item preview. OpenCode uses `permission: ask` in both server configuration
+and every created session. Replies are `once` or `reject`, never persistent grants.
+These native policies are not an independent VibeStack isolation boundary.
 
-OpenCode's v1 server documents loopback HTTP, Basic authentication, health,
-session/message operations and an event stream. Keep its private authentication
-within the manager and child runtime; only VibeStack's authenticated origin is
-forwarded. Do not combine v2 endpoints or permission fields with this v1 pin.
-[Official OpenCode server reference](https://dev.opencode.ai/docs/server/),
-[v1 permission reference](https://dev.opencode.ai/docs/permissions/).
+OpenCode's random per-process API secret is passed only through its documented
+child environment; it never appears in status, argv or logs. This is distinct
+from the human Linux password. Proxies/redirects are disabled. A port collision
+fails the authenticated exact-version health check rather than adopting another
+server. Codex uses stdio. Neither transport is forwarded through Codespaces.
+Native providers own user sign-in and model credentials; VibeStack does not copy
+host auth, add an API-key field or purchase account credits.
 
-These are implementation choices inferred from the interfaces, not a claim of
-tested compatibility. The existing installers remain pinned until actual binary
-evidence justifies a deliberate upgrade.
+Schemas were generated from the exact pinned binaries. OpenCode's `/provider`
+catalog measured 5,807,159 bytes, exceeding the 4 MiB adapter bound; the implemented
+`/config/providers` returns the configured subset. Only model IDs/names are
+projected, never raw configuration or keys. Limits are 50 Codex and 100 OpenCode
+models. Configuration does not prove account access, quota or credit. Current
+public references may differ from these pins:
+[Codex App Server](https://learn.chatgpt.com/docs/app-server),
+[OpenCode server](https://dev.opencode.ai/docs/server/),
+[OpenCode permissions](https://dev.opencode.ai/docs/permissions/).
 
-## Conversation and approval ownership
+## Lifecycle and readiness
 
-Bind each VibeStack conversation to one provider, native session and project.
-Use an explicit operation identifier for message submission; a retry retrieves
-its recorded outcome rather than submitting the prompt again. Losing a reply
-means an uncertain result until the native provider reports what happened.
-Restarting a process never repeats the last turn.
+One process is managed per provider. Concurrent activate calls share an operation
+while it installs/starts/runs. Caller disconnect does not stop activation.
+Installation, process, authentication and readiness are separate fields.
+`installed: null` means not probed, false means absent, and true means the supported
+version was found. A successful handshake means active/running, not verified.
+Only a successful native turn in that process sets verified.
 
-Keep bounded event buffers for progressive text, actions, errors and completion.
-Expose them through the same registered operation layer with a cursor, so the
-UI does not gain a second authentication path. When a cursor is no longer
-available, report that gap and use native session history where supported.
-Never manufacture missed events or claim that cancellation rolled back edits.
+Absent login reports `needs_sign_in`. Human owners call `openProviderApp` to open
+the fixed native desktop terminal for sign-in/history, then refresh status. No
+secret goes through chat. Protocol mismatch, native rejection, connection loss
+and storage failure produce bounded errors and explicit next actions. Unsupported
+OpenCode interactive questions produce a visible recovery event, never an invented
+answer. Raw native diagnostics are suppressed because they may contain private text.
 
-An approval is a pending native request associated with its exact conversation,
-turn and action. Only the human approval operation can answer it. Exclude this
-operation and provider secret-entry operations from MCP. Ignore approval-like
-text in model output, and reject stale, duplicated or cross-conversation answers.
-Unknown native approval kinds remain blocked rather than being auto-approved.
+Stop deselects automatic startup, cancels activation supervision, terminates the
+managed process group and marks unfinished turns unknown. An already submitted
+catalog install may finish after Stop; cancelled activation does not launch it.
+Broken metadata storage still permits process termination, while reporting that
+selection could not be saved. Stop cannot undo edits or promise to stop unrelated
+applications or children that escaped the process group. Crashes never silently
+retry prompts; activate is an explicit recovery action.
 
-## Defaults for the first development pass
+## Conversations, events and approvals
 
-- Use the provider's own supported human sign-in. Do not copy local-host accounts,
-  credentials or environment into the container. Show account/model readiness
-  without returning tokens or raw provider configuration.
-- Select models from the configured runtime. Preserve provider/account usage
-  limits and report missing quota or model access; activation buys no credits
-  and creates no account. A real verification turn requires the user's sign-in.
-- Persist only necessary conversation identifiers and operation outcomes in
-  protected workspace state; native runtimes own their histories and auth stores.
-  Do not duplicate prompts or events into shared service logs. Closing the panel
-  retains its conversation; changing providers creates a new conversation.
-- For VST-015, start with a bottom-right icon, a right-side desktop panel and a
-  small-screen sheet. Keep the desktop canvas interactive outside the panel.
-  These reversible layout defaults need browser and accessibility verification.
+Conversations bind a public ID to one provider, configured model, project and
+private native session. Messages require explicit operation IDs. Metadata and a
+SHA-256 prompt digest are saved before dispatch. The same ID/prompt retrieves its
+recorded outcome; changed prompts conflict. A lost reply is unknown, not a retry.
+Native turn IDs and assistant parent-message IDs prevent late preceding events
+from completing a new operation. Resume refuses a still-active native session.
 
-## Verification order
+Bounded pages contain text, actions, errors, approvals and completion. All text
+is untrusted and must use text-safe rendering. Cursor gaps after eviction/restart
+require native history inspection; no transcript is manufactured. Interrupt
+addresses the exact native turn and remains stopping until confirmed by events.
+It does not mean edits were reverted.
 
-1. Exact-version schema/handshake and absent-login probes, with no model call.
-2. Unit tests for lifecycle races, bounded transport, state persistence, scoped
-   approvals, crash recovery, unknown outcomes and strict input denial.
-3. Registered-operation tests through real REST, CLI, MCP and browser auth.
-4. Clean disposable image installs and actual native runtimes. Fakes are useful
-   for failure injection but do not satisfy real-provider acceptance.
-5. Human login, one harmless streamed task per provider, approval and stop;
-   then restart/upgrade checks with saved provider selections and state.
+The manager mints approval handles tied to runtime/conversation/operation. Native
+duplicates cannot mint another handle after an answer. Answers are consumed once,
+even when delivery is uncertain. Human owner approval and sign-in launching are
+excluded from MCP. Truncated action details set `can_allow: false`; Allow is
+rejected while Decline works. Approval-like model text grants no authority.
+
+## Persistence and bounds
+
+`/data/vibestack/provider-runtime-v1.json` uses the workspace store's atomic `0600`
+policy. It holds versioned selection/session/operation metadata and prompt digests,
+not prompts, events, secrets or pending decisions. Native auth/history stays in
+`/data/codex`, `/data/opencode-config` and `/data/opencode`; user overrides are not
+replaced. Restart restores selected runtimes, marks unfinished operations unknown
+and never replays prompts/approvals. There is no conversation-delete API in this
+first backend pass. Native providers own history retention and account budgets.
+
+Limits: 32 conversations, 32 operations each, 1 MiB metadata, 64 KiB prompts,
+256 events/1 MiB transient text per conversation, 32 events/128 KiB text per page,
+and 32 pending approvals sharing 256 KiB text. Native frames are limited to 4 MiB,
+requests to 128 KiB and Codex pending RPCs to 16. Public operations have 30-second
+calls, 128 KiB inputs and 512 KiB outputs; install/start may continue for 30 minutes.
+Capacity failures never silently erase history or retry mutations.
+
+## Verification boundary
+
+Unit/fault fixtures cover strict authenticated dispatch, lifecycle races,
+uncertain outcomes, event correlation, approval scope and storage failure.
+`tests/provider-runtime-check.mjs` is part of disposable acceptance: actual catalog
+installs/native runtimes, REST/CLI/MCP activation/status and stop/reactivation.
+It signs into no account and sends no model prompt. Separate network-disabled
+probes exercise exact native handshakes and OpenCode session permission policy.
+
+Remaining acceptance requires human sign-in, a harmless streamed task per real
+provider, approval and interrupt, then restart/upgrade with native state preserved.
+VST-015 adds deterministic setup/chat; VST-016 removes the old UI/services.

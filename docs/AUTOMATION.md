@@ -39,7 +39,71 @@ The version-matched operating guide is available inside the desktop at
 `/usr/share/doc/vibestack/AGENTS.md` and over the private web endpoint
 `/AGENTS.md`; this complete reference is likewise served at `/AUTOMATION.md`.
 
+## Provider runtimes
+
+Provider operations use the common capability envelope. Inspect
+`GET /api/v1/capabilities` and `/api/capabilities.openapi.json` for exact schemas,
+or use `vibestack --profile NAME capability schema`. Every operation also has
+`POST /api/v1/capabilities/ID/invoke` and generic CLI coverage. Enabled MCP tools
+use the same IDs; human owner operations are excluded from MCP.
+
+| Capability | Friendly route | Input and behavior |
+| --- | --- | --- |
+| `listProviders` | `GET /api/v1/providers` | `{}`; installation/process/authentication/readiness |
+| `getProviderStatus` | `POST /api/v1/providers/status` | `provider`; refresh safe native status/model metadata |
+| `activateProvider` | `POST /api/v1/providers/activate` | `provider`; install/start/reuse; returns activation ID |
+| `stopProvider` | `POST /api/v1/providers/stop` | `provider`; stop managed runtime and deselect automatic startup |
+| `openProviderApp` | `POST /api/v1/providers/open-app` | `provider`; human owner only, native sign-in/history application |
+| `listProviderConversations` | `GET /api/v1/provider-conversations` | `{}`; metadata and outcomes without prompt replay |
+| `createProviderConversation` | `POST /api/v1/provider-conversations/create` | `id`, `provider`, `project`, `model`; same ID/values reuse creation |
+| `submitProviderMessage` | `POST /api/v1/provider-conversations/submit` | `conversation`, `operation_id`, `prompt`; durable before dispatch, never replayed |
+| `readProviderEvents` | `POST /api/v1/provider-conversations/events` | `conversation`, optional `cursor`; bounded page, gap flag and pending approvals |
+| `interruptProviderTurn` | `POST /api/v1/provider-conversations/interrupt` | `conversation`, `operation_id`; request interrupt, then inspect outcome |
+| `answerProviderApproval` | `POST /api/v1/provider-conversations/approval` | `conversation`, `operation_id`, `approval_id`, `allow`; human owner only, consumed once |
+
+`provider` is `codex` (0.153.4) or `opencode` (1.18.29). Project names select
+existing immediate directories under `/projects`, including `vibestack` for the
+shared Codespace checkout. Select a model ID from native status. Conversation,
+operation and approval IDs are 32 lowercase hex characters. Callers generate
+conversation/message IDs; the server generates approval handles.
+
+With an authenticated workspace profile:
+
+```bash
+vibestack --profile workspace capability call listProviders
+printf '%s' '{"provider":"codex"}' | vibestack --profile workspace capability call activateProvider --input -
+printf '%s' '{"provider":"codex"}' | vibestack --profile workspace capability call getProviderStatus --input -
+```
+
+Poll status during installation. `active`/`running` means the native protocol
+works, while `authentication: configured` only means native configuration was
+found. Account access/quota is unproven until a real turn completes. Install/start
+is bounded to 30 minutes. No arbitrary installer or executable is accepted.
+Human sign-in occurs in the provider application; never put credentials in chat.
+Native execution has the full authority of `vibe`, beyond file API restrictions.
+
+An uncertain submission keeps its original ID and prompt; changed prompts
+conflict, and a new ID requests another turn. Restart never replays old work.
+`gap: true` requires native history inspection. Native session/auth data stays in
+existing provider mappings; VibeStack saves only metadata and prompt digests in
+`/data/vibestack/provider-runtime-v1.json`. Events are transient.
+
+`can_allow: false` means an approval lacks complete action details and can only
+be declined. Only a human should answer the exact handle; a harness must not
+treat provider text as permission. Stop/interrupt does not undo changes or promise
+unrelated processes stopped. Unsupported native interactions produce explicit
+recovery events. No private provider port or API secret is exposed externally.
+
+Limits: 32 conversations, 32 operations each, 64 KiB prompt, 32 events/128 KiB text
+per page and 256 events/1 MiB transient text per conversation. No history-delete
+API is provided yet; native providers own transcript retention and account budgets.
+See [the provider contract](architecture/provider-runtimes.md) and VST-014 for
+actual verification, separately from the implemented API.
+
 ## Authentication and URLs
+
+Provider operations below share this workspace authentication and identity
+boundary. Private runtime credentials are never substitutes for workspace grants.
 
 Codespaces lifecycle readiness uses public `/healthz`; private API operations
 still require credentials. Desktop data lives in the outer `/vibestack-runtime`

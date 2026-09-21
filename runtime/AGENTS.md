@@ -141,10 +141,29 @@ VibeStack desktop application is shipped. A generic desktop agent may use the
 stdio configuration only if its harness supports it; `/MCP.md` states what has
 actually been tested. Opening the browser alone does not configure that harness.
 
-Provider installation/activation APIs and the chat overlay are separate planned
-work. Do not invent a provider activation endpoint or treat an application window
-as a ready API. Existing applications can be installed via the authenticated
-catalog, but this release does not yet claim managed Codex/OpenCode chat sessions.
+For an in-desktop agent runtime, discover `listProviders`, `activateProvider`
+and `getProviderStatus`. Select only `codex` or `opencode`; installation uses the
+pinned catalog inside VibeStack. Inspect separate installation, process,
+authentication and readiness fields. `configured` means native account/model
+configuration was found; only a completed native turn sets `readiness: verified`.
+Do not claim signed-in model access from a health check. The chat overlay is a
+separate feature; these capabilities also work through REST, generic CLI and MCP.
+
+Hand provider sign-in to the user through the native application. The owner-only
+`openProviderApp` and `answerProviderApproval` operations are excluded from MCP.
+Never submit account passwords, API keys or login tokens in chat or copy host
+accounts. A harness must not answer human approvals on the user's behalf.
+Use `createProviderConversation` for an explicit provider/model and immediate
+project directory. Assign a fresh 32-character lowercase hexadecimal conversation
+ID and operation ID for each intentional message. Retry an uncertain submission
+with its original ID and identical prompt only; never mint a new ID as an
+automatic retry. `readProviderEvents` returns bounded pages, current approvals and
+a `gap` flag when transient history is unavailable. Native session history owns
+the durable transcript. `interruptProviderTurn` requests a stop; inspect its
+outcome and never claim edits were rolled back. `stopProvider` stops managed
+processes but does not undo changes or guarantee unrelated processes stopped.
+Provider tools have the full `vibe` account's authority, outside file API path
+restrictions. Read `/AUTOMATION.md#provider-runtimes` for inputs and limits.
 
 ## Recover without changing targets or replaying work
 
