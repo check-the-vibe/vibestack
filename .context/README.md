@@ -47,6 +47,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-006](tickets/VST-006.md) | Capability registry and extension authoring | [VST-006](branches/VST-006.md) |
 | [VST-011](tickets/VST-011.md) | Authenticated workspace MCP transport | [VST-011](branches/VST-011.md) |
 | [VST-017](tickets/VST-017.md) | Codespaces persistence and authenticated readiness | [VST-017](branches/VST-017.md) |
+| [VST-012](tickets/VST-012.md) | Registered workspace tools and local stdio bridge | [VST-012](branches/VST-012.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

@@ -61,7 +61,7 @@ type Failure struct{ Code string }
 func (f *Failure) Error() string { return f.Message() }
 func Fail(code string) *Failure {
 	switch code {
-	case "invalid_input", "forbidden", "not_found", "limit_exceeded", "busy", "timeout", "cancelled", "unavailable", "precondition_failed":
+	case "invalid_input", "forbidden", "not_found", "limit_exceeded", "busy", "timeout", "cancelled", "unavailable", "precondition_failed", "conflict":
 		return &Failure{code}
 	default:
 		return &Failure{"internal_error"}
@@ -77,6 +77,8 @@ func (f *Failure) Status() int {
 		return 404
 	case "precondition_failed":
 		return 412
+	case "conflict":
+		return 409
 	case "limit_exceeded":
 		return 413
 	case "busy":
@@ -101,6 +103,8 @@ func (f *Failure) Message() string {
 		return "The requested capability or resource is unavailable."
 	case "precondition_failed":
 		return "The resource changed; inspect it before retrying."
+	case "conflict":
+		return "The operation conflicts with current workspace state; inspect it before retrying."
 	case "limit_exceeded":
 		return "The declared request or result limit was exceeded."
 	case "busy":

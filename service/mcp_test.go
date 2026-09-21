@@ -147,10 +147,15 @@ func TestWorkspaceMCPChangedGrantsAndHumanPolicies(t *testing.T) {
 	_, owner := issue(t, f.store, true)
 	session := connectMCP(t, f.server, owner)
 	list, err := session.ListTools(context.Background(), nil)
-	if err != nil || len(list.Tools) != 1 {
-		t.Fatal("human-only or opt-in tool was exposed to owner")
+	if err != nil {
+		t.Fatal("owner tool discovery failed")
 	}
-	for _, name := range []string{"human_only", "owner_opt_in", "instances_list", "instance_create"} {
+	for _, name := range []string{"human_only", "owner_opt_in", "instances_list", "instance_create", "readWorkspaceClipboard", "writeWorkspaceClipboard", "addWorkspaceSSHKey", "removeWorkspaceSSHKey", "listWorkspaceSSHKeys", "listWorkspaceClients", "setLinuxPassword"} {
+		for _, tool := range list.Tools {
+			if tool.Name == name {
+				t.Fatal("excluded tool advertised")
+			}
+		}
 		if result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: map[string]any{"project": "missing"}}); err == nil && !result.IsError {
 			t.Fatal("excluded tool executed")
 		}
@@ -172,7 +177,7 @@ func TestWorkspaceMCPChangedGrantsAndHumanPolicies(t *testing.T) {
 		t.Fatal(err)
 	}
 	list, err = changed.ListTools(context.Background(), nil)
-	if err != nil || len(list.Tools) != 0 {
+	if err != nil || len(list.Tools) != 1 || list.Tools[0].Name != "workspaceStatus" {
 		t.Fatal("old connection retained changed grants")
 	}
 	if result, err := changed.CallTool(context.Background(), &mcp.CallToolParams{Name: "project_summary", Arguments: map[string]any{"project": "missing"}}); err == nil && !result.IsError {

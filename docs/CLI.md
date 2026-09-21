@@ -1,5 +1,10 @@
 # VibeStack CLI reference
 
+The current source build includes `vibestack --profile NAME mcp`, a stdio bridge
+to the selected authenticated workspace. See [MCP.md](MCP.md) for building it,
+protected-profile setup and the optional private gateway file. Released 0.2
+binaries do not yet include this command; updated packaging is tracked in VST-009.
+
 The `vibestack` client runs beside an agent on Linux or macOS. It does not
 require Docker, Go, Python, Node, sudo, or agent-specific configuration. Every
 command supports human-readable output; structured commands accept global

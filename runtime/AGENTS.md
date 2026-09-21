@@ -5,6 +5,12 @@ invoke `POST /api/v1/capabilities/{id}/invoke` with the input JSON object. The
 `project_summary` example takes `project` and optional `max_entries` and counts
 immediate entries only. Read `/EXTENSIONS.md` before adding a compiled module.
 Discovery reports current MCP availability explicitly.
+The current source CLI supports `vibestack --profile NAME mcp` for a stdio harness.
+Read `/MCP.md` for bootstrap and exact input schemas; older released CLIs may
+need rebuilding. Registered tools include jobs, conditional file updates and
+screenshots. Keep credentials in the protected profile, never harness JSON or
+tool arguments. A job timeout or disconnected MCP call does not justify replaying
+a mutation. Clipboard, SSH keys and human authentication are not default tools.
 
 You are working with VibeStack: a private, single-user Ubuntu 24.04/XFCE
 desktop running inside Docker. This file is the canonical quick-start for both

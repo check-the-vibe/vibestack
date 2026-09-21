@@ -31,10 +31,16 @@ func (s *Server) registerCapabilities() error {
 		}
 		s.projects = root
 	}
-	registrations := append(capabilities.Builtins(s.projects), s.cfg.Capabilities...)
+	workspace, workspaceIDs := s.workspaceRegistrations()
+	registrations := append(capabilities.Builtins(s.projects), workspace...)
+	registrations = append(registrations, s.cfg.Capabilities...)
 	var ids, routes []string
 	for _, route := range s.operations {
-		ids = append(ids, route.ID)
+		// Only the explicit compiled adapters share an existing operation ID.
+		// User registrations still cannot replace either adapter or legacy IDs.
+		if !workspaceIDs[route.ID] {
+			ids = append(ids, route.ID)
+		}
 		routes = append(routes, route.Method+" "+route.Path)
 	}
 	registry, err := capabilities.New(registrations, ids, routes)
@@ -132,7 +138,7 @@ func (s *Server) invokeCapability(w http.ResponseWriter, r *http.Request, id str
 // Both transports call this dispatcher. Adapters only decode their framing;
 // grants, schemas, handler deadlines, capacity and output validation live here.
 func (s *Server) dispatchCapability(ctx context.Context, p Principal, id string, raw json.RawMessage, requestID string) (json.RawMessage, *capabilities.Failure) {
-	result, failure := s.registry.Execute(ctx, p, id, raw)
+	result, failure := s.registry.Execute(context.WithValue(ctx, workspaceRequestIDKey, requestID), p, id, raw)
 	if failure != nil {
 		return nil, failure
 	}
@@ -165,6 +171,9 @@ func (s *Server) capabilityCatalog(w http.ResponseWriter, r *http.Request) {
 		list = append(list, map[string]any{"id": definition.ID, "definition": definition, "rest": "implemented", "web": "implemented", "mcp": state, "next_action": next})
 	}
 	for _, route := range s.operations {
+		if _, registered := s.registry.Entry(route.ID); registered {
+			continue
+		}
 		if p.Allows(route.ID, route.Owner) {
 			list = append(list, map[string]any{"id": route.ID, "method": route.Method, "path": route.Path, "rest": "implemented", "web": "implemented", "mcp": "unavailable", "next_action": "Use the authenticated compatibility route; generic invocation is not registered for this legacy operation yet."})
 		}

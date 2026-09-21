@@ -275,6 +275,14 @@ run_acceptance() (
     VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     go run ./tests/mcp-client)
+  # Disposable probe binary: avoid embedding unrelated parent-repository VCS
+  # metadata when this checkout is an isolated worktree or exported source tree.
+  (cd "$REPO_ROOT" && go build -buildvcs=false -o "$acceptance_password_dir/vibestack" ./cmd/vibestack)
+  (cd "$REPO_ROOT" && \
+    VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+    VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
+    VIBESTACK_ALLOW_MUTATING_MCP_TESTS=1 node tests/mcp-stdio-check.mjs)
   (cd "$REPO_ROOT" && \
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \

@@ -131,6 +131,8 @@ func run(args []string) error {
 		return errors.New("--instance is supported only for workspace commands through a runner profile")
 	}
 	switch command {
+	case "mcp":
+		return mcpCommand(ctx, client, profile, rest)
 	case "doctor":
 		return doctor(ctx, client, profile, g)
 	case "capabilities":
@@ -224,7 +226,7 @@ Connection: connect, profiles, doctor, capabilities
 Work:       exec, shell, jobs, files, screenshot, apps, windows, clipboard
 Workspace:  status, display, services, logs, setup, account, ssh-keys
 Runner:     instances, operations
-Agent:      skill, docs, api
+Agent:      mcp, skill, docs, api
 
 Trusted-tailnet brokers connect without pairing or a bearer credential.
 Workspace commands through a runner require --instance ID before COMMAND.

@@ -25,7 +25,11 @@ publish directory. Browser mutations require an authenticated session and CSRF
 protection; Linux password/client administration requires owner authority.
 See [the service contract](SERVICE.md) for limits, private legacy transports and
 the required upgrade for old unauthenticated CLI control commands. Enabled compiled
-capabilities share REST/MCP dispatch; legacy route-to-tool migration remains planned.
+capabilities share REST/MCP dispatch. Compiled workspace adapters expose jobs,
+conditional project/Desktop files, screenshots and desktop diagnostics. Legacy
+raw/friendly REST responses remain compatible; complete cross-client parity is
+tracked in VST-010. The source CLI's `mcp` command bridges stdio to an explicitly
+selected authenticated workspace profile; published binary packaging is VST-009.
 
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup

@@ -68,7 +68,8 @@ nginx does not stall streaming responses through inappropriate buffering.
 Local recommendation: a `vibestack mcp` subcommand bridges stdio to the same
 HTTP MCP endpoint (loopback when running inside the workspace)
 and obtains credentials from an explicitly configured protected local profile or
-credential file. The command does not exist yet. No token in repository MCP JSON,
+credential file. VST-012 implements the source command; delivery and hosted evidence
+are recorded in its ticket. No token in repository MCP JSON,
 command-line arguments, stdout or prompt context. Stdout contains protocol frames
 only; sanitized diagnostics use stderr. The adapter needs workspace credentials,
 not the Docker socket. Host trust and tool approval controls remain in effect.

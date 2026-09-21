@@ -5,11 +5,20 @@ same origin and in the same process as REST. It uses the shared credential store
 capability registry and dispatcher. It has no Docker socket or host lifecycle
 authority. The optional host runner has a different endpoint and credentials.
 
-`project_summary` is the first registered workspace tool. It accepts `project`
-and optional `max_entries`, reads bounded directory metadata under `/projects`,
-and executes no repository code. Other legacy workspace routes remain REST-only
-until their capability adapters land. The authenticated `/api/v1/capabilities`
-catalog reports availability per operation; never infer tools from planned specs.
+The registered workspace tools cover status, argv/shell jobs and their output or
+cancellation, project/Desktop files, screenshots, applications/windows, display,
+service diagnostics and allowlisted component installation. `project_summary`
+reads bounded immediate project metadata without executing repository code.
+The authenticated `/api/v1/capabilities` catalog is the grant-filtered inventory.
+Clipboard, SSH keys and client administration are excluded from MCP, including
+for owner credentials. Passwords, credential issuance and pairing remain human
+or local-operator flows. Host operations stay in the separate runner.
+
+Built-ins retain their existing operation IDs. Their registered REST form is
+`POST /api/v1/operations/ID`, or the generic capability invocation route, with
+the same JSON input as MCP. Existing friendly/raw REST routes preserve their
+legacy response shape and limits. Full compatibility-route parity is VST-010;
+the registered route and MCP already share validation and dispatch.
 
 ## Authentication and client support
 
@@ -23,7 +32,7 @@ never in repository MCP JSON, URLs, argv, chat, screenshots or logs.
 | Official Go SDK 1.7.0 | 2026-07-28 | Configured bearer header | Source integration and the mandatory image client probe |
 | Official TypeScript SDK 1.30.0 | 2025-11-25 | `requestInit.headers` bearer | Independent source integration and the mandatory image client probe |
 | OAuth-only remote harness | Not supported in this configuration | Requires an established authorization server integration | No provider is configured; no discovery/consent support claimed |
-| Local stdio harness | Subsequent VST-012 adapter | Protected local profile/file | Not supplied by this transport increment |
+| CLI stdio bridge | Go SDK 1.7.0 remotely; negotiated locally | Protected workspace profile | Source fixtures and the mandatory TypeScript SDK subprocess probe |
 
 These are tested SDK clients, not claims that every desktop harness can configure
 the same headers. A later provider/harness integration must be verified separately.
@@ -79,7 +88,7 @@ grants on each request; refresh `tools/list` after a grant change.
 
 Only definitions with `mcp_policy: enabled` are exposed. Human-only and
 owner-opt-in capabilities stay excluded even for an owner credential. This does
-not weaken the authority of any command capability that may be granted later.
+not confine the broad `vibe` execution authority of argv or shell capabilities.
 
 Tools return the REST envelope as structured content and JSON text: `instance_id`,
 `request_id`, `capability`, `result`. Safe failures set `isError` and carry the
@@ -102,10 +111,59 @@ by their workspace capability adapters. Fault injection is tracked in VST-013.
 
 ## Verification
 
+### Local stdio connection
+
+Build the current CLI from this checkout; the older published 0.2 binary does
+not contain the bridge. Release packaging is tracked in VST-009.
+
+```sh
+go build -o /tmp/vibestack ./cmd/vibestack
+/tmp/vibestack connect --name codespace --url http://127.0.0.1:8080 \
+  --token-stdin < /path/to/protected/workspace.token
+/tmp/vibestack --profile codespace mcp
+```
+
+The final command is launched by a stdio-capable harness. It reads the selected
+protected profile, pins its workspace identity and forwards tool lists/calls to
+that workspace's `/mcp`. Configure only the executable, profile name and command:
+
+```json
+{"command":"/absolute/path/to/vibestack","args":["--profile","codespace","mcp"]}
+```
+
+No credential belongs in that harness JSON. Stdout contains protocol frames only;
+sanitized errors use stderr. Lists refresh remote grants; no local tool registry,
+host mediation or anonymous fallback is introduced. For an explicitly configured
+remote private Codespaces origin, `mcp --gateway-token-file /private/path` reads
+the separate gateway file on each request and rejects redirects. It does not
+read ambient GitHub tokens. Profile creation through a private remote gateway is
+a separate bootstrap concern; use loopback from the Codespace terminal initially.
+
+File inputs name a relative `path`. Registered reads return `data_base64`, `bytes`,
+`content_type` and an ETag; optional `range`, `if_range` and `if_none_match` retain
+bounded conditional reads. `headProjectFile`/`headDesktopFile` return metadata.
+Writes accept `data_base64` and exactly one condition: `if_match` containing the
+observed strong SHA-256 ETag, or `if_none_match: "*"` for create-only. No wildcard
+overwrite is accepted. Registered binary transfers are limited to 8 MiB before
+base64; legacy raw file routes retain 16 MiB. Screenshots return PNG in the same
+base64 shape, or accept a Desktop-relative `.png` filename to return saved-file
+metadata. Large or invalid results fail explicitly, without truncated success.
+
+Job submission returns the existing durable `job.id`; polling and output do not
+resubmit it. Output is a bounded base64 page with cursor/eof fields. Explicit
+`submitShellCommand` differs from argv submission; both run with the broad authority
+of `vibe`. Installation accepts supported catalog IDs, never an installer URL.
+
+### Acceptance clients
+
 Run `npm ci` then `bin/vibestack-dev test` for both SDK source integrations. A
 standalone Go test run without npm dependencies reports the TypeScript probe as
 skipped; that is not the full acceptance gate. `bin/vibestack-dev accept IMAGE`
-requires both probes and exercises them through the candidate's actual nginx.
+requires both HTTP probes plus `tests/mcp-stdio-check.mjs`, which launches the
+newly built CLI with the independent TypeScript SDK. It checks tool coverage,
+status, an argv job/output, conditional project update, stale-write denial and
+a PNG screenshot through actual nginx. This mutating probe runs only against the
+disposable loopback fixture and prints fixed metadata, never tool payloads.
 
 For a prepared authenticated origin, the probes are:
 

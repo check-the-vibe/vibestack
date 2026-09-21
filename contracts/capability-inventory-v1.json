@@ -28,8 +28,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -76,8 +76,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -120,10 +120,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool workspaceCapabilities",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -144,10 +144,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "requestWorkspacePairing",
@@ -264,10 +267,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool submitArgvCommand",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -288,11 +291,14 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_command",
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "submitShellCommand",
@@ -313,10 +319,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool submitShellCommand",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -337,10 +343,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "getWorkspaceJob",
@@ -361,10 +370,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool getWorkspaceJob",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -385,11 +394,14 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_job",
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "getWorkspaceJobOutput",
@@ -410,10 +422,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool getWorkspaceJobOutput",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -434,11 +446,14 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_output",
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "cancelWorkspaceJob",
@@ -459,10 +474,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool cancelWorkspaceJob",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -483,10 +498,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "captureWorkspaceScreenshot",
@@ -507,10 +525,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool captureWorkspaceScreenshot",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -531,11 +549,14 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_screenshot",
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "listWorkspaceApplications",
@@ -556,10 +577,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool listWorkspaceApplications",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -580,10 +601,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "operateWorkspaceApplication",
@@ -604,10 +628,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool operateWorkspaceApplication",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -628,10 +652,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "listWorkspaceWindows",
@@ -652,10 +679,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool listWorkspaceWindows",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -676,10 +703,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "setWorkspaceWindowState",
@@ -700,10 +730,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool setWorkspaceWindowState",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -724,10 +754,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "readWorkspaceClipboard",
@@ -750,8 +783,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -772,10 +805,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "writeWorkspaceClipboard",
@@ -798,8 +834,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -820,10 +856,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "readDesktopFile",
@@ -844,10 +883,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool readDesktopFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -868,10 +907,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "headDesktopFile",
@@ -892,10 +934,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool headDesktopFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -916,10 +958,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "writeDesktopFile",
@@ -940,10 +985,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool writeDesktopFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -964,10 +1009,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "readProjectFile",
@@ -988,10 +1036,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool readProjectFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1012,10 +1060,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "headProjectFile",
@@ -1036,10 +1087,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool headProjectFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1060,10 +1111,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "writeProjectFile",
@@ -1084,10 +1138,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool writeProjectFile",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1108,10 +1162,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "listWorkspaceSSHKeys",
@@ -1134,8 +1191,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -1156,10 +1213,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "addWorkspaceSSHKey",
@@ -1182,8 +1242,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -1204,10 +1264,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "removeWorkspaceSSHKey",
@@ -1230,8 +1293,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -1252,10 +1315,13 @@
       "source": "automation/server.py",
       "verification": [
         "tests/test_automation_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "workspaceStatus",
@@ -1276,10 +1342,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool workspaceStatus",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1300,10 +1366,13 @@
       "source": "control/server.py",
       "verification": [
         "tests/test_control_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "getWorkspaceDisplay",
@@ -1324,10 +1393,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool getWorkspaceDisplay",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1348,10 +1417,13 @@
       "source": "control/server.py",
       "verification": [
         "tests/test_control_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "setWorkspaceDisplay",
@@ -1372,10 +1444,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool setWorkspaceDisplay",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1396,10 +1468,13 @@
       "source": "control/server.py",
       "verification": [
         "tests/test_control_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "operateWorkspaceService",
@@ -1420,10 +1495,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool operateWorkspaceService",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1444,10 +1519,13 @@
       "source": "control/server.py",
       "verification": [
         "tests/test_control_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "readWorkspaceServiceLog",
@@ -1468,10 +1546,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool readWorkspaceServiceLog",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -1492,10 +1570,13 @@
       "source": "control/server.py",
       "verification": [
         "tests/test_control_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "discoverRunner",
@@ -2482,10 +2563,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool workspaceSetupState",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -2506,9 +2587,12 @@
       "source": "setup/server.py",
       "verification": [
         "tests/test_setup_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "workspaceSetupDiscovery",
@@ -2531,8 +2615,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -2578,8 +2662,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter. Client administration requires owner authority.",
-          "next_action": "Use the private setup client list; VST-012 must preserve owner-only authorization."
+          "reason": "Excluded from the default MCP tool set; authorized REST remains available.",
+          "next_action": "Use the authorized REST or CLI operation."
         },
         "web": {
           "state": "implemented",
@@ -2600,9 +2684,12 @@
       "source": "setup/server.py",
       "verification": [
         "tests/test_setup_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "workspaceInstallOutput",
@@ -2623,10 +2710,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool workspaceInstallOutput",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -2647,9 +2734,12 @@
       "source": "setup/server.py",
       "verification": [
         "tests/test_setup_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "approveWorkspacePairing",
@@ -2858,10 +2948,10 @@
           "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "state": "implemented",
+          "entry": "/mcp tool installWorkspaceComponents",
+          "reason": "Compiled workspace adapter shares capability validation and dispatch; hosted acceptance is recorded separately.",
+          "next_action": "Use the registered input schema in the catalog; a source-built CLI can bridge stdio. See docs/MCP.md."
         },
         "web": {
           "state": "implemented",
@@ -2882,9 +2972,12 @@
       "source": "setup/server.py",
       "verification": [
         "tests/test_setup_api.py",
-        "service/server_test.go"
+        "service/server_test.go",
+        "service/workspace_capabilities_test.go",
+        "tests/mcp-stdio-check.mjs"
       ],
-      "boundary_source": "service/legacy.go"
+      "boundary_source": "service/legacy.go",
+      "registered_source": "service/workspace_capabilities.go"
     },
     {
       "id": "skipWorkspaceSetup",
@@ -2907,8 +3000,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -2954,8 +3047,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -3001,8 +3094,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "No direct workspace MCP adapter.",
-          "next_action": "Implement the workspace adapter in VST-012; keep host authority separate."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         },
         "web": {
           "state": "implemented",
@@ -3054,8 +3147,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
-          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         }
       },
       "target": {
@@ -3234,8 +3327,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
-          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         }
       },
       "target": {
@@ -3279,8 +3372,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
-          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         }
       },
       "target": {
@@ -3374,8 +3467,8 @@
         "mcp": {
           "state": "unavailable",
           "entry": null,
-          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
-          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+          "reason": "Transport discovery or retiring UI state is not a workspace model tool.",
+          "next_action": "Use the documented HTTP transport or human interface; do not infer an MCP tool."
         }
       },
       "target": {

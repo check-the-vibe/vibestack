@@ -2,6 +2,9 @@
 
 Add trusted workspace endpoints through the [capability registry](docs/EXTENSIONS.md).
 The included `project_summary` example supports authenticated REST/browser calls and the same named MCP tool.
+Registered workspace tools also cover jobs, conditional project files, screenshots
+and desktop operations. The current source CLI supplies `vibestack mcp` as a thin
+stdio bridge; see [workspace MCP](docs/MCP.md) for inputs, limits and build/setup.
 
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:

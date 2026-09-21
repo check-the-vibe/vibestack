@@ -76,6 +76,13 @@ feed `/mcp`; read [MCP.md](MCP.md) before changing transport/authentication.
 The pinned TypeScript SDK 1.30.0 is a development-only independent client; Go SDK
 1.7.0 is the runtime transport. Full acceptance runs both through actual nginx,
 with private credential-file paths and payload-free diagnostics.
+Acceptance also builds the actual CLI and launches it over stdio from the
+independent TypeScript client. The probe runs jobs, performs conditional file
+updates and captures a screenshot against the disposable loopback workspace.
+Built-in adapters live in `service/workspace_capabilities.go`: fixed local
+backends, existing operation IDs and preserved legacy routes. Registered JSON
+operations use `/api/v1/operations/ID` or the generic invocation route; raw files
+retain their legacy route. See MCP.md for the 8 MiB registered binary limit.
 
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least

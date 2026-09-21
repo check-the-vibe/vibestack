@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,20 +43,25 @@ func LoadProfiles() (ProfileFile, error) {
 	if err != nil {
 		return ProfileFile{}, err
 	}
-	info, statErr := os.Lstat(path)
-	if errors.Is(statErr, os.ErrNotExist) {
+	file, openErr := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if errors.Is(openErr, os.ErrNotExist) {
 		return ProfileFile{Version: 1, Profiles: map[string]Profile{}}, nil
 	}
+	if openErr != nil {
+		return ProfileFile{}, errors.New("profile file could not be opened safely")
+	}
+	defer file.Close()
+	info, statErr := file.Stat()
 	if statErr != nil {
-		return ProfileFile{}, statErr
+		return ProfileFile{}, errors.New("profile file metadata is unavailable")
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || stat.Uid != uint32(os.Geteuid()) || info.Size() > 1<<20 {
+	if !ok || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || stat.Uid != uint32(os.Geteuid()) || stat.Nlink != 1 || info.Size() > 1<<20 {
 		return ProfileFile{}, errors.New("profile file has unsafe ownership, type, permissions, or size")
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ProfileFile{}, err
+	data, err := io.ReadAll(io.LimitReader(file, (1<<20)+1))
+	if err != nil || len(data) > 1<<20 {
+		return ProfileFile{}, errors.New("profile file is unavailable or over limit")
 	}
 	var value ProfileFile
 	if json.Unmarshal(data, &value) != nil || value.Version != 1 || value.Profiles == nil {
