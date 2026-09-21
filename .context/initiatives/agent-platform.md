@@ -3,21 +3,21 @@
 Outcome: machines and authorized clients can use VibeStack through a coherent
 service contract, with a chat agent becoming the primary user interface.
 
-## Specification queue
+## Feature specifications
 
-These are the user's requested next specification sessions. No architecture or
-implementation is approved by this queue alone. Create the actual specifications
-using the workflow after this ticket-system bootstrap.
+These are the user's four requested feature drafts. Edit the linked files;
+proposed choices and open decisions are recorded in each. The linked ticket plans
+define future work, not completed implementation.
 
-| Proposed ID | Feature to specify | Decisions the specification must resolve |
+| Specification | Feature | Decisions the specification must resolve |
 | --- | --- | --- |
-| SPEC-001 | Broker service: nginx plus a service accepting machine connections and public-client access | Machine enrollment and identity; outbound connection/reconnection model; routing; client authentication/authorization; isolation; nginx versus application responsibilities; hosting and failure recovery |
-| SPEC-002 | REST API, agent guidance and CLI installer URLs | Workspace versus host resources; discovery; versions and errors; stable `/AGENTS.md` and installer contracts; release integrity; client bootstrap and compatibility |
-| SPEC-003 | MCP with authentication | Tool/resource coverage; transport; client and machine identity; authorization, revocation and credential lifecycle; relationship to REST; harness compatibility |
-| SPEC-004 | Replace existing user interface elements with a service-connected chat agent | User journeys; agent actions and approvals; streaming/results; model/provider decision; recovery and accessibility; onboarding without old controls; transition/removal plan |
+| [SPEC-001](../specifications/SPEC-001-public-machine-broker.md) | Broker service: nginx plus a service accepting machine connections and public-client access | Machine enrollment and identity; outbound connection/reconnection model; routing; client authentication/authorization; isolation; nginx versus application responsibilities; hosting and failure recovery |
+| [SPEC-002](../specifications/SPEC-002-rest-api-agent-distribution.md) | REST API, agent guidance and CLI installer URLs | Workspace versus host resources; discovery; versions and errors; stable `/AGENTS.md` and installer contracts; release integrity; client bootstrap and compatibility |
+| [SPEC-003](../specifications/SPEC-003-authenticated-mcp.md) | MCP with authentication | Tool/resource coverage; transport; client and machine identity; authorization, revocation and credential lifecycle; relationship to REST; harness compatibility |
+| [SPEC-004](../specifications/SPEC-004-chat-agent-interface.md) | Replace existing user interface elements with a service-connected chat agent | User journeys; agent actions and approvals; streaming/results; model/provider decision; recovery and accessibility; onboarding without old controls; transition/removal plan |
 
-IDs above are reserved for these specifications; files intentionally do not
-exist yet. Determine ticket order and cross-feature dependencies while planning.
+See [the specification index](../specifications/README.md) for editing guidance
+and integration order. [VST-004](../tickets/VST-004.md) owns the drafting pass.
 The public broker and chat replacement change current product/security
 boundaries; the existing private desktop and UI remain supported until the
 corresponding feature contracts and migration work are implemented.

@@ -25,7 +25,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 
 ## Start points
 
-- [Agent platform initiative and specification queue](initiatives/agent-platform.md)
+- [Agent platform initiative and feature drafts](initiatives/agent-platform.md)
 - [Specification directory](specifications/README.md)
 - [Specification-writing prompt](prompts/specify.md)
 - [Project-planning prompt](prompts/plan.md)
@@ -40,9 +40,14 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | --- | --- | --- |
 | [VST-001](tickets/VST-001.md) | Existing Codespaces startup PR | [VST-001](branches/VST-001.md) |
 | [VST-002](tickets/VST-002.md) | Existing broker/access foundation and source mount PR | [VST-002](branches/VST-002.md) |
-| [VST-003](tickets/VST-003.md) | This context and ticket workflow | [VST-003](branches/VST-003.md) |
+| [VST-003](tickets/VST-003.md) | Context and ticket workflow | [VST-003](branches/VST-003.md) |
+| [VST-004](tickets/VST-004.md) | Four feature specifications and development plan | [VST-004](branches/VST-004.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective; the workflow
 becomes checked-in policy only when this change reaches main. The feature queue
-contains future work, not completed specifications or implementation tickets.
+now links four draft specifications and planned tickets, not implemented features.
+
+Future tickets VST-005 through VST-016 are indexed in their
+[specification plans](specifications/README.md). They are unassigned and have no
+execution branches yet. Edit those specifications to shape the features.
