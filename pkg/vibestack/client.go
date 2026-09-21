@@ -32,9 +32,11 @@ func (e *HTTPError) Error() string {
 }
 
 type Client struct {
-	Base       *url.URL
-	Credential string
-	HTTP       *http.Client
+	AuthenticationMode string
+	InstanceID         string
+	Base               *url.URL
+	Credential         string
+	HTTP               *http.Client
 }
 
 func NewClient(rawURL, credential, caFile string) (*Client, error) {
@@ -100,6 +102,13 @@ func (c *Client) URL(relative string) (string, error) {
 }
 
 func (c *Client) Do(ctx context.Context, method, relative string, body io.Reader, contentType string, authenticated bool, headers map[string]string) (*http.Response, error) {
+	if c.InstanceID != "" {
+		if !(strings.HasPrefix(relative, WorkspaceAPI) || strings.HasPrefix(relative, "/api/v1/") || relative == "/setup/api/state") {
+			return nil, errors.New("route is not available through workspace mediation")
+		}
+		relative = RunnerAPI + "/instances/" + url.PathEscape(c.InstanceID) + "/workspace" + relative
+		authenticated = true
+	}
 	target, err := c.URL(relative)
 	if err != nil {
 		return nil, err
@@ -112,7 +121,7 @@ func (c *Client) Do(ctx context.Context, method, relative string, body io.Reader
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	if authenticated {
+	if authenticated && c.AuthenticationMode != "trusted-tailnet" {
 		if c.Credential == "" {
 			return nil, errors.New("profile has no client credential")
 		}
@@ -196,6 +205,12 @@ func (c *Client) Discover(ctx context.Context) (Discovery, error) {
 		if version == "" || len(version) > 32 {
 			return Discovery{}, errors.New("server returned invalid API versions")
 		}
+	}
+	if value.AuthenticationMode == "" {
+		value.AuthenticationMode = "paired"
+	}
+	if value.AuthenticationMode != "paired" && !(value.Kind == "runner" && value.AuthenticationMode == "trusted-tailnet") {
+		return Discovery{}, errors.New("unsupported authentication mode")
 	}
 	return value, nil
 }

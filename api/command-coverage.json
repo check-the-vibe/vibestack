@@ -48,5 +48,7 @@
   "createRunnerEnvironmentSet": "api",
   "listRunnerSnapshots": "api",
   "setRunnerAttachments": "api",
-  "snapshotRunnerInstance": "api"
+  "snapshotRunnerInstance": "api",
+  "setInstancePassword": "instances password",
+  "runnerMCP": "api"
 }

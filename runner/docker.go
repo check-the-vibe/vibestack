@@ -277,6 +277,9 @@ func (m *Manager) SubmitCreate(ctx context.Context, request CreateRequest, owner
 		return op, err
 	}
 	publicBase := strings.TrimSuffix(m.Config.PublicURL, "/")
+	if !m.Config.ManageTailscaleServe {
+		publicBase = "http://127.0.0.1"
+	}
 	urls := map[string]string{"browser": replaceURLPort(publicBase, ports["http"]), "ssh": fmt.Sprintf("ssh://vibe@127.0.0.1:%d", ports["ssh"]), "vnc": fmt.Sprintf("vnc://127.0.0.1:%d", ports["vnc"])}
 	resources := map[string]any{"memory_bytes": choose(request.Resources.MemoryBytes, m.Config.DefaultMemoryBytes), "nano_cpus": choose(request.Resources.NanoCPUs, m.Config.DefaultNanoCPUs), "pids": choose(request.Resources.PIDs, m.Config.DefaultPIDs)}
 	instance := api.Instance{ID: instanceID, Name: request.Name, Owner: owner, Template: template.Name, ImageDigest: template.Digest, DesiredState: "running", ObservedState: "provisioning", Ports: ports, URLs: urls, Onboarding: true, CreatedAt: now, UpdatedAt: now}
@@ -572,7 +575,7 @@ func (m *Manager) finishProvision(ctx context.Context, instance api.Instance) er
 	if err := m.Store.SaveWorkspaceCredential(instance.ID, []byte(credential)); err != nil {
 		return fmt.Errorf("store workspace credential: %w", err)
 	}
-	restored, onboarding, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
+	restored, onboarding, password, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
 	if err != nil {
 		return err
 	}
@@ -580,6 +583,9 @@ func (m *Manager) finishProvision(ctx context.Context, instance api.Instance) er
 		if err := m.ensureServe(ctx, instance); err != nil {
 			return err
 		}
+	}
+	if _, err := m.Store.db.ExecContext(ctx, `UPDATE instances SET password_status=? WHERE id=?`, password, instance.ID); err != nil {
+		return err
 	}
 	return m.Store.UpdateInstanceReadiness(ctx, instance.ID, restored, onboarding)
 }
@@ -655,13 +661,13 @@ func (m *Manager) captureWorkspaceCredential(ctx context.Context, containerID st
 	return credential, nil
 }
 
-func (m *Manager) waitWorkspaceReadiness(ctx context.Context, port int) (bool, bool, error) {
+func (m *Manager) waitWorkspaceReadiness(ctx context.Context, port int) (bool, bool, string, error) {
 	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	endpoint := "http://127.0.0.1:" + strconv.Itoa(port) + "/setup/api/state"
 	for {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 		if err != nil {
-			return false, true, err
+			return false, true, "unknown", err
 		}
 		resp, err := client.Do(req)
 		if err == nil && resp.StatusCode == http.StatusOK {
@@ -690,7 +696,11 @@ func (m *Manager) waitWorkspaceReadiness(ctx context.Context, port int) (bool, b
 				} else {
 					restored := state.StateValid && len(state.Missing) == 0 && len(state.Unknown) == 0 && len(state.Unsupported) == 0 && (state.Job.OK == nil || *state.Job.OK)
 					onboarding := state.State == nil || !state.State.Completed || !state.Authentication.PasswordConfigured
-					return restored, onboarding, nil
+					password := "required"
+					if state.Authentication.PasswordConfigured {
+						password = "configured"
+					}
+					return restored, onboarding, password, nil
 				}
 			}
 		} else if resp != nil {
@@ -698,7 +708,7 @@ func (m *Manager) waitWorkspaceReadiness(ctx context.Context, port int) (bool, b
 		}
 		select {
 		case <-ctx.Done():
-			return false, true, ctx.Err()
+			return false, true, "unknown", ctx.Err()
 		case <-time.After(2 * time.Second):
 		}
 	}
@@ -1033,7 +1043,7 @@ func (m *Manager) finishCandidate(ctx context.Context, instance api.Instance) er
 	if err := m.Store.SaveWorkspaceCredential(instance.ID, []byte(credential)); err != nil {
 		return err
 	}
-	restored, _, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
+	restored, _, _, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
 	if err != nil {
 		return err
 	}

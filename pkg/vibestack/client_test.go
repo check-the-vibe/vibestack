@@ -93,3 +93,28 @@ func TestSaveProfilesRejectsAnUnsafeContainingDirectory(t *testing.T) {
 		t.Fatal("profile state was written into a group/world-readable directory")
 	}
 }
+
+func TestTrustedMediationNeverDistributesCredential(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != RunnerAPI+"/instances/selected/workspace"+WorkspaceAPI+"/commands" {
+			t.Errorf("wrong mediated path: %s", r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "" {
+			t.Error("trusted mode sent credential")
+		}
+		w.WriteHeader(401)
+	}))
+	defer server.Close()
+	c, err := NewClient(server.URL, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.AuthenticationMode = "trusted-tailnet"
+	c.InstanceID = "selected"
+	_, err = c.JSON(context.Background(), "POST", WorkspaceAPI+"/commands", map[string]any{"argv": []string{"true"}}, nil, true, nil)
+	if err == nil || calls != 1 {
+		t.Fatal("authentication error retried or downgraded")
+	}
+}

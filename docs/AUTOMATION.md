@@ -441,3 +441,16 @@ locally when standalone uses a different private HTTPS origin. URL credentials,
 paths, queries, fragments and arbitrary environment variables are never drawn.
 No startup terminal or automatic shell banner is opened. `vibestack-welcome`
 remains available as an explicit compatibility command.
+
+## Shared broker access
+
+The runner supports default `paired` and explicit `trusted-tailnet` modes.
+Trusted mode grants every reachable caller shared control of all managed
+desktops and storage, without pairing. Remote MCP is at `/mcp`; the harness
+itself needs tailnet connectivity. Use `--profile NAME --instance ID` for
+workspace commands through the broker. `instances password ID` prompts privately;
+`--password-stdin` is explicit. Create optionally accepts `--prompt-password`
+or `--password-stdin`, applying the password only after provisioning. Linux
+passwords are per-desktop and do not gate browser access. SSH/native VNC remain
+host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
+See [shared access, password, MCP and rollout contract](RUNNER.md#shared-tailnet-broker-and-remote-mcp).

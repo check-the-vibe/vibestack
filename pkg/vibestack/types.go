@@ -10,13 +10,15 @@ const (
 )
 
 type Discovery struct {
-	Kind          string            `json:"kind"`
-	Identity      string            `json:"identity"`
-	Version       string            `json:"version"`
-	APIVersions   []string          `json:"api_versions"`
-	APIRoots      map[string]string `json:"api_roots"`
-	Documentation map[string]string `json:"documentation"`
-	Pairing       struct {
+	AuthenticationMode string            `json:"authentication_mode"`
+	MCPURL             string            `json:"mcp_url,omitempty"`
+	Kind               string            `json:"kind"`
+	Identity           string            `json:"identity"`
+	Version            string            `json:"version"`
+	APIVersions        []string          `json:"api_versions"`
+	APIRoots           map[string]string `json:"api_roots"`
+	Documentation      map[string]string `json:"documentation"`
+	Pairing            struct {
 		Request     string   `json:"request"`
 		Approval    string   `json:"approval"`
 		Permissions []string `json:"permissions"`
@@ -70,6 +72,9 @@ type OutputPage struct {
 }
 
 type Instance struct {
+	LinuxUsername        string            `json:"linux_username"`
+	PasswordStatus       string            `json:"password_status"`
+	Reachability         map[string]string `json:"reachability"`
 	ID                   string            `json:"id"`
 	Name                 string            `json:"name"`
 	Owner                string            `json:"owner"`

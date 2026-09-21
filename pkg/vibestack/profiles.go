@@ -11,13 +11,14 @@ import (
 )
 
 type Profile struct {
-	Name       string `json:"name"`
-	URL        string `json:"url"`
-	Kind       string `json:"kind"`
-	Identity   string `json:"identity"`
-	Credential string `json:"credential"`
-	CAFile     string `json:"ca_file,omitempty"`
-	ClientID   string `json:"client_id,omitempty"`
+	AuthenticationMode string `json:"authentication_mode,omitempty"`
+	Name               string `json:"name"`
+	URL                string `json:"url"`
+	Kind               string `json:"kind"`
+	Identity           string `json:"identity"`
+	Credential         string `json:"credential,omitempty"`
+	CAFile             string `json:"ca_file,omitempty"`
+	ClientID           string `json:"client_id,omitempty"`
 }
 
 type ProfileFile struct {

@@ -14,7 +14,11 @@ import (
 
 const APIRoot = "/api/v1/runner"
 
+const AuthPaired = "paired"
+const AuthTrustedTailnet = "trusted-tailnet"
+
 type Config struct {
+	AuthenticationMode      string `json:"authentication_mode"`
 	Listen                  string `json:"listen"`
 	PublicURL               string `json:"public_url"`
 	StateDir                string `json:"state_dir"`
@@ -34,6 +38,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
+		AuthenticationMode:      AuthPaired,
 		Listen:                  "127.0.0.1:8079",
 		PublicURL:               "http://127.0.0.1:8079",
 		StateDir:                "/var/lib/vibestack-runner",
@@ -86,6 +91,9 @@ func LoadConfig(path string) (Config, error) {
 }
 
 func (c Config) Validate() error {
+	if c.AuthenticationMode != AuthPaired && c.AuthenticationMode != AuthTrustedTailnet {
+		return errors.New("authentication_mode must be paired or trusted-tailnet")
+	}
 	host, port, err := net.SplitHostPort(c.Listen)
 	if err != nil || port == "" {
 		return errors.New("listen must be a host:port authority")

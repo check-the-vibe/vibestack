@@ -76,6 +76,12 @@ func run(args []string) error {
 		return err
 	}
 	defer store.Close()
+	if _, err := store.ConfigureAuthentication(context.Background(), config.AuthenticationMode); err != nil {
+		return err
+	}
+	if config.AuthenticationMode == runner.AuthTrustedTailnet && (args[0] == "pairings" || args[0] == "clients") {
+		return errors.New("trusted-tailnet mode does not use client credentials or pairing")
+	}
 	manager, err := runner.NewManager(config, store)
 	if err != nil {
 		return err

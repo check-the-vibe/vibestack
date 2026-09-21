@@ -21,7 +21,8 @@ download or checksum leaves an existing binary untouched. HTTPS authenticates
 the delivery channel; the checksum detects corruption or substitution inside
 that channel and is not described as an independent publisher signature.
 
-`connect` reads `/.well-known/vibestack`, displays a short verification code,
+`connect` reads `/.well-known/vibestack`. For trusted-tailnet runners it records
+the advertised mode without credentials or pairing. For paired servers it displays a short verification code,
 and polls with a separate high-entropy secret. Approve workspace requests in
 Setup. Approve runner requests locally with `vibestack-runner pairings approve
 CODE`. The returned credential is stored only in the mode-0600 profile file.
@@ -31,6 +32,7 @@ token without placing it in argv.
 Global options must precede the command:
 
 ```text
+--instance ID    select a desktop for mediated runner workspace commands
 --profile NAME   select an exact target (required when several match)
 --json           stable JSON output where the operation is structured
 --ca FILE        explicit custom certificate authority
@@ -156,3 +158,16 @@ vibestack --profile runner operations wait OPERATION_ID
 `create.json` may select `project_drive`, `file_drives`, `environment_set` and
 `state_seed` IDs; `snapshot.json` contains a name. Read [RUNNER.md](RUNNER.md)
 for precise schemas, stopped-state requirements and local administrative purge.
+
+## Shared broker access
+
+The runner supports default `paired` and explicit `trusted-tailnet` modes.
+Trusted mode grants every reachable caller shared control of all managed
+desktops and storage, without pairing. Remote MCP is at `/mcp`; the harness
+itself needs tailnet connectivity. Use `--profile NAME --instance ID` for
+workspace commands through the broker. `instances password ID` prompts privately;
+`--password-stdin` is explicit. Create optionally accepts `--prompt-password`
+or `--password-stdin`, applying the password only after provisioning. Linux
+passwords are per-desktop and do not gate browser access. SSH/native VNC remain
+host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
+See [shared access, password, MCP and rollout contract](RUNNER.md#shared-tailnet-broker-and-remote-mcp).

@@ -27,10 +27,13 @@ var (
 )
 
 type Server struct {
-	Config  Config
-	Store   *Store
-	Manager *Manager
-	HTTP    *http.Server
+	Config          Config
+	Store           *Store
+	Manager         *Manager
+	HTTP            *http.Server
+	MCP             http.Handler
+	authError       error
+	sharedPrincipal string
 }
 
 type principal struct {
@@ -48,6 +51,8 @@ func (e *apiError) Error() string { return e.Message }
 
 func NewServer(config Config, store *Store, manager *Manager) *Server {
 	server := &Server{Config: config, Store: store, Manager: manager}
+	server.sharedPrincipal, server.authError = store.ConfigureAuthentication(context.Background(), config.AuthenticationMode)
+	server.MCP = server.mcpHandler()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", server.handle)
 	server.HTTP = &http.Server{Addr: config.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 65 * time.Second, WriteTimeout: 65 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 32 << 10}
@@ -72,6 +77,14 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 			s.error(w, requestID, &apiError{500, "internal_error", "The runner request failed."})
 		}
 	}()
+	if s.authError != nil {
+		s.error(w, requestID, &apiError{503, "authentication_configuration", "Authentication mode requires an empty registry before switching."})
+		return
+	}
+	if s.Config.AuthenticationMode == AuthTrustedTailnet && strings.HasPrefix(r.URL.Path, APIRoot+"/pairing/") {
+		s.error(w, requestID, &apiError{404, "pairing_disabled", "Trusted-tailnet mode does not use pairing."})
+		return
+	}
 	if r.URL.Path == api.DiscoveryPath && r.Method == http.MethodGet {
 		s.discovery(w, r, requestID)
 		return
@@ -108,6 +121,15 @@ func (s *Server) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r = r.WithContext(context.WithValue(r.Context(), principalKey{}, p))
+	if r.URL.Path == "/mcp" {
+		if r.URL.RawQuery != "" {
+			s.error(w, requestID, &apiError{400, "invalid_query", "MCP accepts no query parameters."})
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		s.MCP.ServeHTTP(w, r)
+		return
+	}
 	if err := s.dispatch(w, r, requestID, p); err != nil {
 		s.error(w, requestID, err)
 	}
@@ -141,7 +163,8 @@ func (s *Server) validateSource(r *http.Request) *apiError {
 	hostname = strings.Trim(hostname, "[]")
 	public, _ := url.Parse(s.Config.PublicURL)
 	ip := net.ParseIP(hostname)
-	if !strings.EqualFold(hostname, "localhost") && (ip == nil || !ip.IsLoopback()) && !strings.EqualFold(hostname, public.Hostname()) {
+	localHost := strings.EqualFold(hostname, "localhost") || ip != nil && ip.IsLoopback()
+	if !strings.EqualFold(host, s.Config.Listen) && !strings.EqualFold(host, public.Host) {
 		return &apiError{421, "host_not_allowed", "The request Host is not allowed."}
 	}
 	fetchSites := r.Header.Values("Sec-Fetch-Site")
@@ -170,7 +193,7 @@ func (s *Server) validateSource(r *http.Request) *apiError {
 	}
 	if origin := r.Header.Get("Origin"); origin != "" {
 		parsed, err := url.Parse(origin)
-		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || !strings.EqualFold(parsed.Host, r.Host) {
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" || !(strings.EqualFold(origin, s.Config.PublicURL) || localHost && strings.EqualFold(parsed.Host, r.Host) && parsed.Scheme == "http") {
 			return &apiError{403, "cross_origin", "Cross-origin requests are not allowed."}
 		}
 	}
@@ -188,6 +211,9 @@ func requestID(r *http.Request) string {
 }
 
 func (s *Server) authenticate(r *http.Request) (principal, *apiError) {
+	if s.Config.AuthenticationMode == AuthTrustedTailnet {
+		return principal{ID: s.sharedPrincipal, Permissions: map[string]bool{"instances:read": true, "instances:write": true}}, nil
+	}
 	values := r.Header.Values("Authorization")
 	if len(values) != 1 {
 		return principal{}, &apiError{401, "unauthorized", "A valid bearer credential is required."}
@@ -218,6 +244,11 @@ func (s *Server) discovery(w http.ResponseWriter, r *http.Request, requestID str
 		return
 	}
 	payload := map[string]any{"kind": "runner", "identity": identity, "version": api.Version, "api_versions": []string{"1"}, "api_roots": map[string]string{"runner": APIRoot}, "documentation": map[string]string{"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md", "runner": "/RUNNER.md", "openapi": "/api/runner.openapi.json"}, "pairing": map[string]any{"request": APIRoot + "/pairing/requests", "approval": "Run vibestack-runner pairings approve CODE on the host.", "permissions": []string{"instances:read", "instances:write"}}, "cli": map[string]string{"installer": "/cli.sh", "compatible": ">=0.2.0 <1.0.0"}}
+	payload["authentication_mode"] = s.Config.AuthenticationMode
+	payload["mcp_url"] = s.Config.PublicURL + "/mcp"
+	if s.Config.AuthenticationMode == AuthTrustedTailnet {
+		delete(payload, "pairing")
+	}
 	writeJSON(w, 200, payload)
 }
 
@@ -311,7 +342,7 @@ func (s *Server) capabilities(w http.ResponseWriter, r *http.Request, p principa
 	if err != nil {
 		return &apiError{503, "state_unavailable", "Template state is unavailable."}
 	}
-	writeJSON(w, 200, map[string]any{"api_version": "1", "base_path": APIRoot, "authentication": "bearer", "launch_contract": launchVersion, "approved_templates": templates, "limits": map[string]any{"instances": s.Config.MaxInstances, "provisioning_concurrency": s.Config.ProvisioningConcurrency, "port_min": s.Config.PortMin, "port_max": s.Config.PortMax, "minimum_free_bytes": s.Config.MinFreeBytes}, "routes": map[string]string{"host": APIRoot + "/host", "drives": APIRoot + "/drives", "environment_sets": APIRoot + "/environment-sets", "snapshots": APIRoot + "/snapshots", "attachments": APIRoot + "/instances/{id}/attachments", "snapshot": APIRoot + "/instances/{id}/snapshot", "instances": APIRoot + "/instances", "instance": APIRoot + "/instances/{id}", "operations": APIRoot + "/operations/{id}", "workspace_proxy": APIRoot + "/instances/{id}/workspace/{supported-path}"}})
+	writeJSON(w, 200, map[string]any{"api_version": "1", "base_path": APIRoot, "authentication": s.Config.AuthenticationMode, "mcp_url": s.Config.PublicURL + "/mcp", "launch_contract": launchVersion, "approved_templates": templates, "limits": map[string]any{"instances": s.Config.MaxInstances, "provisioning_concurrency": s.Config.ProvisioningConcurrency, "port_min": s.Config.PortMin, "port_max": s.Config.PortMax, "minimum_free_bytes": s.Config.MinFreeBytes}, "routes": map[string]string{"host": APIRoot + "/host", "drives": APIRoot + "/drives", "environment_sets": APIRoot + "/environment-sets", "snapshots": APIRoot + "/snapshots", "attachments": APIRoot + "/instances/{id}/attachments", "snapshot": APIRoot + "/instances/{id}/snapshot", "instances": APIRoot + "/instances", "instance": APIRoot + "/instances/{id}", "operations": APIRoot + "/operations/{id}", "workspace_proxy": APIRoot + "/instances/{id}/workspace/{supported-path}"}})
 	return nil
 }
 
@@ -414,6 +445,9 @@ func (s *Server) instanceRoute(w http.ResponseWriter, r *http.Request, requestID
 			return err
 		}
 		action := parts[1]
+		if action == "password" {
+			return s.setInstancePassword(w, r, instance)
+		}
 		if action == "snapshot" {
 			var body struct {
 				Name string `json:"name"`
@@ -610,6 +644,9 @@ func allowedWorkspaceRoute(method, path string) bool {
 	}
 	if matched, _ := regexp.MatchString(`^`+regexp.QuoteMeta(prefix)+`/ssh-keys/[0-9a-f]{32}/remove$`, path); matched {
 		return method == http.MethodPost
+	}
+	if path == "/setup/api/state" {
+		return method == http.MethodGet
 	}
 	if path == "/api/v1/status" || path == "/api/v1/display" {
 		return method == http.MethodGet || path == "/api/v1/display" && method == http.MethodPut

@@ -5,12 +5,23 @@ debugging VibeStack. The goal is to validate a candidate image independently,
 then deliberately move the live private Tailscale-served desktop to it without
 losing state or masking regressions.
 
+For the OS and desktop component choices, host/kernel distinction, and verified
+system-query, input, window and application recipes, see
+[Operating system and desktop automation](OS-AND-DESKTOP-AUTOMATION.md).
+The [library and MCP evaluation](research/desktop-automation-frameworks.md)
+separates current capabilities from candidate extensions and defines the
+disposable prototype checks required before adding dependencies.
+The [desktop performance study](research/desktop-performance-and-base-system.md)
+records the current host/resource inventory, isolated display-latency results,
+and the compatibility/performance gates for a graphics-server change. These
+experiments do not replace image acceptance or authorize a live migration.
+
 ## Prerequisites
 
 - Docker Engine with permission to build, run, inspect, and exec containers.
 - Python 3 for unit and source-contract tests.
 - Node.js 22 and npm for the Playwright browser suite.
-- Go 1.23 or newer for the client and host runner.
+- Go 1.25 or newer for the client and host runner.
 - Tailscale on the host, logged into the intended tailnet, for private HTTPS.
 - `curl` and OpenSSL; `jq` is useful but not required by the development helper.
 
@@ -597,3 +608,25 @@ locally when standalone uses a different private HTTPS origin. URL credentials,
 paths, queries, fragments and arbitrary environment variables are never drawn.
 No startup terminal or automatic shell banner is opened. `vibestack-welcome`
 remains available as an explicit compatibility command.
+
+## Shared broker access
+
+The runner supports default `paired` and explicit `trusted-tailnet` modes.
+Trusted mode grants every reachable caller shared control of all managed
+desktops and storage, without pairing. Remote MCP is at `/mcp`; the harness
+itself needs tailnet connectivity. Use `--profile NAME --instance ID` for
+workspace commands through the broker. `instances password ID` prompts privately;
+`--password-stdin` is explicit. Create optionally accepts `--prompt-password`
+or `--password-stdin`, applying the password only after provisioning. Linux
+passwords are per-desktop and do not gate browser access. SSH/native VNC remain
+host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
+See [shared access, password, MCP and rollout contract](RUNNER.md#shared-tailnet-broker-and-remote-mcp).
+
+Run `python3 tests/shared_runner_integration.py --runner NEW_RUNNER --client
+NEW_CLIENT --image ACCEPTED_IMAGE --browser` for the disposable shared-access
+flow. It owns loopback 18089, private HTTPS 13443 and instance ports 13080–13179,
+refuses pre-existing Serve mappings in those ranges, and cleans only its exact
+registry resources. Random disposable passwords stay in memory/stdin; the probe
+checks actual Linux authentication, replacement, conflicts, helper failure,
+disconnect serialization and plaintext absence. It uses two independent CLI
+profiles and a separate Python MCP client through the private HTTPS endpoint.

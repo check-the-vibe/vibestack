@@ -112,3 +112,12 @@ bin/vibestack-dev accept vibestack:dev
 Use focused tests while iterating, but finish with the full commands above.
 For UI work, verify both desktop and iPad-sized Playwright projects and inspect
 the real custom shell through the private HTTPS Tailscale URL.
+
+## Host broker access
+
+The runner supports paired ownership and an explicit trusted-tailnet shared
+principal. In trusted mode every reachable caller controls all managed resources.
+REST and `/mcp` must share authorization and registry-bound mediation. Password
+submission is REST/CLI only, via fixed root-helper stdin under the lifecycle lock;
+never put plaintext in durable operations. See docs/RUNNER.md for the full shared
+broker contract and independent-client verification.

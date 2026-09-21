@@ -34,8 +34,8 @@ exact automation schemas, limits, and longer examples are at
 | Agent execution context | Correct interface |
 |---|---|
 | Inside one VibeStack workspace | Local files/commands, or the loopback workspace API. |
-| On a customer Linux/macOS machine | A named, paired `vibestack` profile. |
-| On the Docker host as operator | `vibestack-runner` only for local administration; use a paired client profile for agent work. |
+| On a customer Linux/macOS machine | A named `vibestack` profile using the advertised authentication mode. |
+| On the Docker host as operator | `vibestack-runner` only for local administration; use an explicit client profile for agent work. |
 
 Never infer a target when several profiles or instances exist. Start external
 work with `vibestack --profile NAME doctor` and `capabilities`. New work
@@ -360,3 +360,14 @@ locally when standalone uses a different private HTTPS origin. URL credentials,
 paths, queries, fragments and arbitrary environment variables are never drawn.
 No startup terminal or automatic shell banner is opened. `vibestack-welcome`
 remains available as an explicit compatibility command.
+
+## Shared broker clients
+
+A host runner may advertise `trusted-tailnet` mode: all reachable callers share
+control of its desktops and storage. The harness itself must reach the tailnet.
+Use the broker's `/mcp` Streamable HTTP endpoint or `vibestack --profile NAME
+--instance ID exec -- ...` for mediated automation; tokens stay in the broker.
+MCP provisioning returns operation IDs to poll. Never submit Linux passwords
+through MCP; hand off `urls.password_setup` or the CLI's private password prompt.
+Linux username is vibe. Per-desktop passwords do not gate browser access or
+synchronize application logins/keyrings. SSH/native VNC are host-local.

@@ -101,7 +101,7 @@ func (s *Store) RegisterDrive(ctx context.Context, name, owner, kind, source str
 		return Drive{}, errors.New("invalid drive name or owner")
 	}
 	var exists int
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM clients WHERE id=? AND revoked_at IS NULL`, owner).Scan(&exists); err != nil || exists != 1 {
+	if err := s.db.QueryRowContext(ctx, `SELECT (SELECT COUNT(*) FROM clients WHERE id=? AND revoked_at IS NULL) + (SELECT COUNT(*) FROM metadata WHERE key='shared_principal' AND value=? AND EXISTS (SELECT 1 FROM metadata WHERE key='authentication_mode' AND value='trusted-tailnet'))`, owner, owner).Scan(&exists); err != nil || exists != 1 {
 		return Drive{}, errors.New("active owner is required")
 	}
 	id, err := randomID()

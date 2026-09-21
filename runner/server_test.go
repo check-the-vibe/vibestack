@@ -20,7 +20,7 @@ func runnerRequest(t *testing.T, server *Server, method, path, credential string
 		}
 	}
 	request := httptest.NewRequest(method, "https://runner.example"+path, &input)
-	request.Host = "runner.example"
+	request.Host = strings.TrimPrefix(server.Config.PublicURL, "https://")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}

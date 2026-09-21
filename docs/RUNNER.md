@@ -1,8 +1,10 @@
 # VibeStack runner operations
 
 `vibestack-runner` is a Linux-only host service for approved VibeStack images.
-It is separate from the in-workspace command-job runner. It has an authenticated
-JSON API and local administrative CLI, but no dashboard. Docker socket access
+It is separate from the in-workspace command-job runner. It has a JSON API,
+remote MCP and local administrative CLI, but no dashboard. Authentication defaults
+to paired credentials; explicit trusted-tailnet mode shares authority among all
+reachable callers. See [shared access](#shared-tailnet-broker-and-remote-mcp). Docker socket access
 grants substantial host authority, so only this root service receives it;
 workspace containers never mount or proxy the Docker socket.
 
@@ -58,7 +60,7 @@ Docker flag. `--flatpak` is the operator's explicit opt-in to the same three
 security relaxations as the legacy launcher and never adds capabilities or
 `--privileged`.
 
-Pairing approval displays the device label and exact requested permissions.
+In paired mode, pairing approval displays the device label and exact requested permissions.
 Codes expire after ten minutes and cannot retrieve credentials without the
 separate polling secret. Credentials are individually revocable.
 
@@ -196,3 +198,93 @@ The broker now serves its own `/AGENTS.md`, with the configured public origin
 and concrete pairing, provisioning, mediation and snapshot steps. It also serves
 `/api/runner.openapi.json`. A remote harness must explicitly fetch or locally
 reference the broker guide; merely hosting it does not make harnesses load it.
+
+## Shared tailnet broker and remote MCP
+
+The broker configuration has `authentication_mode`: `paired` (default) or
+`trusted-tailnet`. In trusted mode **everyone who can reach the private broker
+can inspect and manipulate every managed desktop, drive, snapshot, environment
+set and operation**. One persistent shared principal owns these resources.
+Caller headers and device labels never identify separate owners. Paired mode
+continues to require valid, non-revoked bearer credentials and owner isolation.
+Switching modes requires an empty registry, including credentials, templates,
+retained resources and operation history; deploy with clean managed state.
+Existing development state is not automatically reassigned.
+
+Keep the broker on loopback behind private Tailscale Serve, never Funnel.
+Docker access stays in the host runner. Discovery at `/.well-known/vibestack`
+advertises `authentication_mode` and `mcp_url`. Connect explicitly:
+
+```bash
+vibestack connect --url https://HOST:10443 --name shared
+vibestack --profile shared capabilities
+vibestack --profile shared instances create --name desk --template desktop --idempotency-key desk-v1
+vibestack --profile shared operations wait OPERATION_ID
+vibestack --profile shared instances inspect INSTANCE_ID
+vibestack --profile shared --instance INSTANCE_ID exec -- /usr/bin/pwd
+vibestack --profile shared --instance INSTANCE_ID screenshot --output desktop.png
+vibestack --profile shared instances password INSTANCE_ID
+```
+
+Trusted profiles store the authentication mode without a bearer token or pairing.
+Authentication errors never downgrade a profile. Workspace commands through a
+runner require `--instance ID` before the command. Tokens remain private to the
+broker; it injects the selected desktop's automation credential.
+
+`instances password ID` uses a hidden terminal prompt with confirmation.
+`--password-stdin` explicitly reads one password, with an optional final newline.
+No password argument or environment variable is supported. `instances create`
+accepts `--prompt-password` or `--password-stdin`: provisioning and operation
+polling finish first, then a separate synchronous password request runs.
+If that step fails, the desktop remains and the CLI reports its ID and incomplete
+credential setup. Never automatically retry a credential request after a lost
+connection; completion may be uncertain. Read status and explicitly decide.
+
+REST `POST /api/v1/runner/instances/{id}/password` accepts only
+`{"password":"<private input>"}` with a 2048-byte body limit. Passwords must be
+12–256 UTF-8 bytes without control characters or only whitespace. The desktop
+must be running and healthy; busy/stopped desktops return actionable conflicts.
+The fixed root helper receives stdin, never argv, Docker environment/config,
+SQLite, operation payloads or shared logs. Only its existing Linux-compatible
+hash persists in the desktop's private `/data/.vibestack-auth-v1` state.
+The Linux username remains `vibe`; credentials are independent per desktop.
+Restart and replacement restore the hash. Snapshot clones inherit the documented
+password hash and can be reset independently. Linux password changes do not
+synchronize application logins or keyring encryption.
+
+Connection metadata includes `linux_username`, `password_status`,
+`infrastructure_ready`, `applications_restored`, `onboarding_required`, and
+`reachability`. Infrastructure readiness does not mean application onboarding is
+finished. `urls.password_setup` is the human password handoff; after password
+setup use `urls.desktop` for desktop/apps. Browser, terminal and editor remain
+at each instance's origin. Tailnet reachability grants browser access: the Linux
+password is not a web-login gate. SSH and native VNC are explicitly `host-local`
+and their loopback addresses are not advertised as remote links. Without managed
+Serve, browser URLs are also marked host-local.
+
+Remote MCP uses **Streamable HTTP at `https://HOST:10443/mcp`**, stateless with
+JSON responses, using the official Go SDK pinned to `v1.7.0`. Go 1.25 is the
+minimum; CI uses supported Go 1.26.x. The harness itself must have tailnet
+connectivity; a cloud connector without it cannot reach this private endpoint.
+MCP and REST share principal resolution, source checks and service dispatch.
+Requests are capped at 1 MiB and tool results at 16 MiB. No request bodies,
+command text, output or credentials are logged by the MCP handler.
+
+Tools: `host_inspect`, `templates_list`, `instances_list`, `instance_inspect`,
+`instance_create`, `instance_action`, `operation_get`, `workspace_command`,
+`workspace_job`, `workspace_output`, `workspace_screenshot`. Provisioning and
+lifecycle tools return durable operation IDs; poll `operation_get` until terminal.
+Workspace tools require an explicit `instance_id`; commands return job IDs.
+Poll `workspace_job`, then read bounded `workspace_output` pages with cursors.
+Password submission, arbitrary Docker commands/proxy destinations and remote
+volume purge are excluded. Return the password status and human setup URL.
+
+Deployment gates: baseline/full `bin/vibestack-dev test`, all client and runner
+release cross-builds, tagged image build, disposable image acceptance and isolated
+runner integration. Inventory exact registry-owned containers, volumes and Serve
+mappings before resetting development state. Preserve host-folder contents and
+unrelated Docker workloads/mappings; never use global Docker prune or Serve reset.
+Use tmux for sudo authentication. Provision two clean desktops, validate shared
+access from two independent clients, MCP initialize/discovery/provision/poll/job
+flows, password persistence and Linux authentication, and real HTTPS desktop,
+terminal/editor and automation. Record physical-device checks separately.

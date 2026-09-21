@@ -146,6 +146,7 @@ func storageUnavailable() *apiError {
 func storageRejected(err error) *apiError { return &apiError{409, "storage_rejected", safeError(err)} }
 func (s *Server) agentsGuide(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	_, _ = fmt.Fprintf(w, "Authentication mode: %s. Remote MCP: %s/mcp (Streamable HTTP). The harness itself needs tailnet connectivity.\n\n", s.Config.AuthenticationMode, s.Config.PublicURL)
 	_, _ = fmt.Fprintf(w, `# Vibestack Runner agent entrypoint
 
 This is the API-only host broker at %s. It is a private Tailscale origin.
@@ -153,7 +154,9 @@ A remote harness must explicitly fetch this document or reference a local copy;
 hosting this file does not automatically load it into any agent harness.
 
 1. Fetch [%s/.well-known/vibestack](%s/.well-known/vibestack) and confirm kind=runner.
-2. Pair using vibestack connect --url %s --name runner. The operator approves
+2. Connect using vibestack connect --url %s --name runner. In trusted-tailnet
+   mode no pairing or bearer is needed: everyone reaching the broker shares full
+   access to all managed desktops and storage. In paired mode the operator approves
    the displayed code locally with vibestack-runner pairings approve CODE.
    Protect the polling secret and returned bearer credential. Never put them in
    prompts, URLs, logs, or this guide. Use the client's private profile file.
@@ -172,7 +175,7 @@ hosting this file does not automatically load it into any agent harness.
 6. Poll GET /api/v1/runner/operations/OPERATION_ID until succeeded or failed.
    Inspect GET /api/v1/runner/instances/INSTANCE_ID. Infrastructure readiness,
    application restoration, and onboarding_required are distinct. Open the
-   instance's urls.browser + /setup/ for the user to set a password, choose
+   instance's urls.password_setup for the user to set a password, choose
    applications and sign into services. Never intercept or invent a user password.
 7. Route authenticated automation through
    /api/v1/runner/instances/INSTANCE_ID/workspace/api/v1/automation/commands
@@ -191,8 +194,19 @@ hosting this file does not automatically load it into any agent harness.
    destructive purge is a separate local administration command.
 
 Paths abbreviated above are relative to /api/v1/runner. All non-discovery API
-requests require Authorization: Bearer. Ownership applies to instances, drives,
-environment sets, snapshots and operations. Never try another principal's IDs.
+requests in paired mode require Authorization: Bearer and retain owner isolation.
+Trusted-tailnet requests use one persistent shared principal; device labels and
+identity headers do not create private ownership. Tailnet access also grants browser
+access; the Linux password is not a web-login gate. Linux username is vibe. SSH
+and native VNC ports are host-local, not remote links. Password changes do not
+synchronize application logins or keyring encryption.
+
+Use vibestack --profile runner --instance INSTANCE_ID exec -- /usr/bin/pwd
+for mediated workspace commands. The human can use instances password ID with
+a private terminal prompt or explicit --password-stdin. MCP never accepts passwords.
+MCP instance_create returns an operation ID; use operation_get, then instance_inspect.
+Use workspace_command, workspace_job, workspace_output or workspace_screenshot with
+an explicit instance_id. Do not automatically retry uncertain password changes.
 
 Read [runner operations](%s/RUNNER.md), [client reference](%s/CLI.md),
 [workspace automation](%s/AUTOMATION.md), and [runner OpenAPI](%s/api/runner.openapi.json).

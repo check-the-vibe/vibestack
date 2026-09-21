@@ -83,6 +83,7 @@ func TestRunnerPairingCredentialIsOneTimeAndRevocable(t *testing.T) {
 
 func TestWorkspaceProxyRouteAllowlist(t *testing.T) {
 	accepted := [][2]string{
+		{"GET", "/setup/api/state"},
 		{"GET", "/api/v1/automation"},
 		{"POST", "/api/v1/automation/commands"},
 		{"GET", "/api/v1/automation/projects/a.txt"},
@@ -94,7 +95,7 @@ func TestWorkspaceProxyRouteAllowlist(t *testing.T) {
 			t.Errorf("expected route to be accepted: %v", item)
 		}
 	}
-	for _, item := range [][2]string{{"POST", "/api/v1/automation/pairing/requests"}, {"GET", "/setup/api/state"}, {"GET", "http://attacker/"}, {"DELETE", "/api/v1/automation/files/a"}} {
+	for _, item := range [][2]string{{"POST", "/api/v1/automation/pairing/requests"}, {"GET", "http://attacker/"}, {"DELETE", "/api/v1/automation/files/a"}} {
 		if allowedWorkspaceRoute(item[0], item[1]) {
 			t.Errorf("expected route to be rejected: %v", item)
 		}

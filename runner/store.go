@@ -135,6 +135,7 @@ CREATE INDEX IF NOT EXISTS operations_instance ON operations(instance_id, create
 	}
 	// These additive migrations keep state created by early runner previews usable.
 	for _, statement := range []string{
+		`ALTER TABLE instances ADD COLUMN password_status TEXT NOT NULL DEFAULT 'unknown'`,
 		`ALTER TABLE instances ADD COLUMN infrastructure_ready INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE instances ADD COLUMN applications_restored INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE operations ADD COLUMN owner TEXT NOT NULL DEFAULT ''`,
@@ -250,7 +251,7 @@ func (s *Store) Template(ctx context.Context, name string) (Template, error) {
 func encode(value any) string { data, _ := json.Marshal(value); return string(data) }
 
 func (s *Store) Instances(ctx context.Context, includeRemoved bool) ([]api.Instance, error) {
-	query := `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error FROM instances`
+	query := `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error,password_status FROM instances`
 	if !includeRemoved {
 		query += ` WHERE removed_at IS NULL`
 	}
@@ -277,7 +278,7 @@ func scanInstance(row scanner) (api.Instance, error) {
 	var value api.Instance
 	var ready, infrastructure, restored, onboarding bool
 	var ports, urls string
-	err := row.Scan(&value.ID, &value.Name, &value.Owner, &value.Template, &value.ImageDigest, &value.ContainerID, &value.DesiredState, &value.ObservedState, &ready, &infrastructure, &restored, &onboarding, &ports, &urls, &value.CreatedAt, &value.UpdatedAt, &value.LastError)
+	err := row.Scan(&value.ID, &value.Name, &value.Owner, &value.Template, &value.ImageDigest, &value.ContainerID, &value.DesiredState, &value.ObservedState, &ready, &infrastructure, &restored, &onboarding, &ports, &urls, &value.CreatedAt, &value.UpdatedAt, &value.LastError, &value.PasswordStatus)
 	if err != nil {
 		return value, err
 	}
@@ -288,12 +289,29 @@ func scanInstance(row scanner) (api.Instance, error) {
 	if json.Unmarshal([]byte(ports), &value.Ports) != nil || json.Unmarshal([]byte(urls), &value.URLs) != nil {
 		return value, errors.New("stored instance JSON is invalid")
 	}
+	if value.URLs == nil {
+		value.URLs = map[string]string{}
+	}
+	value.LinuxUsername = "vibe"
+	value.Reachability = map[string]string{"browser": "host-local", "terminal": "host-local", "editor": "host-local", "ssh": "host-local", "native_vnc": "host-local"}
+	if strings.HasPrefix(value.URLs["browser"], "https://") {
+		for _, key := range []string{"browser", "terminal", "editor"} {
+			value.Reachability[key] = "tailnet"
+		}
+	}
+	base := strings.TrimSuffix(value.URLs["browser"], "/")
+	value.URLs["password_setup"] = base + "/setup/?force=1&screen=password"
+	value.URLs["desktop"] = base + "/vnc/?panel=apps"
+	value.URLs["terminal"] = base + "/vnc/?view=terminal"
+	value.URLs["editor"] = base + "/vnc/?view=editor"
+	delete(value.URLs, "ssh")
+	delete(value.URLs, "vnc")
 	value.Connections = map[string]string{"browser": "unavailable", "ssh": "unavailable", "native_vnc": "unavailable"}
-	if value.ObservedState == "running" {
+	if value.ObservedState == "running" && value.InfrastructureReady {
 		value.Connections["browser"] = "available"
 		value.Connections["ssh"] = "available"
 		value.Connections["native_vnc"] = "password_required"
-		if !value.Onboarding {
+		if value.PasswordStatus == "configured" {
 			value.Connections["native_vnc"] = "available"
 		}
 	}
@@ -301,12 +319,12 @@ func scanInstance(row scanner) (api.Instance, error) {
 }
 
 func (s *Store) Instance(ctx context.Context, idOrName string) (api.Instance, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error FROM instances WHERE (id=? OR name=?) AND removed_at IS NULL`, idOrName, idOrName)
+	row := s.db.QueryRowContext(ctx, `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error,password_status FROM instances WHERE (id=? OR name=?) AND removed_at IS NULL`, idOrName, idOrName)
 	return scanInstance(row)
 }
 
 func (s *Store) InstanceAny(ctx context.Context, idOrName string) (api.Instance, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error FROM instances WHERE id=? OR name=?`, idOrName, idOrName)
+	row := s.db.QueryRowContext(ctx, `SELECT id,name,owner,template,image_digest,COALESCE(container_id,''),desired_state,observed_state,ready,infrastructure_ready,applications_restored,onboarding_required,ports_json,urls_json,created_at,updated_at,last_error,password_status FROM instances WHERE id=? OR name=?`, idOrName, idOrName)
 	return scanInstance(row)
 }
 

@@ -22,9 +22,10 @@ import (
 )
 
 type globalOptions struct {
-	profile string
-	json    bool
-	ca      string
+	instance string
+	profile  string
+	json     bool
+	ca       string
 }
 
 type remoteJobError struct {
@@ -110,6 +111,25 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	if (isWorkspaceCommand(command) || g.instance != "" && (command == "api" || command == "capabilities")) && profile.Kind == "runner" {
+		if g.instance == "" {
+			return errors.New("runner workspace commands require explicit --instance ID")
+		}
+		var selected struct {
+			Instance api.Instance `json:"instance"`
+		}
+		if _, err := client.JSON(ctx, "GET", api.RunnerAPI+"/instances/"+url.PathEscape(g.instance), nil, &selected, true, nil); err != nil {
+			return err
+		}
+		if command == "account" {
+			fmt.Fprintln(os.Stdout, selected.Instance.URLs["password_setup"])
+			return nil
+		}
+		client.InstanceID = selected.Instance.ID
+		profile.Kind = "workspace"
+	} else if g.instance != "" {
+		return errors.New("--instance is supported only for workspace commands through a runner profile")
+	}
 	switch command {
 	case "doctor":
 		return doctor(ctx, client, profile, g)
@@ -170,6 +190,12 @@ func parseGlobal(args []string) (globalOptions, string, []string, error) {
 		case "--json":
 			g.json = true
 			args = args[1:]
+		case "--instance":
+			if len(args) < 2 || args[1] == "" {
+				return g, "", nil, errors.New("--instance requires an ID")
+			}
+			g.instance = args[1]
+			args = args[2:]
 		case "--profile":
 			if len(args) < 2 {
 				return g, "", nil, errors.New("--profile requires a name")
@@ -192,7 +218,7 @@ func parseGlobal(args []string) (globalOptions, string, []string, error) {
 func usage(w io.Writer) {
 	fmt.Fprintln(w, `VibeStack client 0.2.0
 
-Usage: vibestack [--profile NAME] [--json] COMMAND [OPTIONS]
+Usage: vibestack [--profile NAME] [--instance ID] [--json] COMMAND [OPTIONS]
 
 Connection: connect, profiles, doctor, capabilities
 Work:       exec, shell, jobs, files, screenshot, apps, windows, clipboard
@@ -200,6 +226,11 @@ Workspace:  status, display, services, logs, setup, account, ssh-keys
 Runner:     instances, operations
 Agent:      skill, docs, api
 
+Trusted-tailnet brokers connect without pairing or a bearer credential.
+Workspace commands through a runner require --instance ID before COMMAND.
+instances password ID [--password-stdin] prompts privately by default.
+instances create supports --prompt-password or --password-stdin; provisions first.
+Passwords have no argument or environment-variable input.
 When more than one compatible profile exists, --profile is required.`)
 }
 
@@ -213,6 +244,9 @@ func selectedClient(g globalOptions, kind string) (api.Profile, *api.Client, err
 		ca = profile.CAFile
 	}
 	client, err := api.NewClient(profile.URL, profile.Credential, ca)
+	if err == nil {
+		client.AuthenticationMode = profile.AuthenticationMode
+	}
 	return profile, client, err
 }
 
@@ -249,7 +283,12 @@ func connect(ctx context.Context, args []string, g globalOptions) error {
 	}
 	credential := ""
 	clientID := ""
-	if *tokenStdin {
+	if discovery.AuthenticationMode == "trusted-tailnet" {
+		if *tokenStdin {
+			return errors.New("trusted-tailnet mode does not accept a stored token")
+		}
+		client.AuthenticationMode = discovery.AuthenticationMode
+	} else if *tokenStdin {
 		secret, readErr := io.ReadAll(io.LimitReader(os.Stdin, 1025))
 		if readErr != nil {
 			return readErr
@@ -310,12 +349,12 @@ func connect(ctx context.Context, args []string, g globalOptions) error {
 			time.Sleep(interval)
 		}
 	}
-	profilesFile.Profiles[*name] = api.Profile{Name: *name, URL: strings.TrimSuffix(*rawURL, "/"), Kind: discovery.Kind, Identity: discovery.Identity, Credential: credential, CAFile: g.ca, ClientID: clientID}
+	profilesFile.Profiles[*name] = api.Profile{AuthenticationMode: discovery.AuthenticationMode, Name: *name, URL: strings.TrimSuffix(*rawURL, "/"), Kind: discovery.Kind, Identity: discovery.Identity, Credential: credential, CAFile: g.ca, ClientID: clientID}
 	if err := api.SaveProfiles(profilesFile); err != nil {
 		return err
 	}
 	if g.json {
-		return printJSON(map[string]any{"profile": *name, "kind": discovery.Kind, "identity": discovery.Identity, "paired": !*tokenStdin})
+		return printJSON(map[string]any{"profile": *name, "kind": discovery.Kind, "identity": discovery.Identity, "authentication_mode": discovery.AuthenticationMode, "paired": !*tokenStdin && discovery.AuthenticationMode != "trusted-tailnet"})
 	}
 	fmt.Fprintf(os.Stdout, "Connected profile %q to %s %s.\n", *name, discovery.Kind, discovery.Identity)
 	return nil
@@ -383,6 +422,9 @@ func doctor(ctx context.Context, client *api.Client, profile api.Profile, g glob
 	discovery, err := client.Discover(ctx)
 	if err != nil {
 		return err
+	}
+	if discovery.AuthenticationMode != profile.AuthenticationMode && !(profile.AuthenticationMode == "" && discovery.AuthenticationMode == "paired") {
+		return errors.New("server authentication mode no longer matches profile; reconnect explicitly")
 	}
 	if discovery.Identity != profile.Identity {
 		return errors.New("server identity no longer matches the profile")
@@ -845,6 +887,9 @@ func instances(ctx context.Context, client *api.Client, profile api.Profile, arg
 		return jsonRequest(ctx, client, http.MethodGet, api.RunnerAPI+"/instances", nil, true, g)
 	}
 	action := args[0]
+	if action == "password" {
+		return instancePassword(ctx, client, args[1:], g)
+	}
 	if action == "inspect" && len(args) == 2 {
 		return jsonRequest(ctx, client, http.MethodGet, api.RunnerAPI+"/instances/"+url.PathEscape(args[1]), nil, true, g)
 	}
@@ -852,6 +897,8 @@ func instances(ctx context.Context, client *api.Client, profile api.Profile, arg
 		fs := flag.NewFlagSet("instances create", flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
 		name := fs.String("name", "", "instance name")
+		passwordStdin := fs.Bool("password-stdin", false, "read password privately from stdin after provisioning")
+		promptPassword := fs.Bool("prompt-password", false, "prompt privately with confirmation after provisioning")
 		template := fs.String("template", "", "approved template")
 		key := fs.String("idempotency-key", "", "retry key")
 		httpPort := fs.Int("http-port", 0, "requested loopback HTTP port")
@@ -863,7 +910,10 @@ func instances(ctx context.Context, client *api.Client, profile api.Profile, arg
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
 		}
-		if *name == "" || *template == "" || *key == "" {
+		if *passwordStdin && *promptPassword {
+			return errors.New("choose --password-stdin or --prompt-password")
+		}
+		if fs.NArg() != 0 || *name == "" || *template == "" || *key == "" {
 			return errors.New("instances create requires --name, --template, and --idempotency-key")
 		}
 		ports := map[string]int{}
@@ -884,6 +934,9 @@ func instances(ctx context.Context, client *api.Client, profile api.Profile, arg
 		}
 		if len(resources) != 0 {
 			body["resources"] = resources
+		}
+		if *passwordStdin || *promptPassword {
+			return createWithPassword(ctx, client, body, *key, *passwordStdin, g)
 		}
 		return jsonRequestHeaders(ctx, client, http.MethodPost, api.RunnerAPI+"/instances", body, true, g, map[string]string{"Idempotency-Key": *key})
 	}
@@ -920,7 +973,7 @@ func instances(ctx context.Context, client *api.Client, profile api.Profile, arg
 	if (action == "start" || action == "stop" || action == "restart" || action == "remove") && len(args) == 2 {
 		return jsonRequest(ctx, client, http.MethodPost, api.RunnerAPI+"/instances/"+url.PathEscape(args[1])+"/"+action, map[string]any{}, true, g)
 	}
-	return errors.New("instances supports list, inspect, create, update, start, stop, restart, or remove")
+	return errors.New("instances supports list, inspect, create, password, update, start, stop, restart, or remove")
 }
 
 func operations(ctx context.Context, client *api.Client, profile api.Profile, args []string, g globalOptions) error {

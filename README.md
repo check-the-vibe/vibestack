@@ -9,7 +9,7 @@ from any browser:
 - **Desktop** at `/` — the default workspace, with Apps and Settings sidebars.
 - **Automation** at `/api/v1/automation` — bearer-authenticated desktop, command,
   application, window, project/file, SSH-key, screenshot, and clipboard operations for agents.
-- **Browser editor** at `/editor/` — optional code-server rooted at `/projects`.
+- **Browser editor** at `/editor/` — required, preinstalled code-server rooted at `/projects`.
 - **Agent CLI** — a compiled Linux/macOS client with named profiles, device
   pairing, byte-safe project workflows, and stable JSON output.
 - **Host runner** — a separate Linux service for approved-image, multi-instance
@@ -27,20 +27,20 @@ cover the desktop. Settings controls connection and display preferences; Tools
 exposes service health, bounded logs and safe restart actions through a small
 local API.
 
-The base image is about 1 GB: the desktop, browser interfaces, automation
-runtime, and nothing else. Coding agents, browsers and editors are installed
-on first boot, by you, from a catalog. The full specification is in
-[docs/SPEC.md](docs/SPEC.md).
+The base image includes the desktop, browser interfaces, automation runtime,
+and core code editor. Optional coding agents, browsers and other applications
+are installed by you from a catalog. The full specification is in
+[docs/SPEC.md](docs/SPEC.md). For the kernel, Ubuntu/XFCE choices, and practical
+recipes to query and drive the desktop, read
+[Operating system and desktop automation](docs/OS-AND-DESKTOP-AUTOMATION.md).
+See the [desktop performance and base-system study](docs/research/desktop-performance-and-base-system.md)
+for live measurements and the VNC replacement experiment.
+The [automation library comparison](docs/research/desktop-automation-frameworks.md)
+evaluates Python, Go, Rust and TypeScript options for future desktop and MCP
+capabilities against the current specification.
 
 ## Run
 
-```bash
-./startup.sh                     # build and run on 127.0.0.1:8080
-./startup.sh --port 9090         # different host port
-./startup.sh --bind 0.0.0.0      # explicit direct LAN exposure
-./startup.sh --data ~/vibestack  # where logins and your setup choice persist
-./startup.sh --data ~/vibestack --adopt-data  # one-time use for existing state
-./startup.sh --projects ~/code   # mounted at /projects
 ### GitHub Codespaces
 
 [Open in GitHub Codespaces](https://codespaces.new/check-the-vibe/vibestack)
@@ -55,6 +55,13 @@ rebuilding, private credential-directory permissions and troubleshooting.
 
 ### Local Docker
 
+```bash
+./startup.sh                     # build and run on 127.0.0.1:8080
+./startup.sh --port 9090         # different host port
+./startup.sh --bind 0.0.0.0      # explicit direct LAN exposure
+./startup.sh --data ~/vibestack  # where logins and your setup choice persist
+./startup.sh --data ~/vibestack --adopt-data  # one-time use for existing state
+./startup.sh --projects ~/code   # mounted at /projects
 ./startup.sh --ssh-port 2222     # password/key SSH, loopback only (0 disables)
 ./startup.sh --vnc-port 5900     # full-password native VNC (0 disables)
 ./startup.sh --allowed-host workspace.example.test  # explicit custom Host allowlist
@@ -542,3 +549,16 @@ locally when standalone uses a different private HTTPS origin. URL credentials,
 paths, queries, fragments and arbitrary environment variables are never drawn.
 No startup terminal or automatic shell banner is opened. `vibestack-welcome`
 remains available as an explicit compatibility command.
+
+## Shared broker access
+
+The runner supports default `paired` and explicit `trusted-tailnet` modes.
+Trusted mode grants every reachable caller shared control of all managed
+desktops and storage, without pairing. Remote MCP is at `/mcp`; the harness
+itself needs tailnet connectivity. Use `--profile NAME --instance ID` for
+workspace commands through the broker. `instances password ID` prompts privately;
+`--password-stdin` is explicit. Create optionally accepts `--prompt-password`
+or `--password-stdin`, applying the password only after provisioning. Linux
+passwords are per-desktop and do not gate browser access. SSH/native VNC remain
+host-local. Go 1.25 is required, CI uses Go 1.26.x and MCP SDK v1.7.0.
+See [shared access, password, MCP and rollout contract](docs/RUNNER.md#shared-tailnet-broker-and-remote-mcp).

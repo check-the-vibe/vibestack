@@ -2,7 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "VibeStack runner API",
-    "version": "1.1.0"
+    "version": "1.2.0",
+    "description": "Paired mode requires bearer and owner isolation. Explicit trusted-tailnet mode grants all reachable callers the shared principal without credentials. Discover authentication_mode; switching requires an empty registry."
   },
   "components": {
     "securitySchemes": {
@@ -49,7 +50,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -64,7 +66,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -77,7 +80,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "parameters": [
           {
@@ -188,7 +192,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -203,7 +208,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "202": {
@@ -218,7 +224,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "parameters": [
           {
@@ -244,7 +251,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -259,7 +267,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -274,7 +283,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -298,7 +308,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -320,7 +331,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "201": {
@@ -363,7 +375,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -385,7 +398,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "201": {
@@ -436,7 +450,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -460,7 +475,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "200": {
@@ -538,7 +554,8 @@
         "security": [
           {
             "clientBearer": []
-          }
+          },
+          {}
         ],
         "responses": {
           "202": {
@@ -592,6 +609,94 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/runner/instances/{id}/password": {
+      "post": {
+        "operationId": "setInstancePassword",
+        "description": "Synchronous fixed-root-helper stdin change for a running healthy desktop. Never automatically retry interrupted requests. No durable plaintext.",
+        "security": [
+          {
+            "clientBearer": []
+          },
+          {}
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "At most 2048 bytes; password 12\u2013256 UTF-8 bytes, no controls or whitespace-only input.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "writeOnly": true,
+                    "maxLength": 256,
+                    "description": "12\u2013256 UTF-8 bytes, excluding control characters and whitespace-only values; length is measured in bytes, not JSON Schema code points."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated instance and password status; no secret."
+          },
+          "400": {
+            "description": "Invalid policy/body."
+          },
+          "409": {
+            "description": "Desktop stopped, unhealthy or busy."
+          },
+          "413": {
+            "description": "Body too large."
+          },
+          "502": {
+            "description": "Helper failed or completion uncertain."
+          }
+        }
+      }
+    },
+    "/mcp": {
+      "post": {
+        "operationId": "runnerMCP",
+        "description": "Stateless Streamable HTTP JSON-RPC with typed tools; no password tool. Same authentication and source boundary as REST.",
+        "security": [
+          {
+            "clientBearer": []
+          },
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "MCP JSON response"
+          },
+          "202": {
+            "description": "Notification accepted"
+          },
+          "403": {
+            "description": "Origin rejected"
+          },
+          "413": {
+            "description": "Request exceeds 1 MiB"
+          }
+        }
       }
     }
   }

@@ -334,9 +334,10 @@ func (m *Manager) RefreshInstance(ctx context.Context, instance api.Instance) ap
 	}
 	_ = m.Store.UpdateInstanceObserved(ctx, instance.ID, instance.ContainerID, instance.DesiredState, observed, ready, instance.LastError)
 	if ready {
-		restored, onboarding, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
+		restored, onboarding, password, err := m.waitWorkspaceReadiness(ctx, instance.Ports["http"])
 		if err == nil {
 			_ = m.Store.UpdateInstanceReadiness(ctx, instance.ID, restored, onboarding)
+			_, _ = m.Store.db.ExecContext(ctx, `UPDATE instances SET password_status=? WHERE id=?`, password, instance.ID)
 		}
 	}
 	if value, err := m.Store.Instance(ctx, instance.ID); err == nil {
