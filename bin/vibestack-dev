@@ -50,6 +50,8 @@ run_fast_tests() {
     node --check desktop/navigation.js
     node --check desktop/walkthrough.js
     node --check setup/app.js
+    node --check web/public/auth.js
+    node --check web/public/connect.js
     node --test tests/walkthrough-privacy.test.mjs
     python3 -m py_compile \
       automation/automationlib.py automation/server.py automation/sshkeys.py \
@@ -202,7 +204,13 @@ run_acceptance() (
 
   start_acceptance_container
   wait_for_health "$acceptance_container"
+  docker exec -u vibe "$acceptance_container" vibestack-service credential create \
+    --label disposable-acceptance --owner --expires-in 4h \
+    --output /data/vibestack/acceptance-owner.token
   docker exec -u vibe "$acceptance_container" vibestack-check --display --restart --automation
+  docker cp "$REPO_ROOT/tests/runtime_service_check.py" \
+    "$acceptance_container:/tmp/vibestack-runtime-service-check.py"
+  docker exec "$acceptance_container" python3 /tmp/vibestack-runtime-service-check.py
   [[ "$(docker exec "$acceptance_container" /usr/bin/stat -c '%u:%g' \
       /projects/ownership-sentinel)" == "$project_owner" ]] || {
     echo "acceptance failed: the /projects sentinel ownership changed" >&2
@@ -256,8 +264,12 @@ run_acceptance() (
     < "$acceptance_password_file"
   docker exec -u vibe "$acceptance_container" vibestack-check --live
 
+  docker cp "$acceptance_container:/data/vibestack/acceptance-owner.token" \
+    "$acceptance_password_dir/browser.token"
+  chmod 0600 "$acceptance_password_dir/browser.token"
   (cd "$REPO_ROOT" && \
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1 npm run test:browser)
 )
 
@@ -300,7 +312,7 @@ case "$command_name" in
   status)
     require docker
     docker ps -a --filter "name=^/${CONTAINER_NAME}$" --format '{{.Names}} {{.Status}} {{.Image}} {{.Ports}}'
-    curl -fsS "http://127.0.0.1:${HOST_PORT}/api/v1/status" || true
+    docker exec -u vibe "$CONTAINER_NAME" vibestack-check --live || true
     echo
     if command -v tailscale >/dev/null 2>&1; then
       tailscale serve status || true
@@ -328,7 +340,7 @@ case "$command_name" in
       exit 2
     }
     expected_proxy="http://127.0.0.1:${HOST_PORT}"
-    curl -fsS "${expected_proxy}/api/v1/status" >/dev/null || {
+    curl -fsS "${expected_proxy}/healthz" >/dev/null || {
       echo "VibeStack is not healthy at ${expected_proxy}; Serve was not changed" >&2
       exit 1
     }

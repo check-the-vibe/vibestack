@@ -3,8 +3,9 @@
 This is the implementation contract for VST-005 through VST-016, agreed in
 [VST-008](../../.context/tickets/VST-008.md). It does not advertise endpoints as
 deployed. The [source inventory](../../contracts/capability-inventory-v1.json)
-records the existing 43 workspace and 21 optional host operations, including
-12 setup operations absent from the published OpenAPI. Its `current` mappings
+records the baseline 43 workspace and 21 optional host operations, including
+12 setup operations absent from the published OpenAPI, plus service transport
+routes added during implementation. Its `current` mappings
 describe source support; `target` describes the migration. An HTTP operation in
 the web column is not evidence of a dedicated browser control or a live test.
 

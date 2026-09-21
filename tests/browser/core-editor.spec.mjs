@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures.mjs';
 
 test('the built-in editor serves its real workbench and is absent from Apps',async({page,request})=>{
   const status=await request.get('/api/v1/status');

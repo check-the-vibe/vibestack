@@ -59,6 +59,10 @@ const NOVNC_ASSETS = [
   '/novnc/vendor/pako/lib/zlib/zstream.js',
 ];
 const SHELL_ASSETS = [
+  '/auth.js',
+  '/connect.html',
+  '/connect.js',
+  '/connect.css',
   '/',
   '/vnc/',
   '/vnc/index.html',

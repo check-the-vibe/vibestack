@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.mjs';
 
 const FAKE_RFB_MODULE = `
 export default class FakeRFB extends EventTarget {

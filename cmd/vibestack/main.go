@@ -842,17 +842,17 @@ func control(ctx context.Context, client *api.Client, profile api.Profile, comma
 	}
 	switch command {
 	case "status":
-		return jsonRequest(ctx, client, http.MethodGet, "/api/v1/status", nil, false, g)
+		return jsonRequest(ctx, client, http.MethodGet, "/api/v1/status", nil, true, g)
 	case "display":
 		if len(args) == 0 || args[0] == "get" {
-			return jsonRequest(ctx, client, http.MethodGet, "/api/v1/display", nil, false, g)
+			return jsonRequest(ctx, client, http.MethodGet, "/api/v1/display", nil, true, g)
 		}
 		if len(args) == 2 && args[0] == "set" {
-			return jsonRequest(ctx, client, http.MethodPut, "/api/v1/display", map[string]string{"resolution": args[1]}, false, g)
+			return jsonRequest(ctx, client, http.MethodPut, "/api/v1/display", map[string]string{"resolution": args[1]}, true, g)
 		}
 	case "services":
 		if len(args) == 2 && (args[0] == "start" || args[0] == "stop" || args[0] == "restart") {
-			return jsonRequest(ctx, client, http.MethodPost, "/api/v1/services/"+url.PathEscape(args[1])+"/"+args[0], map[string]any{}, false, g)
+			return jsonRequest(ctx, client, http.MethodPost, "/api/v1/services/"+url.PathEscape(args[1])+"/"+args[0], map[string]any{}, true, g)
 		}
 	case "logs":
 		if len(args) >= 1 {
@@ -860,7 +860,7 @@ func control(ctx context.Context, client *api.Client, profile api.Profile, comma
 			if len(args) == 2 {
 				endpoint += "?cursor=" + url.QueryEscape(args[1])
 			}
-			return jsonRequest(ctx, client, http.MethodGet, endpoint, nil, false, g)
+			return jsonRequest(ctx, client, http.MethodGet, endpoint, nil, true, g)
 		}
 	}
 	return fmt.Errorf("invalid %s command", command)

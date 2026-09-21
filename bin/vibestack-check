@@ -108,10 +108,12 @@ check "AC-41 cross-site setup rejected" bash -c '[[ $(curl -s -o /dev/null -w "%
 check "AC-44 direct websockify missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary
 check "AC-44 direct websockify wrong proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary wrong
 check "AC-44 direct ttyd missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:7681/ws tty
-for p in /ui/ /admin/ /mcp; do
+for p in /ui/ /admin/; do
   check "AC-5 $p is 404" bash -c "[[ \$(curl -s -o /dev/null -w '%{http_code}' http://localhost$p) == 404 ]]"
 done
 
+check "service APIs require authentication" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/status) == 401 && $(curl -s -o /dev/null -w "%{http_code}" http://localhost/mcp) == 401 ]]'
+check "published file is served" bash -c 'curl -fs http://localhost/status.txt | grep -q "published files"'
 echo "== Desktop automation API"
 if $DO_AUTOMATION; then
   check "AC-33 through AC-39 full automation" vibestack-automation-check --mutating
@@ -119,28 +121,40 @@ else
   check "AC-33 through AC-39 automation surface" vibestack-automation-check
 fi
 
+
+# Keep the existing local token in a pipe, not in curl argv or the environment.
+auth_curl() {
+  command curl --header @<(python3 -c '
+from pathlib import Path
+value=Path("/data/vibestack/automation.token").read_text().strip()
+assert 32 <= len(value) <= 512 and not any(c.isspace() for c in value)
+print("Authorization: Bearer " + value)
+') "$@"
+}
+export -f auth_curl
+
 echo "== Desktop control API"
-check "AC-11 status contract" bash -c 'curl -fs http://localhost/api/v1/status | python3 -c "
+check "AC-11 status contract" bash -c 'auth_curl -fs http://localhost/api/v1/status | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 assert d[\"apiVersion\"] == \"1\"
 assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"terminal\",\"setup\",\"ssh\",\"native-vnc\",\"editor\"}
 assert {\"uptimeSeconds\",\"disk\",\"display\"} <= set(d)
 "'
-check "AC-11 API no-store" bash -c 'curl -s -D - -o /dev/null http://localhost/api/v1/status | grep -qi "^cache-control: no-store"'
-check "AC-16 bounded logs" bash -c 'curl -fs "http://localhost/api/v1/logs/vnc?limit=2" | python3 -c "
+check "AC-11 API no-store" bash -c 'auth_curl -s -D - -o /dev/null http://localhost/api/v1/status | grep -qi "^cache-control: no-store"'
+check "AC-16 bounded logs" bash -c 'auth_curl -fs "http://localhost/api/v1/logs/vnc?limit=2" | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 assert d[\"service\"] == \"vnc\" and len(d[\"lines\"]) <= 2
 assert isinstance(d[\"nextCursor\"], int) and isinstance(d[\"reset\"], bool)
 "'
-check "AC-13 unknown service rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/logs/nginx) == 404 ]]'
-check "AC-14 cross-origin mutation rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://example.invalid" --data "{}" http://localhost/api/v1/services/vnc/restart) == 403 ]]'
-check "AC-17 out-of-bounds resolution rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X PUT -H "Content-Type: application/json" --data "{\"resolution\":\"632x480\"}" http://localhost/api/v1/display) == 400 ]]'
+check "AC-13 unknown service rejected" bash -c '[[ $(auth_curl -s -o /dev/null -w "%{http_code}" http://localhost/api/v1/logs/nginx) == 404 ]]'
+check "AC-14 cross-origin mutation rejected" bash -c '[[ $(auth_curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: https://example.invalid" --data "{}" http://localhost/api/v1/services/vnc/restart) == 403 ]]'
+check "AC-17 out-of-bounds resolution rejected" bash -c '[[ $(auth_curl -s -o /dev/null -w "%{http_code}" -X PUT -H "Content-Type: application/json" --data "{\"resolution\":\"632x480\"}" http://localhost/api/v1/display) == 400 ]]'
 
 restart_service() {
   local service="$1" response
-  response="$(curl -fs -X POST -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data '{}' "http://localhost/api/v1/services/${service}/restart")" || return 1
+  response="$(auth_curl -fs -X POST -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data '{}' "http://localhost/api/v1/services/${service}/restart")" || return 1
   python3 -c 'import json,sys; expected=sys.argv[1]; data=json.load(sys.stdin); assert data["service"] == expected and data["state"] == "RUNNING" and data["restarted"] is True' "$service" <<<"$response"
 }
 
@@ -152,12 +166,12 @@ fi
 
 set_resolution() {
   local mode="$1" response
-  response="$(curl -fs -X PUT -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data "{\"resolution\":\"${mode}\"}" http://localhost/api/v1/display)" || return 1
+  response="$(auth_curl -fs -X PUT -H 'Content-Type: application/json' -H 'Origin: http://localhost' --data "{\"resolution\":\"${mode}\"}" http://localhost/api/v1/display)" || return 1
   python3 -c 'import json,sys; expected=sys.argv[1]; assert json.load(sys.stdin)["resolution"] == expected' "$mode" <<<"$response"
 }
 
 if $DO_DISPLAY; then
-  initial_resolution="$(curl -fs http://localhost/api/v1/display | python3 -c 'import json,sys; print(json.load(sys.stdin)["resolution"])')"
+  initial_resolution="$(auth_curl -fs http://localhost/api/v1/display | python3 -c 'import json,sys; print(json.load(sys.stdin)["resolution"])')"
   for mode in 1280x800 1368x768 1440x900 1600x900 1600x1200 1920x1200; do
     check "AC-17 display ${mode}" set_resolution "$mode"
   done
@@ -186,7 +200,7 @@ echo "== Setup service"
 check "AC-23 supervisor program"  bash -c 'supervisorctl -c /etc/supervisor/supervisord.conf status vibestack-setup 2>/dev/null | grep -q RUNNING || pgrep -f "vibestack/server.py" >/dev/null'
 check "AC-23 wizard served"       bash -c 'curl -fs "http://localhost/setup/?force=1" | grep -q "VibeStack"'
 check "AC-23 assets served"       bash -c 'curl -fs http://localhost/setup/style.css >/dev/null && curl -fs http://localhost/setup/app.js >/dev/null'
-check "AC-23 state api"           bash -c 'curl -fs http://localhost/setup/api/state | python3 -c "
+check "AC-23 state api"           bash -c 'auth_curl -fs http://localhost/setup/api/state | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 assert d[\"catalog\"][\"components\"], \"no components\"
@@ -199,7 +213,7 @@ assert isinstance(d[\"authentication\"][\"password_configured\"], bool)
 assert d[\"authentication\"][\"sudo_password_required\"] is True
 "'
 check "AC-47 password status agrees with root helper" bash -c '
-api=$(curl -fs http://localhost/setup/api/state)
+api=$(auth_curl -fs http://localhost/setup/api/state)
 helper=$(sudo -n /usr/local/bin/vibestack-password status)
 python3 -c "import json,sys; api=json.loads(sys.argv[1]); helper=json.loads(sys.argv[2]); assert api[\"authentication\"][\"password_configured\"] == helper[\"password_configured\"]" "$api" "$helper"
 '
@@ -339,7 +353,7 @@ if $DO_INSTALL; then
   check "AC-30 probe flips"     bash -c 'command -v geany && command -v meld'
   check "AC-30 difftool set"    bash -c '[[ $(git config --global diff.tool) == meld ]]'
   check "AC-30 shortcut added"  test -x ~/Desktop/geany.desktop
-  check "AC-30 state records it" bash -c 'curl -fs http://localhost/setup/api/state | grep -q editors'
+  check "AC-30 state records it" bash -c 'auth_curl -fs http://localhost/setup/api/state | grep -q editors'
 fi
 
 echo "== Auto-restore"

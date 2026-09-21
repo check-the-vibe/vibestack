@@ -432,11 +432,15 @@ class InfrastructureContractTests(unittest.TestCase):
             self.assertIn(value, automation)
 
         nginx = read("nginx.conf")
-        self.assertIn("location = /api/v1/automation", nginx)
-        self.assertIn("location ^~ /api/v1/automation/", nginx)
-        self.assertIn("client_max_body_size 16m", nginx)
-        self.assertIn("proxy_pass http://127.0.0.1:7997;", nginx)
-        self.assertIn("proxy_set_header Authorization $http_authorization", nginx)
+        self.assertIn("location ^~ /api/", nginx)
+        self.assertIn("location ^~ /setup/api/", nginx)
+        self.assertIn("client_max_body_size 24m", nginx)
+        self.assertIn("proxy_pass http://127.0.0.1:7996;", nginx)
+        self.assertNotIn("proxy_pass http://127.0.0.1:7997", nginx)
+        self.assertNotIn("proxy_pass http://127.0.0.1:7998", nginx)
+        service = supervisor_section(supervisor, "program:vibestack-service")
+        self.assertIn("user=vibe", service)
+        self.assertIn("umask=0077", service)
         self.assertIn("proxy_set_header X-Request-ID $request_id", nginx)
 
     def test_access_log_is_json_metadata_without_secrets_or_query_strings(self) -> None:

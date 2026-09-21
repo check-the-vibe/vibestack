@@ -12,7 +12,8 @@ export default defineConfig({
   use: {
     baseURL,
     serviceWorkers: "allow",
-    trace: "retain-on-failure",
+    // An authenticated trace can contain session cookies and credentials.
+    trace: process.env.VIBESTACK_BROWSER_CREDENTIAL_FILE ? "off" : "retain-on-failure",
     screenshot: "only-on-failure"
   },
   projects: [

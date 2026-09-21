@@ -1,38 +1,586 @@
 {
   "openapi": "3.1.0",
-  "info": {"title": "VibeStack workspace API", "version": "1.1.0"},
-  "servers": [{"url": "/"}],
+  "info": {
+    "title": "VibeStack workspace API",
+    "version": "1.1.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
   "components": {
-    "securitySchemes": {"clientBearer": {"type": "http", "scheme": "bearer"}},
+    "securitySchemes": {
+      "clientBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
     "schemas": {
-      "Error": {"type": "object", "required": ["code", "message", "request_id"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "request_id": {"type": "string"}}},
-      "Command": {"type": "object", "required": ["argv"], "properties": {"argv": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 256}, "root": {"enum": ["desktop", "projects"], "default": "desktop"}, "cwd": {"type": "string"}, "env": {"type": "object"}, "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300}}}
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        }
+      },
+      "Command": {
+        "type": "object",
+        "required": [
+          "argv"
+        ],
+        "properties": {
+          "argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 256
+          },
+          "root": {
+            "enum": [
+              "desktop",
+              "projects"
+            ],
+            "default": "desktop"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "env": {
+            "type": "object"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300
+          }
+        }
+      }
     }
   },
   "paths": {
-    "/api/v1/diagnostics/events": {"post": {"operationId": "recordWorkspaceDiagnostic", "description": "Opt-in, bounded metadata-only browser events. Private-network and same-origin checks; no bearer credential required. No read endpoint. Raw text and unknown fields rejected.", "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["session", "seq", "kind", "page"]}}}}, "responses": {"202": {"description": "Accepted metadata"}, "400": {"description": "Invalid diagnostic schema"}, "403": {"description": "Cross-origin request rejected"}, "429": {"description": "Rate limited"}}}},
-    "/.well-known/vibestack": {"get": {"operationId": "discoverWorkspace", "responses": {"200": {"description": "Server kind, stable identity, versions, relative API roots, docs, and pairing; never credentials or inventory."}}}},
-    "/api/v1/automation": {"get": {"operationId": "workspaceCapabilities", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Live routes, limits, roots, and allowlists."}}}},
-    "/api/v1/automation/pairing/requests": {"post": {"operationId": "requestWorkspacePairing", "responses": {"201": {"description": "Short verification code plus separate high-entropy polling secret."}}}},
-    "/api/v1/automation/pairing/requests/{id}/poll": {"post": {"operationId": "pollWorkspacePairing", "parameters": [{"in": "path", "name": "id", "required": true, "schema": {"type": "string"}}], "responses": {"200": {"description": "Pending status or one-time client credential."}}}},
-    "/api/v1/automation/commands": {"post": {"operationId": "submitArgvCommand", "security": [{"clientBearer": []}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Command"}}}}, "responses": {"202": {"description": "Durable command job."}}}},
-    "/api/v1/automation/shell": {"post": {"operationId": "submitShellCommand", "security": [{"clientBearer": []}], "responses": {"202": {"description": "Intentional bash job."}}}},
-    "/api/v1/automation/jobs/{id}": {"get": {"operationId": "getWorkspaceJob", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Job metadata."}}}},
-    "/api/v1/automation/jobs/{id}/output": {"get": {"operationId": "getWorkspaceJobOutput", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Paged base64 bytes."}}}},
-    "/api/v1/automation/jobs/{id}/cancel": {"post": {"operationId": "cancelWorkspaceJob", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Job state."}}}},
-    "/api/v1/automation/screenshot": {"post": {"operationId": "captureWorkspaceScreenshot", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Raw PNG."}, "201": {"description": "Stored Desktop PNG metadata."}}}},
-    "/api/v1/automation/applications": {"get": {"operationId": "listWorkspaceApplications", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Allowlisted applications."}}}},
-    "/api/v1/automation/applications/{id}/{operation}": {"post": {"operationId": "operateWorkspaceApplication", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Application state."}}}},
-    "/api/v1/automation/windows": {"get": {"operationId": "listWorkspaceWindows", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Ephemeral window IDs."}}}},
-    "/api/v1/automation/windows/{id}/state": {"post": {"operationId": "setWorkspaceWindowState", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Window state."}}}},
-    "/api/v1/automation/clipboard": {"get": {"operationId": "readWorkspaceClipboard", "security": [{"clientBearer": []}], "responses": {"200": {"description": "UTF-8 bytes."}}}, "put": {"operationId": "writeWorkspaceClipboard", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Clipboard metadata."}}}},
-    "/api/v1/automation/files/{path}": {"get": {"operationId": "readDesktopFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Raw Desktop file bytes."}}}, "head": {"operationId": "headDesktopFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Desktop file metadata."}}}, "put": {"operationId": "writeDesktopFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Updated file."}, "201": {"description": "Created file."}}}},
-    "/api/v1/automation/projects/{path}": {"get": {"operationId": "readProjectFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Raw project file bytes."}}}, "head": {"operationId": "headProjectFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Project file metadata."}}}, "put": {"operationId": "writeProjectFile", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Updated file."}, "201": {"description": "Created file."}}}},
-    "/api/v1/automation/ssh-keys": {"get": {"operationId": "listWorkspaceSSHKeys", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Public-key fingerprints only."}}}, "post": {"operationId": "addWorkspaceSSHKey", "security": [{"clientBearer": []}], "responses": {"201": {"description": "Public key metadata."}}}},
-    "/api/v1/automation/ssh-keys/{id}/remove": {"post": {"operationId": "removeWorkspaceSSHKey", "security": [{"clientBearer": []}], "responses": {"200": {"description": "Removed key ID."}}}},
-    "/api/v1/status": {"get": {"operationId": "workspaceStatus", "responses": {"200": {"description": "Same-origin workspace status."}}}},
-    "/api/v1/display": {"get": {"operationId": "getWorkspaceDisplay", "responses": {"200": {"description": "Display state."}}}, "put": {"operationId": "setWorkspaceDisplay", "responses": {"200": {"description": "Updated display."}}}},
-    "/api/v1/services/{service}/{operation}": {"post": {"operationId": "operateWorkspaceService", "responses": {"200": {"description": "Start, stop, or restart an allowlisted service."}}}},
-    "/api/v1/logs/{service}": {"get": {"operationId": "readWorkspaceServiceLog", "responses": {"200": {"description": "Bounded sanitized log page."}}}}
-  }
+    "/api/v1/diagnostics/events": {
+      "post": {
+        "operationId": "recordWorkspaceDiagnostic",
+        "description": "Opt-in, bounded metadata-only browser events. Workspace credential or authenticated session with CSRF required. Raw text and unknown fields rejected.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "session",
+                  "seq",
+                  "kind",
+                  "page"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted metadata"
+          },
+          "400": {
+            "description": "Invalid diagnostic schema"
+          },
+          "403": {
+            "description": "Cross-origin request rejected"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      }
+    },
+    "/.well-known/vibestack": {
+      "get": {
+        "operationId": "discoverWorkspace",
+        "responses": {
+          "200": {
+            "description": "Sanitized service identity, versions, origin and auth/document links; no private inventory."
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/automation": {
+      "get": {
+        "operationId": "workspaceCapabilities",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live routes, limits, roots, and allowlists."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/pairing/requests": {
+      "post": {
+        "operationId": "requestWorkspacePairing",
+        "responses": {
+          "201": {
+            "description": "Short verification code plus separate high-entropy polling secret."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "description": "Compatibility path requiring an authenticated owner; anonymous pairing is disabled."
+      }
+    },
+    "/api/v1/automation/pairing/requests/{id}/poll": {
+      "post": {
+        "operationId": "pollWorkspacePairing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending status or one-time client credential."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "description": "Compatibility path requiring an authenticated owner; anonymous pairing is disabled."
+      }
+    },
+    "/api/v1/automation/commands": {
+      "post": {
+        "operationId": "submitArgvCommand",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durable command job."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/shell": {
+      "post": {
+        "operationId": "submitShellCommand",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Intentional bash job."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/jobs/{id}": {
+      "get": {
+        "operationId": "getWorkspaceJob",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job metadata."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/jobs/{id}/output": {
+      "get": {
+        "operationId": "getWorkspaceJobOutput",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paged base64 bytes."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/jobs/{id}/cancel": {
+      "post": {
+        "operationId": "cancelWorkspaceJob",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job state."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/screenshot": {
+      "post": {
+        "operationId": "captureWorkspaceScreenshot",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw PNG."
+          },
+          "201": {
+            "description": "Stored Desktop PNG metadata."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/applications": {
+      "get": {
+        "operationId": "listWorkspaceApplications",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Allowlisted applications."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/applications/{id}/{operation}": {
+      "post": {
+        "operationId": "operateWorkspaceApplication",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application state."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/windows": {
+      "get": {
+        "operationId": "listWorkspaceWindows",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ephemeral window IDs."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/windows/{id}/state": {
+      "post": {
+        "operationId": "setWorkspaceWindowState",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Window state."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/clipboard": {
+      "get": {
+        "operationId": "readWorkspaceClipboard",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 bytes."
+          }
+        }
+      },
+      "put": {
+        "operationId": "writeWorkspaceClipboard",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clipboard metadata."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/files/{path}": {
+      "get": {
+        "operationId": "readDesktopFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw Desktop file bytes."
+          }
+        }
+      },
+      "head": {
+        "operationId": "headDesktopFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Desktop file metadata."
+          }
+        }
+      },
+      "put": {
+        "operationId": "writeDesktopFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated file."
+          },
+          "201": {
+            "description": "Created file."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/projects/{path}": {
+      "get": {
+        "operationId": "readProjectFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw project file bytes."
+          }
+        }
+      },
+      "head": {
+        "operationId": "headProjectFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project file metadata."
+          }
+        }
+      },
+      "put": {
+        "operationId": "writeProjectFile",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated file."
+          },
+          "201": {
+            "description": "Created file."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/ssh-keys": {
+      "get": {
+        "operationId": "listWorkspaceSSHKeys",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public-key fingerprints only."
+          }
+        }
+      },
+      "post": {
+        "operationId": "addWorkspaceSSHKey",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Public key metadata."
+          }
+        }
+      }
+    },
+    "/api/v1/automation/ssh-keys/{id}/remove": {
+      "post": {
+        "operationId": "removeWorkspaceSSHKey",
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed key ID."
+          }
+        }
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "operationId": "workspaceStatus",
+        "responses": {
+          "200": {
+            "description": "Same-origin workspace status."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/display": {
+      "get": {
+        "operationId": "getWorkspaceDisplay",
+        "responses": {
+          "200": {
+            "description": "Display state."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "setWorkspaceDisplay",
+        "responses": {
+          "200": {
+            "description": "Updated display."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/services/{service}/{operation}": {
+      "post": {
+        "operationId": "operateWorkspaceService",
+        "responses": {
+          "200": {
+            "description": "Start, stop, or restart an allowlisted service."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/logs/{service}": {
+      "get": {
+        "operationId": "readWorkspaceServiceLog",
+        "responses": {
+          "200": {
+            "description": "Bounded sanitized log page."
+          }
+        },
+        "security": [
+          {
+            "clientBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "clientBearer": []
+    }
+  ]
 }

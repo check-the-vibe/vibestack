@@ -8,6 +8,12 @@ tailnet. It is packaged at `/usr/share/doc/vibestack/AGENTS.md` and served at
 exact automation schemas, limits, and longer examples are at
 `/usr/share/doc/vibestack/AUTOMATION.md` and `/AUTOMATION.md`.
 
+All API/setup operations now pass through the workspace service. Read
+`/SERVICE.md` for local credential creation, browser sign-in, expiry/revocation
+and CLI migration. Browser users connect at `/connect.html`; agents use protected
+credential files or their CLI profile. Never request a credential in chat. The
+direct workspace MCP adapter is not enabled by this foundation yet.
+
 ## Trust boundary
 
 - Treat the entire web workspace as an administrative, single-user surface.
@@ -20,11 +26,11 @@ exact automation schemas, limits, and longer examples are at
   repository-directory name); other projects remain under `/projects`. Source
   edits affect the outer editor immediately. No outer credentials or Docker
   socket are injected; run authenticated Git operations in the Codespaces editor.
-- `/setup/`, `/terminal/`, `/vnc/`, and the small desktop-control API rely on
-  that loopback/tailnet boundary. The automation API additionally requires a
-  paired client credential or compatible legacy token, but authentication does
-  not make the other routes safe to publish.
-- `/setup/` can set or replace the `vibe` Linux password without the old value.
+- The legacy `/setup/` UI, `/terminal/` and `/vnc/` rely on the private boundary.
+  Every API/setup operation also requires a workspace credential or browser
+  session; browser mutations need CSRF protection. Existing paired credentials
+  and legacy automation tokens retain workspace authority. Keep the port private.
+- An authenticated owner can set or replace the `vibe` Linux password without the old value.
   Do this only when the user explicitly asks. Never collect a password in an
   agent prompt, command argument, file, clipboard, screenshot, or log.
 - Any automation credential has the full authority of `vibe`, including shell

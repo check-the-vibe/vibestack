@@ -25,8 +25,12 @@ directory name). Commands targeting it use `root: projects`, `cwd: vibestack`;
 Git authentication remains in the outer Codespace. File API ownership, no-follow
 and filesystem checks still apply to this tree; do not relax them for a mount.
 
-The pairing request and poll endpoints are the only unauthenticated bootstrap
-routes. Every other request below `/api/v1/automation` requires:
+Every API/setup operation now passes through the workspace service. Pairing
+compatibility paths require an authenticated owner; anonymous issuance is disabled.
+See `/SERVICE.md` (or [the source guide](SERVICE.md)) for local credential issuance,
+browser sessions and the old CLI control-command migration. Existing paired and
+legacy automation credentials remain usable for workspace operations. Requests
+below `/api/v1/automation` require:
 
 ```text
 Authorization: Bearer <automation-token>

@@ -16,6 +16,13 @@ from any browser:
   Docker lifecycle; it has an authenticated API and local admin CLI, not a dashboard.
 - **Agent guide** at `/AGENTS.md` — version-matched operating instructions for
   authorized local and tailnet agents; `/AUTOMATION.md` is the full REST reference.
+- **Workspace service** — shared API authentication, revocable credentials,
+  browser sessions and a static publish directory. Read [the service guide](docs/SERVICE.md).
+
+API calls now require credentials, including status/control and setup aliases.
+Browser access uses the human credential handoff at `/connect.html`. Upgrade the
+CLI for authenticated friendly control commands; existing automation credentials
+remain supported. The direct MCP adapter is not yet enabled in this foundation.
 
 The desktop shell owns the complete browser interface while using noVNC's
 maintained RFB engine underneath. Accessible Desktop/Terminal tabs keep the

@@ -1,7 +1,6 @@
 {
   "inventory_version": 1,
-  "audited_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",
-  "scope": "source inventory, not a deployed capability catalog",
+  "scope": "branch source inventory; deployed availability requires ticket acceptance evidence",
   "surface_states": [
     "implemented",
     "unavailable",
@@ -12,13 +11,13 @@
       "id": "recordWorkspaceDiagnostic",
       "authority": "workspace",
       "kind": "transport-control",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/diagnostics/events",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -35,7 +34,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/diagnostics/events",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -50,9 +49,11 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "discoverWorkspace",
@@ -64,7 +65,7 @@
           "state": "implemented",
           "entry": "GET /.well-known/vibestack",
           "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -104,13 +105,13 @@
       "id": "workspaceCapabilities",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -127,7 +128,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -142,21 +143,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "requestWorkspacePairing",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway; public pairing request or secret-bound poll",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/pairing/requests",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -173,7 +176,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/pairing/requests",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -188,21 +191,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "pollWorkspacePairing",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway; public pairing request or secret-bound poll",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/pairing/requests/{id}/poll",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -219,7 +224,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/pairing/requests/{id}/poll",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -234,21 +239,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "submitArgvCommand",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/commands",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -265,7 +272,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/commands",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -280,22 +287,24 @@
       "limit_profile": "command",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
       "optional_runner_proxy_tool": "workspace_command",
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "submitShellCommand",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/shell",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -312,7 +321,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/shell",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -327,21 +336,23 @@
       "limit_profile": "command",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "getWorkspaceJob",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/jobs/{id}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -358,7 +369,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/jobs/{id}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -373,22 +384,24 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
       "optional_runner_proxy_tool": "workspace_job",
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "getWorkspaceJobOutput",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/jobs/{id}/output",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -405,7 +418,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/jobs/{id}/output",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -420,22 +433,24 @@
       "limit_profile": "job-output",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
       "optional_runner_proxy_tool": "workspace_output",
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "cancelWorkspaceJob",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/jobs/{id}/cancel",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -452,7 +467,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/jobs/{id}/cancel",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -467,21 +482,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "captureWorkspaceScreenshot",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/screenshot",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -498,7 +515,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/screenshot",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -513,22 +530,24 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
       "optional_runner_proxy_tool": "workspace_screenshot",
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "listWorkspaceApplications",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/applications",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -545,7 +564,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/applications",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -560,21 +579,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "operateWorkspaceApplication",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/applications/{id}/{operation}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -591,7 +612,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/applications/{id}/{operation}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -606,21 +627,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "listWorkspaceWindows",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/windows",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -637,7 +660,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/windows",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -652,21 +675,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "setWorkspaceWindowState",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/windows/{id}/state",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -683,7 +708,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/windows/{id}/state",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -698,21 +723,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "readWorkspaceClipboard",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/clipboard",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -729,7 +756,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/clipboard",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -744,21 +771,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "writeWorkspaceClipboard",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "PUT /api/v1/automation/clipboard",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -775,7 +804,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: PUT /api/v1/automation/clipboard",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -790,21 +819,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "readDesktopFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/files/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -821,7 +852,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/files/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -836,21 +867,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "headDesktopFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "HEAD /api/v1/automation/files/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -867,7 +900,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: HEAD /api/v1/automation/files/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -882,21 +915,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "writeDesktopFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "PUT /api/v1/automation/files/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -913,7 +948,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: PUT /api/v1/automation/files/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -928,21 +963,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "readProjectFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/projects/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -959,7 +996,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/projects/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -974,21 +1011,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "headProjectFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "HEAD /api/v1/automation/projects/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1005,7 +1044,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: HEAD /api/v1/automation/projects/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1020,21 +1059,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "writeProjectFile",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "PUT /api/v1/automation/projects/{path}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1051,7 +1092,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: PUT /api/v1/automation/projects/{path}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1066,21 +1107,23 @@
       "limit_profile": "file",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "listWorkspaceSSHKeys",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/automation/ssh-keys",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1097,7 +1140,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/automation/ssh-keys",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1112,21 +1155,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "addWorkspaceSSHKey",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/ssh-keys",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1143,7 +1188,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/ssh-keys",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1158,21 +1203,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "removeWorkspaceSSHKey",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "workspace-bearer",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/automation/ssh-keys/{id}/remove",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1189,7 +1236,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/automation/ssh-keys/{id}/remove",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1204,21 +1251,23 @@
       "limit_profile": "automation",
       "source": "automation/server.py",
       "verification": [
-        "tests/test_automation_api.py"
+        "tests/test_automation_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "workspaceStatus",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/status",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1235,7 +1284,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/status",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1250,21 +1299,23 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "getWorkspaceDisplay",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/display",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1281,7 +1332,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/display",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1296,21 +1347,23 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "setWorkspaceDisplay",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "PUT /api/v1/display",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1327,7 +1380,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: PUT /api/v1/display",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1342,21 +1395,23 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "operateWorkspaceService",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /api/v1/services/{service}/{operation}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1373,7 +1428,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /api/v1/services/{service}/{operation}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1388,21 +1443,23 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "readWorkspaceServiceLog",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /api/v1/logs/{service}",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "implemented",
@@ -1419,7 +1476,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /api/v1/logs/{service}",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -1434,9 +1491,11 @@
       "limit_profile": "control",
       "source": "control/server.py",
       "verification": [
-        "tests/test_control_api.py"
+        "tests/test_control_api.py",
+        "service/server_test.go"
       ],
-      "published_schema": "api/workspace.openapi.json"
+      "published_schema": "api/workspace.openapi.json",
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "discoverRunner",
@@ -2408,13 +2467,13 @@
       "id": "workspaceSetupState",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /setup/api/state",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2431,7 +2490,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /setup/api/state",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2446,20 +2505,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "workspaceSetupDiscovery",
       "authority": "workspace",
       "kind": "transport-control",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /setup/api/discovery",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2476,7 +2537,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /setup/api/discovery",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2491,20 +2552,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "listWorkspaceClients",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /setup/api/clients",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2521,7 +2584,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /setup/api/clients",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2536,20 +2599,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "workspaceInstallOutput",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "GET /setup/api/log",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2566,7 +2631,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: GET /setup/api/log",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2581,20 +2646,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "approveWorkspacePairing",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/pairings/{code}/approve",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2611,7 +2678,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/pairings/{code}/approve",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2626,20 +2693,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "denyWorkspacePairing",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/pairings/{code}/deny",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2656,7 +2725,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/pairings/{code}/deny",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2671,20 +2740,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "revokeWorkspaceClient",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/clients/{id}/revoke",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2701,7 +2772,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/clients/{id}/revoke",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2716,20 +2787,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "setLinuxPassword",
       "authority": "workspace",
       "kind": "human-handoff",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service owner credential or owner browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/password",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2746,7 +2819,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/password",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2761,20 +2834,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "installWorkspaceComponents",
       "authority": "workspace",
       "kind": "shared-capability",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/install",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2791,7 +2866,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/install",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2806,20 +2881,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "skipWorkspaceSetup",
       "authority": "workspace",
       "kind": "retiring-ui-state",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/skip",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2836,7 +2913,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/skip",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2851,20 +2928,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "completeWorkspaceSetup",
       "authority": "workspace",
       "kind": "retiring-ui-state",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/complete",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2881,7 +2960,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/complete",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2896,20 +2975,22 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
-      ]
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
     },
     {
       "id": "resetWorkspaceSetup",
       "authority": "workspace",
       "kind": "retiring-ui-state",
-      "current_authentication": "private-gateway-and-origin",
+      "current_authentication": "workspace-service bearer or browser session; CSRF for session mutations",
       "current": {
         "rest": {
           "state": "implemented",
           "entry": "POST /setup/api/reset",
-          "reason": "Existing handler; this is current authority, not proof of the future service boundary.",
-          "next_action": "Use the existing documented client and authentication boundary."
+          "reason": "Existing operation through the shared authenticated adapter; source support, not a hosted acceptance claim.",
+          "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
           "state": "unavailable",
@@ -2926,7 +3007,7 @@
         "web": {
           "state": "implemented",
           "entry": "same-origin HTTP: POST /setup/api/reset",
-          "reason": "HTTP operation; this does not claim a dedicated UI control.",
+          "reason": "Authenticated same-origin HTTP, with session/CSRF support; not a claim of a dedicated control.",
           "next_action": "Use the existing private origin and the same API authentication."
         }
       },
@@ -2941,7 +3022,279 @@
       "limit_profile": "setup",
       "source": "setup/server.py",
       "verification": [
-        "tests/test_setup_api.py"
+        "tests/test_setup_api.py",
+        "service/server_test.go"
+      ],
+      "boundary_source": "service/legacy.go"
+    },
+    {
+      "id": "workspaceCapabilityCatalog",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "authenticated, grant-filtered metadata",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/v1/capabilities",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "GET /api/v1/capabilities",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
+      ]
+    },
+    {
+      "id": "createWorkspaceSession",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "human bearer handoff; no request body",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "POST /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
+      ]
+    },
+    {
+      "id": "inspectWorkspaceSession",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "authenticated browser session",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "GET /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
+      ]
+    },
+    {
+      "id": "deleteWorkspaceSession",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "authenticated browser session with CSRF",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "DELETE /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "DELETE /auth/session",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "human-only",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "write",
+      "retry": "inspect-before-retry",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
+      ]
+    },
+    {
+      "id": "workspaceReadiness",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "sanitized readiness",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /healthz",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "GET /healthz",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
+      ]
+    },
+    {
+      "id": "workspaceSchema",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "public built-in schema metadata",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/workspace.openapi.json",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "GET /api/workspace.openapi.json",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/server.go",
+      "verification": [
+        "service/server_test.go"
       ]
     }
   ],
@@ -3017,5 +3370,7 @@
       "mcp_result_bytes": 16777216,
       "source": "runner/mcp.go"
     }
-  }
+  },
+  "baseline_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",
+  "audit_ticket": "VST-005"
 }

@@ -13,6 +13,14 @@ support from proposed mappings; future routes are not implemented by this docume
 VibeStack is a Docker image that gives people and AI coding tools a full Linux
 desktop through a browser and an authenticated desktop-automation API.
 
+The workspace service on loopback 7996 now authenticates all API/setup aliases,
+keeps credentials instance-bound and revocable, and serves a dedicated static
+publish directory. Browser mutations require an authenticated session and CSRF
+protection; Linux password/client administration requires owner authority.
+See [the service contract](SERVICE.md) for limits, private legacy transports and
+the required upgrade for old unauthenticated CLI control commands. Direct MCP
+and registered extension dispatch remain dependent implementation work.
+
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup
 wizard asks which optional components to install. This keeps the base small,

@@ -113,14 +113,14 @@
     <section id="agent-connect" class="agent-connect" hidden aria-labelledby="agent-connect-title">
       <p class="eyebrow">Optional</p>
       <h2 id="agent-connect-title">Connect your agent</h2>
-      <p class="dim">Install the client on the computer where the agent session actually runs, then request pairing. A local Claude Desktop session uses your local client; a Claude Code session reached over SSH needs the client and private-network access on that SSH host.</p>
+      <p class="dim">Use the current client on the computer where your agent runs. A local operator must issue a workspace credential first. Private Codespaces access also needs an authorized connection from that computer. See the service guide for this migration.</p>
       <pre id="agent-install-command" class="command"></pre>
       <pre id="agent-connect-command" class="command"></pre>
-      <p class="field-note">These commands contain the workspace URL and client version only. Approval and credentials are handled separately.</p>
+      <p class="field-note">Supply credentials from a protected file through stdin. Never paste them into command arguments or agent chat. Existing client approvals below require owner access.</p>
       <div class="agent-actions">
         <button class="ghost" id="btn-copy-agent" type="button">Copy starter commands</button>
         <button class="ghost" id="btn-refresh-clients" type="button">Refresh requests</button>
-        <a href="/CLI.md" target="_blank" rel="noopener">CLI reference</a>
+        <a href="/SERVICE.md" target="_blank" rel="noopener">Service and credential guide</a>
       </div>
       <p id="agent-client-error" class="form-error" role="alert" hidden></p>
       <div id="agent-pairings" class="client-list" aria-live="polite"></div>
@@ -135,6 +135,6 @@
 
 
 </div>
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

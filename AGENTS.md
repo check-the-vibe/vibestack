@@ -2,9 +2,10 @@
 
 VibeStack is a single-user, Docker-hosted Ubuntu/XFCE desktop for coding agents.
 The browser-facing entrypoint is nginx on container port 80. It routes the
-custom noVNC shell, ttyd terminal, setup wizard, and versioned control API. A
-separate bearer-authenticated automation API has the full command authority of
-the `vibe` account.
+custom noVNC shell and private desktop transports. One Go workspace service
+authenticates API/setup aliases before dispatching to the existing local Python
+services. Command capabilities have the full authority of the `vibe` account.
+Read [the service guide](docs/SERVICE.md) for credentials, sessions and migration.
 
 Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,
@@ -36,6 +37,8 @@ with `.devcontainer/`; never infer private visibility from a port label.
 - `desktop/`: dependency-free browser shell using upstream noVNC RFB modules.
 - `control/`: Python standard-library API and its OS-facing backend.
 - `automation/`: privileged REST API, Desktop file boundary, and job runner.
+- `service/`, `cmd/vibestack-service/`: shared workspace authentication, bounded compatibility adapters and static publication.
+- `web/public/`: explicit publish root; never publish the repository or persistent data root.
 - `desktop-config/`: curated XFCE menu and fixed desktop actions.
 - `runtime/`: default global guidance seeded for in-container coding agents.
 - `setup/`: setup wizard and catalog state.
@@ -60,10 +63,10 @@ with `.devcontainer/`; never infer private visibility from a port label.
 The live service normally binds to host loopback port 8080 and is shared
 privately with Tailscale Serve. Do not change it to `0.0.0.0`, use Funnel, or
 publish it to the public internet without explicit authorization. The
-terminal, setup, desktop stream, and narrow control API rely on that private
-network boundary. Automation additionally requires its persistent bearer
-token. The setup surface can set or replace `vibe`'s Linux password without the
-old value; ordinary sudo is password-authenticated, while only the three fixed
+terminal, legacy setup UI and desktop stream still rely on that private network
+boundary. API/setup operations additionally require workspace credentials or an
+authenticated browser session with CSRF protection. Password replacement requires
+owner authorization and a human secret handoff; ordinary sudo is password-authenticated, while only the three fixed
 VibeStack helpers are `NOPASSWD`.
 
 ## Implementation rules

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './fixtures.mjs';
 
 // Exercise the actual pinned noVNC module and live WebSocket, with no transport mocks.
 for (const enabled of [true,false]) {

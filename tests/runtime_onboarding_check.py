@@ -73,6 +73,12 @@ def http_json(
 ) -> tuple[int, dict, bytes]:
     encoded = None
     headers = {"Host": "localhost"}
+    # This file is created only in the disposable acceptance state. Never put
+    # the credential in argv, environment variables or diagnostic output.
+    with open("/data/vibestack/acceptance-owner.token", encoding="ascii") as credential_file:
+        credential = credential_file.read(513).strip()
+    require(32 <= len(credential) <= 512, "acceptance credential unavailable")
+    headers["Authorization"] = "Bearer " + credential
     if body is not None:
         encoded = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         headers.update(

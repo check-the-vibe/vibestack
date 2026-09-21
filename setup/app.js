@@ -1,4 +1,5 @@
 'use strict';
+import {workspaceFetch as fetch} from '/auth.js';
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -25,8 +26,8 @@ function show(step) {
 
 function agentCommands() {
   const origin = window.location.origin;
-  const install = `curl -fsSL '${origin}/cli.sh' | sh -s -- --version 0.2.0 --server '${origin}'`;
-  const connect = `vibestack connect --name my-workspace --url '${origin}'`;
+  const install = `# Build the current client as described at ${origin}/SERVICE.md`;
+  const connect = `vibestack connect --name my-workspace --url '${origin}' --token-stdin < /path/to/protected/credential-file`;
   $('agent-install-command').textContent = install;
   $('agent-connect-command').textContent = connect;
   return `${install}\n${connect}`;
@@ -277,7 +278,7 @@ async function api(path, options) {
     } catch (_error) {
       // The status-only fallback is safe even if a proxy returned HTML.
     }
-    throw new Error(detail?.error || path + ' returned ' + response.status);
+    throw new Error(detail?.error?.message || detail?.error || path + ' returned ' + response.status);
   }
   return response.json();
 }

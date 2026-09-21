@@ -1,3 +1,13 @@
+FROM --platform=$BUILDPLATFORM golang:1.26.4 AS workspace-build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY api/ api/
+COPY service/ service/
+COPY cmd/vibestack-service/ cmd/vibestack-service/
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/vibestack-service ./cmd/vibestack-service
+
 FROM ubuntu:24.04
 
 LABEL maintainer="VibeStack Project"
@@ -88,6 +98,9 @@ COPY setup/index.html setup/style.css setup/app.js /usr/share/vibestack/web/
 COPY common/ /usr/share/vibestack-common/
 COPY control/ /usr/share/vibestack-control/
 COPY automation/ /usr/share/vibestack-automation/
+COPY --from=workspace-build --chmod=0555 /out/vibestack-service /usr/local/bin/vibestack-service
+COPY web/public/ /usr/share/vibestack/public/
+COPY docs/SERVICE.md /usr/share/vibestack/public/SERVICE.md
 COPY --chmod=0555 cli.sh /usr/share/vibestack/cli.sh
 RUN install -d -m 0755 /usr/share/vibestack-proxy
 COPY --chown=root:root --chmod=0444 proxy/websockify_auth.py /usr/share/vibestack-proxy/websockify_auth.py
@@ -104,7 +117,7 @@ RUN update-desktop-database /usr/share/applications && \
 COPY desktop/ /usr/share/vibestack/desktop/
 # Isolate every service-worker generation. Hash both the shell and the pinned
 # noVNC runtime because they share one exact precache graph.
-RUN shell_cache_version="$(find /usr/share/vibestack/desktop /usr/share/novnc/core /usr/share/novnc/vendor -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" && \
+RUN shell_cache_version="$(find /usr/share/vibestack/desktop /usr/share/vibestack/public /usr/share/novnc/core /usr/share/novnc/vendor -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)" && \
     sed -i "s/__VIBESTACK_SHELL_CACHE_VERSION__/${shell_cache_version}/" /usr/share/vibestack/desktop/service-worker.js && \
     ! grep -q '__VIBESTACK_SHELL_CACHE_VERSION__' /usr/share/vibestack/desktop/service-worker.js
 COPY chrome/policy.json /usr/share/vibestack/chrome-policy.json

@@ -10,6 +10,10 @@
     sessionStorage.setItem('vibestack-walkthrough-session', session);
     let seq = Number(sessionStorage.getItem('vibestack-walkthrough-seq') || 0);
     const nativeFetch = window.fetch.bind(window);
+    const csrfReady = nativeFetch('/auth/session', {credentials:'same-origin',cache:'no-store'})
+      .then(response => response.ok ? response.json() : null)
+      .then(value => typeof value?.csrf === 'string' ? value.csrf : '')
+      .catch(() => '');
     const targets = new Set(["agent-client-error", "agent-clients", "agent-connect", "agent-connect-command", "agent-connect-title", "agent-install-command", "agent-pairings", "app-shell", "auto-resize-toggle", "btn-change-password", "btn-copy-agent", "btn-install", "btn-more", "btn-password-cancel", "btn-password-save", "btn-refresh-clients", "btn-skip", "cad-button", "clipboard-button", "clipboard-clear", "clipboard-copy", "clipboard-dialog", "clipboard-send", "clipboard-text", "clipboard-title", "compression-heading", "compression-output", "compression-range", "connection-action", "connection-heading", "connection-label", "connection-message", "connection-panel", "connection-pill", "connection-title", "count", "desktop-name", "desktop-stage", "desktop-view-tab", "disconnect-button", "display-apply", "display-heading", "display-note", "display-select", "done-title", "editor-description", "error-text", "focus-button", "fullscreen-button", "groups", "i-chevron", "i-clipboard", "i-close", "i-desktop", "i-external", "i-focus", "i-fullscreen", "i-keyboard", "i-refresh", "i-settings", "i-terminal", "i-tools", "input-controls-button", "input-controls-panel", "install-note", "install-title", "keyboard-button", "launch-editor", "linux-password", "linux-password-confirmation", "log", "log-more", "log-output", "log-refresh", "log-service", "log-status", "logs-heading", "match-screen-button", "next-steps", "password-description", "password-error", "password-eyebrow", "password-form", "password-title", "password-trust-note", "presets", "quality-heading", "quality-output", "quality-range", "readiness-label", "reconnect-toggle", "render-profile", "render-profile-heading", "scale-heading", "screen", "service-list", "services-heading", "settings-button", "settings-connection-note", "settings-dialog", "settings-title", "size", "skip-link", "status-disk", "status-refresh", "status-resolution", "status-uptime", "step-choose", "step-done", "step-error", "step-install", "step-password", "subtitle", "terminal-frame", "terminal-stage", "terminal-view-tab", "toast-region", "tools-button", "tools-dialog", "tools-title", "view-only-toggle", "virtual-keyboard"]);
     const routes = new Set(['/', '/setup/', '/vnc/', '/setup/api/state', '/setup/api/catalog', '/setup/api/install', '/setup/api/password', '/setup/api/log', '/setup/api/skip', '/api/v1/status', '/api/v1/display', '/api/v1/automation', '/vnc/websockify', '/terminal/ws', '/terminal/', '/editor/']);
     const page = ['/','/setup/','/vnc/'].includes(location.pathname) ? location.pathname : 'other';
@@ -33,7 +37,10 @@
       seq += 1;
       try { sessionStorage.setItem('vibestack-walkthrough-seq', String(seq)); } catch (_) { /* Logging must never break UI. */ }
       const data = {session, seq, kind, page, view, time_ms:Date.now(), ...details};
-      nativeFetch('/api/v1/diagnostics/events', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),keepalive:true,cache:'no-store'}).catch(() => {});
+      csrfReady.then(csrf => {
+        if (!csrf) return;
+        return nativeFetch('/api/v1/diagnostics/events', {method:'POST',headers:{'Content-Type':'application/json','X-VibeStack-CSRF':csrf},body:JSON.stringify(data),keepalive:true,cache:'no-store'});
+      }).catch(() => {});
     };
     const action = (element) => targets.has(element?.id) ? element.id : ({BUTTON:'button', A:'link', FORM:'form', INPUT:'input', SELECT:'select'}[element?.tagName] || 'other');
     emit('page');

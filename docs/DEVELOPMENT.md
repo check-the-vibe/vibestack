@@ -24,6 +24,13 @@ They do not replace live authentication or transport-parity acceptance.
 
 ## Prerequisites
 
+The [workspace service guide](SERVICE.md) covers loopback 7996, protected
+credential state, local issuance/revocation, browser sessions, static publication
+and the 0.2 CLI control-command migration. API aliases now authenticate through
+that service before reaching loopback 7997–7999. Update both the public schema
+and source inventory when adding or changing routes. Private desktop transport
+does not become public merely because the API has application authentication.
+
 - Docker Engine with permission to build, run, inspect, and exec containers.
 - Python 3 for unit and source-contract tests.
 - Node.js 22 and npm for the Playwright browser suite.

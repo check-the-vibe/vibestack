@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Connect to VibeStack</title><link rel="stylesheet" href="/connect.css"></head>
+<body><main>
+  <h1>Connect to VibeStack</h1>
+  <p>Use a workspace credential to connect this browser. Provider sign-in is separate.</p>
+  <form id="connect-form">
+    <label for="credential">Workspace credential</label>
+    <input id="credential" type="password" autocomplete="off" spellcheck="false" required>
+    <button type="submit">Connect</button>
+  </form>
+  <p id="connection-status" role="status"></p>
+  <p><a href="/AGENTS.md">Connection and credential guidance</a></p>
+  <p>Your credential is exchanged for a private browser session. It is not saved in browser storage.</p>
+</main><script type="module" src="/connect.js"></script></body>
+</html>

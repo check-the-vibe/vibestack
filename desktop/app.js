@@ -1,4 +1,5 @@
 import RFB from '/novnc/core/rfb.js';
+import {workspaceFetch as fetch} from '/auth.js';
 
 const PREFERENCES_KEY = 'vibestack.desktop.preferences.v1';
 const API_ROOT = '/api/v1';
