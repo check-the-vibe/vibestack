@@ -114,7 +114,10 @@ desktop relies on GitHub's private port boundary. VibeStack automation still
 requires its own bearer credential. Agents inside the Codespace should use
 loopback port 8080; remote API clients also need GitHub's forwarding authentication.
 Never copy GitHub or VibeStack tokens into source, prompts or logs, or inject the
-Codespaces environment into the desktop. No default password is created.
+Codespaces environment into the desktop. No default password is created. Entrypoint sets a predictable `0022` umask;
+the unprivileged persistence helper restricts `.vibestack` and `.ssh` to `0700`,
+including state left by a previous permissive Docker-in-Docker boot. Token
+validation remains strict.
 
 ## Persistence and fast creation
 

@@ -41,12 +41,13 @@ class PersistenceOwnershipTests(unittest.TestCase):
                 VIBESTACK_PERSIST_DATA_DIR=str(data),
                 VIBESTACK_RUNTIME_DOC_DIR=str(runtime_docs),
             )
-            subprocess.run(["bash", str(SCRIPT)], check=True, env=environment, capture_output=True, text=True)
+            subprocess.run(["bash", str(SCRIPT)], check=True, env=environment, capture_output=True, text=True, umask=0)
 
             self.assertEqual("untouched\n", sentinel.read_text(encoding="utf-8"))
             self.assertFalse(sentinel.is_symlink())
             self.assertTrue((home / ".vibestack").is_symlink())
             self.assertTrue((data / "vibestack").is_dir())
+            self.assertEqual(0o700, (data / "vibestack").stat().st_mode & 0o777)
             self.assertTrue((home / ".ssh").is_symlink())
             self.assertEqual(data / "ssh", (home / ".ssh").readlink())
             self.assertEqual(0o700, (data / "ssh").stat().st_mode & 0o777)
@@ -82,6 +83,8 @@ class PersistenceOwnershipTests(unittest.TestCase):
             self.assertEqual(runtime_docs / "CLAUDE.md", claude.readlink())
             self.assertEqual(runtime_docs / "AGENTS.md", opencode.readlink())
 
+            # A prior boot with a permissive inherited umask must recover safely.
+            (data / "vibestack").chmod(0o777)
             legacy_collision = home / ".config" / "ChatGPT"
             legacy_collision.mkdir()
             (legacy_collision / "keep").write_text("user-owned\n", encoding="utf-8")
@@ -92,6 +95,7 @@ class PersistenceOwnershipTests(unittest.TestCase):
             claude.write_text("custom claude guide\n", encoding="utf-8")
             opencode.write_text("custom opencode guide\n", encoding="utf-8")
             subprocess.run(["bash", str(SCRIPT)], check=True, env=environment, capture_output=True, text=True)
+            self.assertEqual(0o700, (data / "vibestack").stat().st_mode & 0o777)
             self.assertEqual("custom agent guide\n", agents.read_text(encoding="utf-8"))
             self.assertEqual("custom claude guide\n", claude.read_text(encoding="utf-8"))
             self.assertEqual("custom opencode guide\n", opencode.read_text(encoding="utf-8"))

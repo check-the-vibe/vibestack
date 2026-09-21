@@ -131,7 +131,7 @@ for entry in "${ENTRIES[@]}"; do
     if [[ ! -d "$dst" ]]; then
       if [[ -d "$src" && ! -L "$src" ]]; then mv "$src" "$dst"; else mkdir -p "$dst"; fi
     fi
-    if [[ "$rel" == ".ssh" ]]; then
+    if [[ "$rel" == ".ssh" || "$rel" == ".vibestack" ]]; then
       /usr/bin/install -d -m 0700 -- "$dst"
     fi
   fi

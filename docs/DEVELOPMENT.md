@@ -33,6 +33,8 @@ while preparation runs. GitHub's private forwarding supplies remote HTTPS;
 no Tailscale is needed there. Local Dev Containers skip desktop autostart.
 Read [the Codespaces context](../.context/github-codespaces.md) before changing
 this workflow, especially its persistent paths and real-Codespaces test gates.
+Entrypoint normalizes its umask to `0022`; unprivileged persistence makes the
+automation-token and SSH directories `0700`, including on resumed state.
 
 ## Fast edit loop
 

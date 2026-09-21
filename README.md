@@ -51,7 +51,7 @@ The minimum machine is **4 cores / 16 GB RAM**. First creation needs time to bui
 full Python installs before the editor opens, and the desktop build continues
 in the background. See
 [the Codespaces guide](.context/github-codespaces.md) for persistence, prebuilds,
-rebuilding and troubleshooting.
+rebuilding, private credential-directory permissions and troubleshooting.
 
 ### Local Docker
 

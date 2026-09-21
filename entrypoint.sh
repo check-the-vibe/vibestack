@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Docker-in-Docker can inherit a permissive daemon umask.
+umask 0022
 cd /
 
 # Establish root-owned persistent log boundaries and fresh per-boot X11 state
