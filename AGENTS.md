@@ -7,7 +7,9 @@ authenticates API/setup aliases before dispatching to the existing local Python
 services. Command capabilities have the full authority of the `vibe` account.
 Read [the service guide](docs/SERVICE.md) for credentials, sessions and migration.
 For capabilities follow [the extension guide](docs/EXTENSIONS.md): one compiled
-definition/handler, without new bypass routes or listeners.
+definition/handler, without new bypass routes or listeners. For workspace MCP,
+read [the transport guide](docs/MCP.md); preserve shared authorization and the
+separate private Codespaces gateway boundary.
 
 Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,

@@ -25,7 +25,9 @@ or enrollment is required, and workspace tools do not grant Docker-host control.
 REST dispatch under the resolved principal. Its tools cover host/instance
 operations and workspace commands, jobs, output and screenshots. The current
 runner supports paired/private and trusted-tailnet modes; this is not the
-proposed public OAuth service. A direct workspace MCP adapter is not implemented.
+proposed public OAuth service. VST-011 adds the direct workspace adapter; read its ticket for source, image and
+hosted validation separately. [The runtime guide](../../docs/MCP.md) defines its
+configured-bearer client matrix; it is not an OAuth authorization server.
 
 ## Scope and exclusions
 
@@ -142,3 +144,10 @@ prototyped independently, but release acceptance covers both local and remote us
 - 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
 
 - 2026-09-21: Aligned with the user-requested SPEC-001 rewrite: one extensible workspace service, no required machine broker, shared authenticated REST/MCP capabilities. Other feature-specific decisions remain draft.
+
+- 2026-09-21: For the authorized implementation pass, initial remote support is
+  the pinned Go 1.7.0 and TypeScript 1.30.0 bearer-configured SDK clients. Private
+  Codespaces gateway authentication is verified separately. OAuth-only harnesses
+  remain unsupported until a standard provider is selected and integrated; do not
+  claim universal client compatibility. Stateless calls recheck local revocation
+  before each dispatch; already executing operations are not undone.

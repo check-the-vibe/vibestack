@@ -3,8 +3,8 @@
 VibeStack enables trusted Go modules at build time. One registration supplies
 input/output schemas, permission, limits, effects, retry policy and a handler.
 The service derives generic REST, the friendly route, authenticated discovery
-and OpenAPI from it. MCP consumes this registry when its adapter is installed;
-this increment does not advertise a working MCP tool.
+and OpenAPI from it. [MCP](MCP.md) exposes the registered ID when its policy is
+`enabled`; human-only and owner-opt-in tools are excluded by default.
 
 The working example is [register.go](https://github.com/check-the-vibe/vibestack/blob/main/service/capabilities/register.go) with
 [project_summary.json](https://github.com/check-the-vibe/vibestack/blob/main/service/capabilities/project_summary.json). It counts
@@ -48,7 +48,8 @@ rollback workflow to retain the previous service if a candidate fails.
 
 Dispatch checks permission/input before execution, starts at most 32 handlers,
 invokes each once, and validates/bounds the serialized result and full REST
-envelope. It never truncates JSON or replays mutations. Deadline/disconnect does
+envelope. MCP also bounds its serialized structured/text result by the declared
+response budget. It never truncates JSON or replays mutations. Deadline/disconnect does
 not prove a mutation was undone: inspect state before retrying. A timed-out
 non-cooperative handler keeps its capacity slot until it exits, bounding
 background work. Trusted modules must avoid unbounded allocation and respect

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"mime"
@@ -115,19 +116,9 @@ func (s *Server) invokeCapability(w http.ResponseWriter, r *http.Request, id str
 		}
 		raw = data
 	}
-	result, failure := s.registry.Execute(r.Context(), p, id, raw)
+	encoded, failure := s.dispatchCapability(r.Context(), p, id, raw, w.Header().Get("X-Request-ID"))
 	if failure != nil {
 		fail(failure)
-		return
-	}
-	envelope := map[string]any{"instance_id": p.InstanceID, "request_id": w.Header().Get("X-Request-ID"), "capability": id, "result": result}
-	encoded, err := json.Marshal(envelope)
-	if err != nil {
-		fail(capabilities.Fail("internal_error"))
-		return
-	}
-	if int64(len(encoded)) > entry.Definition.ResponseBytes {
-		fail(capabilities.Fail("limit_exceeded"))
 		return
 	}
 	outcome = "ok"
@@ -138,11 +129,40 @@ func (s *Server) invokeCapability(w http.ResponseWriter, r *http.Request, id str
 	}
 }
 
+// Both transports call this dispatcher. Adapters only decode their framing;
+// grants, schemas, handler deadlines, capacity and output validation live here.
+func (s *Server) dispatchCapability(ctx context.Context, p Principal, id string, raw json.RawMessage, requestID string) (json.RawMessage, *capabilities.Failure) {
+	result, failure := s.registry.Execute(ctx, p, id, raw)
+	if failure != nil {
+		return nil, failure
+	}
+	envelope := map[string]any{"instance_id": p.InstanceID, "request_id": requestID, "capability": id, "result": result}
+	encoded, err := json.Marshal(envelope)
+	if err != nil {
+		return nil, capabilities.Fail("internal_error")
+	}
+	entry, _ := s.registry.Entry(id)
+	if int64(len(encoded)) > entry.Definition.ResponseBytes {
+		return nil, capabilities.Fail("limit_exceeded")
+	}
+	return encoded, nil
+}
+
+func capabilityEnvelopeSchema(d capabilities.Definition) map[string]any {
+	return map[string]any{"type": "object", "additionalProperties": false,
+		"required":   []string{"instance_id", "request_id", "capability", "result"},
+		"properties": map[string]any{"instance_id": map[string]string{"type": "string"}, "request_id": map[string]string{"type": "string"}, "capability": map[string]string{"const": d.ID}, "result": d.OutputSchema}}
+}
+
 func (s *Server) capabilityCatalog(w http.ResponseWriter, r *http.Request) {
 	p := r.Context().Value(principalKey).(Principal)
 	list := []map[string]any{}
 	for _, definition := range s.registry.Definitions(p) {
-		list = append(list, map[string]any{"id": definition.ID, "definition": definition, "rest": "implemented", "web": "implemented", "mcp": "unavailable", "next_action": "Use the REST invocation route until the MCP adapter is installed."})
+		state, next := "unavailable", "This capability's policy excludes MCP; use its authorized REST route."
+		if workspaceMCPEnabled(definition) {
+			state, next = "implemented", "Call the named MCP tool or the REST invocation route."
+		}
+		list = append(list, map[string]any{"id": definition.ID, "definition": definition, "rest": "implemented", "web": "implemented", "mcp": state, "next_action": next})
 	}
 	for _, route := range s.operations {
 		if p.Allows(route.ID, route.Owner) {
@@ -156,7 +176,7 @@ func (s *Server) capabilitySchema(w http.ResponseWriter, r *http.Request) {
 	p := r.Context().Value(principalKey).(Principal)
 	paths := map[string]any{}
 	for _, d := range s.registry.Definitions(p) {
-		operation := map[string]any{"operationId": d.ID, "description": d.Description, "security": []any{map[string]any{"workspaceBearer": []any{}}}, "responses": map[string]any{"200": map[string]any{"description": "Capability envelope", "content": map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "object", "required": []string{"instance_id", "request_id", "capability", "result"}, "properties": map[string]any{"instance_id": map[string]string{"type": "string"}, "request_id": map[string]string{"type": "string"}, "capability": map[string]string{"const": d.ID}, "result": d.OutputSchema}}}}}}}
+		operation := map[string]any{"operationId": d.ID, "description": d.Description, "security": []any{map[string]any{"workspaceBearer": []any{}}}, "responses": map[string]any{"200": map[string]any{"description": "Capability envelope", "content": map[string]any{"application/json": map[string]any{"schema": capabilityEnvelopeSchema(d)}}}}}
 		if d.REST.Method == "GET" || d.REST.Method == "HEAD" {
 			var schema struct {
 				Properties map[string]json.RawMessage `json:"properties"`

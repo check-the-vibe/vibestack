@@ -9,6 +9,7 @@
     "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@playwright/test": "1.63.0"
   }
 }

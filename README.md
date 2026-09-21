@@ -1,7 +1,7 @@
 # VibeStack
 
 Add trusted workspace endpoints through the [capability registry](docs/EXTENSIONS.md).
-The included `project_summary` example supports authenticated REST/browser calls.
+The included `project_summary` example supports authenticated REST/browser calls and the same named MCP tool.
 
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:
@@ -25,7 +25,8 @@ from any browser:
 API calls now require credentials, including status/control and setup aliases.
 Browser access uses the human credential handoff at `/connect.html`. Upgrade the
 CLI for authenticated friendly control commands; existing automation credentials
-remain supported. The direct MCP adapter is not yet enabled in this foundation.
+remain supported. Authenticated `/mcp` exposes enabled registered capabilities;
+read [the client matrix](docs/MCP.md) for tested protocols and gateway access.
 
 The desktop shell owns the complete browser interface while using noVNC's
 maintained RFB engine underneath. Accessible Desktop/Terminal tabs keep the

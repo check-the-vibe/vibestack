@@ -68,7 +68,11 @@ Capabilities follow [EXTENSIONS.md](EXTENSIONS.md): one compiled registration an
 handler, generated `/api/capabilities.openapi.json`, generic
 `POST /api/v1/capabilities/{id}/invoke`, shared authorization and validation.
 Dispatch has 32 slots and declared time/body/result limits. The operator supplies
-`/projects`; requests cannot select another root.
+`/projects`; requests cannot select another root. The same compiled definitions
+feed `/mcp`; read [MCP.md](MCP.md) before changing transport/authentication.
+The pinned TypeScript SDK 1.30.0 is a development-only independent client; Go SDK
+1.7.0 is the runtime transport. Full acceptance runs both through actual nginx,
+with private credential-file paths and payload-free diagnostics.
 
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least

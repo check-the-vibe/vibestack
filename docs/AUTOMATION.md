@@ -2,7 +2,8 @@
 
 Compiled extensions use the same authenticated workspace service; see
 [EXTENSIONS.md](EXTENSIONS.md). Existing raw file/job routes below retain their
-compatibility semantics.
+compatibility semantics. Authenticated `/mcp` exposes enabled compiled capabilities
+through that dispatcher; [MCP.md](MCP.md) describes supported clients and limits.
 
 VibeStack exposes its live XFCE desktop through a privileged REST API. It can
 run commands in the graphical session, capture screenshots, start and stop

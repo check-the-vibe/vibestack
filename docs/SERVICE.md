@@ -8,8 +8,9 @@ host runner retains its own deployment, credentials and API.
 
 This foundation supplies authentication, compatibility adapters and static
 publication and compiled capability registration; see [EXTENSIONS.md](EXTENSIONS.md).
-The direct MCP adapter is a subsequent ticket; `/mcp` authenticates and then reports unavailable until
-that adapter is installed. Do not advertise it as a working remote MCP server yet.
+The direct `/mcp` adapter exposes enabled registered capabilities using the same
+credentials and dispatcher. Read [MCP.md](MCP.md) for the exact client matrix,
+separate Codespaces gateway authentication and transport limits.
 
 ## Credentials and browser access
 
@@ -97,7 +98,7 @@ migration, not a claim that every old friendly command still works.
 | `/api/v1/project-summary` | Harmless registered project metadata example |
 | `/auth/session` | POST exchanges a bearer credential for a browser session; GET inspects that session; DELETE signs out with CSRF protection |
 | `/api/v1/...`, `/setup/api/...` | Existing operation paths through shared authentication, grants and bounded local adapters |
-| `/mcp` | Authenticates, then reports unavailable until the MCP adapter lands |
+| `/mcp` | Authenticated stateless Streamable HTTP for enabled registered capabilities |
 | `/connect.html` | Human browser credential handoff |
 | Other published paths | Files from the configured publish directory only |
 

@@ -18,7 +18,9 @@ All API/setup operations now pass through the workspace service. Read
 `/SERVICE.md` for local credential creation, browser sign-in, expiry/revocation
 and CLI migration. Browser users connect at `/connect.html`; agents use protected
 credential files or their CLI profile. Never request a credential in chat. The
-direct workspace MCP adapter is not enabled by this foundation yet.
+workspace `/mcp` endpoint exposes enabled registered capabilities. Read `/MCP.md`
+for supported bearer clients and the separate private Codespaces gateway. Legacy
+REST operations are not automatically tools; check the capability catalog.
 
 ## Trust boundary
 

@@ -3322,10 +3322,10 @@
           "next_action": "Invoke the authenticated generic capability route with a declared input object."
         },
         "mcp": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "The direct workspace MCP adapter is not installed yet.",
-          "next_action": "VST-011/VST-012 add the registered adapter and independent-client verification."
+          "state": "implemented",
+          "entry": "/mcp tool project_summary",
+          "reason": "The workspace MCP adapter shares the compiled registry and dispatcher.",
+          "next_action": "Use a configured bearer client from docs/MCP.md; hosted verification is recorded separately."
         }
       },
       "target": {
@@ -3341,7 +3341,10 @@
       "verification": [
         "service/capabilities/registry_test.go",
         "service/capabilities_test.go",
-        "tests/runtime_service_check.py"
+        "tests/runtime_service_check.py",
+        "service/mcp_test.go",
+        "tests/mcp-client-check.mjs",
+        "tests/mcp-client/main.go"
       ]
     },
     {
@@ -3465,5 +3468,5 @@
     }
   },
   "baseline_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",
-  "audit_ticket": "VST-006"
+  "audit_ticket": "VST-011"
 }

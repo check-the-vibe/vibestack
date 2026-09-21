@@ -3,7 +3,8 @@
 Compiled extensions use one schema/handler registry. `project_summary` is the
 first example: generic POST, a literal friendly route, filtered discovery and
 generated OpenAPI share dispatch. See [EXTENSIONS.md](EXTENSIONS.md) for limits
-and current verification boundaries; MCP is a dependent adapter.
+and current verification boundaries. [MCP.md](MCP.md) defines the thin authenticated
+Streamable HTTP adapter and its verified client boundaries.
 
 This document describes the implemented product contract at the current Git ref.
 Future feature specifications and their ticket plans live in
@@ -23,8 +24,8 @@ keeps credentials instance-bound and revocable, and serves a dedicated static
 publish directory. Browser mutations require an authenticated session and CSRF
 protection; Linux password/client administration requires owner authority.
 See [the service contract](SERVICE.md) for limits, private legacy transports and
-the required upgrade for old unauthenticated CLI control commands. Direct MCP
-and registered extension dispatch remain dependent implementation work.
+the required upgrade for old unauthenticated CLI control commands. Enabled compiled
+capabilities share REST/MCP dispatch; legacy route-to-tool migration remains planned.
 
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup
@@ -654,7 +655,8 @@ marked physical are release checks performed on an iPadOS 17+ device.
   Editor each have a full workspace view and a return path to Desktop.
 - AC-4 `/manifest.webmanifest`, `/service-worker.js`, shell assets, icons and
   required `/novnc/` modules return correct content types. Obsolete `/ui/`,
-  `/admin/` and `/mcp` paths return 404.
+  `/admin/` paths return 404. `/mcp` requires workspace authentication before
+  accepting its supported Streamable HTTP protocol.
 - AC-5 The product never links to upstream `vnc.html`; its diagnostic route is
   removed or blocked before release.
 

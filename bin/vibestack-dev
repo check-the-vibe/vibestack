@@ -268,6 +268,14 @@ run_acceptance() (
     "$acceptance_password_dir/browser.token"
   chmod 0600 "$acceptance_password_dir/browser.token"
   (cd "$REPO_ROOT" && \
+    VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+    node tests/mcp-client-check.mjs)
+  (cd "$REPO_ROOT" && \
+    VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+    go run ./tests/mcp-client)
+  (cd "$REPO_ROOT" && \
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1 npm run test:browser)

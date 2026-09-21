@@ -108,9 +108,7 @@ func NewServer(cfg Config) (*Server, error) {
 	})
 	s.mux.HandleFunc("/auth/session", s.authSession)
 	s.mux.HandleFunc("GET /api/v1/capabilities", s.authorized("", false, s.capabilityCatalog))
-	s.mux.HandleFunc("/mcp", s.authorized("", false, func(w http.ResponseWriter, r *http.Request) {
-		s.failure(w, 503, "unavailable", "The workspace MCP adapter is not enabled yet.", false)
-	}))
+	s.mux.HandleFunc("/mcp", s.authorized("", false, s.workspaceMCP()))
 	s.mux.HandleFunc("/", s.publishedFile)
 	return s, nil
 }
@@ -374,7 +372,7 @@ func (s *Server) discovery(w http.ResponseWriter, r *http.Request) {
 		}
 		origin = scheme + "://" + r.Host
 	}
-	s.json(w, 200, map[string]any{"kind": "workspace", "version": "0.3.0-dev", "identity": s.cfg.Store.Identity, "api_versions": []string{"1"}, "api_roots": map[string]string{"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"}, "documentation": map[string]string{"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md"}, "canonical_origin": origin, "authentication_mode": "paired", "authentication": map[string]any{"modes": []string{"bearer", "browser-session"}, "credential_issuance": "local-operator", "session_url": origin + "/auth/session"}, "endpoints": map[string]string{"agents": origin + "/AGENTS.md", "api": origin + "/api/v1", "schema": origin + "/api/workspace.openapi.json", "capabilities": origin + "/api/v1/capabilities"}, "mcp": map[string]string{"state": "unavailable", "next_action": "MCP transport is not yet enabled in this service foundation."}})
+	s.json(w, 200, map[string]any{"kind": "workspace", "version": "0.3.0-dev", "identity": s.cfg.Store.Identity, "api_versions": []string{"1"}, "api_roots": map[string]string{"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"}, "documentation": map[string]string{"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md"}, "canonical_origin": origin, "authentication_mode": "paired", "authentication": map[string]any{"modes": []string{"bearer", "browser-session"}, "credential_issuance": "local-operator", "session_url": origin + "/auth/session"}, "endpoints": map[string]string{"agents": origin + "/AGENTS.md", "api": origin + "/api/v1", "schema": origin + "/api/workspace.openapi.json", "capabilities": origin + "/api/v1/capabilities"}, "mcp": map[string]any{"state": "available", "url": origin + "/mcp", "transport": "streamable-http", "stateless": true, "authentication": "configured-bearer", "oauth": "unavailable", "next_action": "Use a verified bearer-capable client; private Codespaces gateway authentication is separate."}})
 }
 
 func readBounded(r io.Reader, limit int64) ([]byte, error) {
