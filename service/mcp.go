@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/check-the-vibe/vibestack/internal/release"
+	"github.com/check-the-vibe/vibestack/internal/mcpwire"
 	"github.com/check-the-vibe/vibestack/service/capabilities"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -96,7 +98,7 @@ func (s *Server) workspaceMCP() http.HandlerFunc {
 				// Include the legacy text copy and JSON escaping in this
 				// transport's budget; never silently truncate a result.
 				encoded, err := json.Marshal(result)
-				if err != nil || int64(len(encoded)) > d.ResponseBytes {
+				if err != nil || int64(len(encoded)) > min(d.ResponseBytes, mcpwire.ResultBytes) {
 					outcome = "limit_exceeded"
 					failure := capabilities.Fail(outcome)
 					return mcpFailure(current.InstanceID, requestID, d.ID, outcome, failure.Message(), false), nil
@@ -106,11 +108,20 @@ func (s *Server) workspaceMCP() http.HandlerFunc {
 			})
 		}
 		return server
-	}, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, DisableLocalhostProtection: true, MaxRequestBodyBytes: 24 << 20, PropagateRequestCancellation: true, Logger: logger})
+	}, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, DisableLocalhostProtection: true, MaxRequestBodyBytes: mcpwire.FrameBytes, PropagateRequestCancellation: true, Logger: logger})
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.RawQuery != "" || len(r.Header.Values("Mcp-Session-Id")) != 0 || len(r.Header.Values("Last-Event-ID")) != 0 {
 			s.failure(w, 400, "invalid_input", "This endpoint is stateless; queries and resumable session identifiers are not accepted.", false)
 			return
+		}
+		if r.Method == http.MethodPost {
+			body, err := readBounded(r.Body, mcpwire.FrameBytes)
+			if err != nil || !mcpwire.IDWithinLimit(body) {
+				s.failure(w, 413, "limit_exceeded", "The MCP frame or encoded request identifier exceeds its limit.", false)
+				return
+			}
+			r.Body.Close()
+			r.Body = io.NopCloser(bytes.NewReader(body))
 		}
 		// Exact Host/Origin and workspace authentication have already been
 		// checked by the common outer handler. No proxy identity is trusted.

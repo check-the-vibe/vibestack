@@ -187,6 +187,19 @@ func TestMCPBridgeBoundsFramesAndHTTPBodies(t *testing.T) {
 	}
 }
 
+func TestMCPStdioRejectsOversizedRPCIdentity(t *testing.T) {
+	frame := `{"jsonrpc":"2.0","id":"do-not-reflect-` + strings.Repeat("x", 8192) + `","method":"tools/list"}` + "\n"
+	transport := MCPStdio(io.NopCloser(strings.NewReader(frame)), &discardCloser{})
+	connection, err := transport.Connect(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	if _, err := connection.Read(context.Background()); err == nil || strings.Contains(err.Error(), "do-not-reflect") {
+		t.Fatal("oversized local RPC identity was accepted or reflected")
+	}
+}
+
 type discardCloser struct{}
 
 func (*discardCloser) Write(p []byte) (int, error) { return len(p), nil }

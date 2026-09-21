@@ -107,6 +107,24 @@ running `accept`. This adds real old/new argv/job/raw-API checks and the documen
 old unauthenticated-status migration. It is source-version evidence, not proof
 of a published 0.2 artifact. Without the variable, that extra matrix is not run.
 
+`tests/mcp-recovery-check.mjs` places a disposable loopback fault proxy in front
+of the real nginx listener. It checks dropped accepted-command replies through
+HTTP MCP, CLI stdio and generic CLI; truncated replies; cancellation after job
+acceptance; explicit duplicate commands; conditional-write retries; and bounded
+job output. A cancelled protocol request is not confirmation that its durable
+job was cancelled. No fault proxy is used for the live workspace.
+With the historical CLI path set, acceptance also exercises the old/current
+CLI against a private runner fixture in paired and explicit trusted-tailnet
+modes, including store reopen and a real SDK client. It has no Docker manager.
+
+For image rollback acceptance, set `VIBESTACK_ROLLBACK_IMAGE` to a locally
+available previously accepted image when running `accept`. After normal checks,
+the helper moves only its disposable mounts from the candidate to that image
+and back. It waits for catalog/password restoration and checks identity, existing
+credential access, file bytes/ETag, completed job metadata and live readiness.
+The live container and mounts are never used. Without this variable, rollback
+is not exercised and must not be claimed from an ordinary replacement check.
+
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least
 one ticket, use the specification and plan as its scope, and update acceptance

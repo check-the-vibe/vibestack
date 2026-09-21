@@ -21,6 +21,11 @@ The generic surfaces retain stable `forbidden`, `not_found`, `invalid_input`,
 `limit_exceeded` and `precondition_failed` failures. MCP grant/policy denials use
 the same errors even when the requested tool is absent from filtered discovery.
 Legacy raw routes keep the compatibility error formats described below.
+nginx does not replay API or MCP requests to an upstream. A lost reply or cancelled
+MCP request leaves a submitted job's outcome uncertain; inspect its durable ID
+and use the explicit cancellation operation when needed. Repeating an argv
+submission intentionally creates another job. Conditional file retries retain
+their original preconditions and can fail after an earlier write succeeded.
 
 VibeStack exposes its live XFCE desktop through a privileged REST API. It can
 run commands in the graphical session, capture screenshots, start and stop

@@ -10,6 +10,8 @@ for inputs, protected gateway profiles and versioned installation.
 Generic REST, CLI, browser sessions and MCP share capability errors and grants;
 MCP discovery lists only callable tools. See the [parity checks](docs/DEVELOPMENT.md#fast-edit-loop)
 for the real-client acceptance workflow and pinned historical CLI checks.
+The same workflow provides disposable MCP fault injection and optional rollback
+checks; their execution state is recorded in [VST-013](.context/tickets/VST-013.md).
 The launcher-declared source checkout supports project file and command APIs
 even when its bind mount uses a different filesystem from other projects.
 

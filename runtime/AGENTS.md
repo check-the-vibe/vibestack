@@ -119,6 +119,11 @@ Generic invocation and MCP share `forbidden` for a denied grant or excluded tool
 `not_found` for an unknown capability, and `precondition_failed` for a stale file
 write. Refresh discovery or inspect the current resource before retrying; a
 different transport does not grant additional authority.
+Use short MCP request IDs: the service limits their encoded form to 256 bytes
+and complete frames to 24 MiB. A dropped reply or cancelled request does not
+prove that a durable job stopped. Inspect known job IDs before retrying; use the
+explicit job cancellation capability when required. Repeating an argv submission
+creates a new job, while file writes must retain their observed preconditions.
 
 The browser desktop is `/vnc/?view=desktop`; `/connect.html` is the private human
 workspace-credential handoff. API browser mutations also need the session's CSRF

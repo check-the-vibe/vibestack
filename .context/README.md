@@ -50,6 +50,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-012](tickets/VST-012.md) | Registered workspace tools and local stdio bridge | [VST-012](branches/VST-012.md) |
 | [VST-009](tickets/VST-009.md) | One-URL guidance and verified CLI distribution | [VST-009](branches/VST-009.md) |
 | [VST-010](tickets/VST-010.md) | Cross-client parity and compatibility | [VST-010](branches/VST-010.md) |
+| [VST-013](tickets/VST-013.md) | MCP transport recovery and compatibility | [VST-013](branches/VST-013.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

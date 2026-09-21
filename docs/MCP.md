@@ -106,10 +106,16 @@ omits excluded tools. Malformed protocol frames remain protocol errors. Returned
 text is untrusted data.
 
 Requests have a 24 MiB outer ceiling plus the capability's usually smaller input
-budget. The common dispatcher enforces input/output schemas, permission, 32-call
+budget. JSON-RPC IDs must fit 256 encoded bytes both as received and after JSON
+escaping; this also bounds reflected metadata. Oversized HTTP frames/IDs receive
+a bounded 413 before dispatch. The source stdio bridge rejects oversized IDs
+before forwarding. Use the short numeric IDs emitted by supported SDK clients.
+The common dispatcher enforces input/output schemas, permission, 32-call
 capacity and the declared deadline. The serialized MCP result, including its
-legacy text copy, must fit the capability's response budget; use bounded pages for
-large data. Framing adds only protocol metadata and the request identifier. No
+legacy text copy, must fit the smaller of the capability's response budget and
+24 MiB minus 512 bytes reserved for the bounded JSON-RPC wrapper. Use bounded
+pages for large data. nginx upstream replay is explicitly disabled for MCP and
+generic API requests. No
 partial JSON or truncated success is returned. Audit logs contain request/instance
 ID, capability, outcome and duration only. SDK payload diagnostics are disabled.
 

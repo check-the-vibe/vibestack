@@ -44,6 +44,11 @@ calls to MCP tools omitted from filtered discovery. Unknown valid IDs use
 errors remain protocol errors. The disposable parity gate uses real REST, MCP,
 CLI and Chromium-session clients; compatibility and transport-fault evidence are
 tracked separately in VST-010/VST-013.
+Workspace MCP admits at most 24 MiB per outer frame and a 256-byte encoded RPC
+identifier, including re-encoding expansion. Serialized tool results reserve
+512 bytes for the wrapper. The source stdio bridge applies the same identifier
+bound; nginx upstream replay is disabled for API and MCP requests. These bounds
+do not change durable-job cancellation or retry semantics.
 
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup

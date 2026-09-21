@@ -53,6 +53,8 @@ run_fast_tests() {
     node --check web/public/auth.js
     node --check web/public/connect.js
     node --check tests/capability-parity-check.mjs
+    node --check tests/mcp-recovery-check.mjs
+    node --check tests/rollback-check.mjs
     node --test tests/walkthrough-privacy.test.mjs
     python3 -m py_compile \
       automation/automationlib.py automation/server.py automation/sshkeys.py \
@@ -302,9 +304,55 @@ run_acceptance() (
     VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
     VIBESTACK_ALLOW_MUTATING_MCP_TESTS=1 node tests/capability-parity-check.mjs)
   (cd "$REPO_ROOT" && \
+    VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+    VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
+    VIBESTACK_ALLOW_MUTATING_MCP_TESTS=1 node tests/mcp-recovery-check.mjs)
+  if [[ -n "${VIBESTACK_LEGACY_CLI:-}" ]]; then
+    (cd "$REPO_ROOT" && \
+      VIBESTACK_COMPAT_CURRENT_CLI="$acceptance_password_dir/vibestack" \
+      go test ./runner -run '^TestHistoricalCLIWithPrivateRunner$' -count=1)
+  fi
+  (cd "$REPO_ROOT" && \
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1 npm run test:browser)
+  if [[ -n "${VIBESTACK_ROLLBACK_IMAGE:-}" ]]; then
+    # Both images use only this invocation's disposable data/projects. The live
+    # desktop is never inspected, retagged, stopped or mounted by this probe.
+    docker image inspect "$VIBESTACK_ROLLBACK_IMAGE" >/dev/null
+    local candidate_image="$image"
+    rollback_probe() {
+      (cd "$REPO_ROOT" && \
+        VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+        VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+        VIBESTACK_ROLLBACK_SNAPSHOT="$acceptance_password_dir/rollback.json" \
+        VIBESTACK_ALLOW_MUTATING_MCP_TESTS=1 node tests/rollback-check.mjs "$1")
+    }
+    rollback_probe prepare
+    docker rm -f "$acceptance_container" >/dev/null
+    image="$VIBESTACK_ROLLBACK_IMAGE"
+    start_acceptance_container
+    wait_for_health "$acceptance_container"
+    copy_onboarding_probe
+    docker exec -i "$acceptance_container" \
+      python3 /tmp/vibestack-runtime-onboarding-check.py \
+        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" \
+      < "$acceptance_password_file"
+    rollback_probe previous
+    docker exec -u vibe "$acceptance_container" vibestack-check --live
+    docker rm -f "$acceptance_container" >/dev/null
+    image="$candidate_image"
+    start_acceptance_container
+    wait_for_health "$acceptance_container"
+    copy_onboarding_probe
+    docker exec -i "$acceptance_container" \
+      python3 /tmp/vibestack-runtime-onboarding-check.py \
+        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" \
+      < "$acceptance_password_file"
+    rollback_probe candidate
+    docker exec -u vibe "$acceptance_container" vibestack-check --live
+  fi
 )
 
 service_log_path() {

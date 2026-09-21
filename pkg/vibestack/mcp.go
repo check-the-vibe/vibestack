@@ -13,10 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/check-the-vibe/vibestack/internal/mcpwire"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const mcpFrameLimit = 24 << 20
+const mcpFrameLimit = mcpwire.FrameBytes
 
 var bridgeIdentity = regexp.MustCompile(`^[a-f0-9]{32}$`)
 var gatewayCredential = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
@@ -189,6 +190,9 @@ func (r *bridgeLines) Read(out []byte) (int, error) {
 				return 0, errors.New("MCP input frame unavailable or over limit")
 			}
 			return 0, io.EOF
+		}
+		if !mcpwire.IDWithinLimit(r.scanner.Bytes()) {
+			return 0, errors.New("MCP encoded request identifier exceeds its limit")
 		}
 		r.pending = append(r.scanner.Bytes(), '\n')
 	}
