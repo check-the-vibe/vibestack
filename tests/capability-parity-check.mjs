@@ -191,7 +191,7 @@ async function main() {
       });
     });
     check((await run(legacy, ['version'])).stdout.trim() === '0.2.0', 'actual historical CLI version');
-    check((await run(command, ['version'])).stdout.trim() === '0.3.0', 'current CLI version');
+    check((await run(command, ['version'])).stdout.trim() === '0.3.1', 'current CLI version');
     for (const binary of [legacy, command]) {
       const result = await run(binary, ['--json', 'exec', '--', '/usr/bin/printf', '%s', 'legacy-argv-$(literal)']);
       check(result.code === 0 && !result.stderr, 'legacy argv execution');

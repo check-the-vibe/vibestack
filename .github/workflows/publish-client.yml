@@ -3,7 +3,7 @@ name: Publish VibeStack client and runner
 on:
   workflow_dispatch:
   push:
-    branches: ['codex/vst-009-agent-bootstrap']
+    branches: ['codex/vst-009-agent-bootstrap', 'codex/vst-013-transport-recovery']
     tags: ['v*']
 
 permissions:
@@ -110,4 +110,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "VibeStack $GITHUB_REF_NAME" --notes-file docs/releases/0.3.0.md
+          version="${GITHUB_REF_NAME#v}"
+          test -f "docs/releases/$version.md"
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "VibeStack $GITHUB_REF_NAME" --notes-file "docs/releases/$version.md"

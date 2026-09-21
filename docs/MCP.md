@@ -128,7 +128,7 @@ by their workspace capability adapters. Fault injection is tracked in VST-013.
 
 ### Local stdio connection
 
-Use CLI 0.3.0 from the versioned release installer in [CLI.md](CLI.md), or build
+Use CLI 0.3.1 from the versioned release installer in [CLI.md](CLI.md), or build
 this checkout for development. The earlier 0.2 source lacks the bridge.
 
 ```sh

@@ -1,7 +1,7 @@
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "cli": {"api_versions": ["1"], "server_kinds": ["workspace", "runner"]},
-  "workspace": {"version": "0.3.0", "api_versions": ["1"], "compatible_cli": ">=0.2.0 <1.0.0", "generic_cli_minimum": "0.3.0"},
-  "runner": {"version": "0.3.0", "api_versions": ["1"], "compatible_cli": ">=0.2.0 <1.0.0", "launch_contract": 1},
+  "workspace": {"version": "0.3.1", "api_versions": ["1"], "compatible_cli": ">=0.2.0 <1.0.0", "generic_cli_minimum": "0.3.0"},
+  "runner": {"version": "0.3.1", "api_versions": ["1"], "compatible_cli": ">=0.2.0 <1.0.0", "launch_contract": 1},
   "publisher": {"repository": "check-the-vibe/vibestack", "release_base": "https://github.com/check-the-vibe/vibestack/releases/download", "provenance": "GitHub Actions artifact attestation", "installer_verification": "HTTPS and SHA-256; attestation verification is an explicit optional step"}
 }

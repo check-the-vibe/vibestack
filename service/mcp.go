@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/check-the-vibe/vibestack/internal/release"
 	"github.com/check-the-vibe/vibestack/internal/mcpwire"
+	"github.com/check-the-vibe/vibestack/internal/release"
 	"github.com/check-the-vibe/vibestack/service/capabilities"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
