@@ -29,6 +29,32 @@ The two editors serve different purposes: the Codespaces editor edits this
 repository; VibeStack's embedded editor edits its own persistent `/projects`.
 The repository and Codespaces credentials are not mounted into the desktop.
 
+## Copilot and desktop development
+
+GitHub supports Copilot in the Codespaces VS Code web editor; access depends on
+account entitlement and organization policy. Install the official `GitHub.copilot`
+extension if it is not already available. See [Copilot in Codespaces](https://docs.github.com/en/codespaces/reference/using-github-copilot-in-github-codespaces).
+If VS Code starts in Restricted Mode, the human must review the workspace-trust
+prompt before enabling terminal execution or agent tools; do not disable trust
+globally. Copilot may also ask the human to sign in.
+
+Copilot's terminal is in the **outer Codespace**, not the graphical desktop.
+For application projects, add
+`/workspaces/.vibestack-codespaces/vibestack/projects` to the Codespaces editor
+(or substitute the actual repository-directory name). This is the same tree as
+`/projects` inside VibeStack. Run desktop-side tools as `vibe`, for example:
+
+```bash
+docker exec -u vibe -w /projects vibestack-codespaces /usr/bin/pwd
+```
+
+Graphical commands also need the desktop session environment from
+`/run/vibestack/session.env`, as described in `runtime/AGENTS.md`. The authenticated
+automation API supplies commands, jobs and screenshots when an agent needs to
+inspect the desktop. Copilot does not automatically see the graphical screen.
+Keep its commands scoped to this container. The embedded VibeStack editor is
+still supported; removing it would be a separate product change.
+
 ## Configuration and lifecycle
 
 - `.devcontainer/devcontainer.json` supplies Ubuntu 24.04 tooling, Node 22,
