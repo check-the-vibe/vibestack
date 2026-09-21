@@ -18,6 +18,8 @@ repository identities, suites, components, and signing keys are unchanged.
 GitHub Codespaces provides a development entrypoint with a minimum of 4 CPU
 cores and 16 GB RAM. The repository remains in the Codespaces source editor;
 a separate nested VibeStack container starts automatically after preparation.
+Creation installs the complete Ubuntu Python 3 standard library before running
+the lifecycle helper.
 Only its loopback HTTP port 8080 is forwarded, using GitHub's Private visibility
 and the exact environment-derived hostname in the existing Host allowlist.
 Desktop state and projects persist outside the source checkout under

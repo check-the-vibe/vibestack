@@ -59,6 +59,8 @@ still supported; removing it would be a separate product change.
 
 - `.devcontainer/devcontainer.json` supplies Ubuntu 24.04 tooling, Node 22,
   Go 1.26.4 and an isolated Docker-in-Docker daemon.
+- `onCreateCommand` installs Ubuntu’s complete `python3` package; the base image
+  only supplies a minimal interpreter without modules such as `json`.
 - `updateContentCommand` installs browser-test dependencies and runs
   `python3 .devcontainer/codespaces.py prepare`, building `vibestack:codespaces`
   from the checked-out source with Docker's layer cache.

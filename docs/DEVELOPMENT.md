@@ -25,7 +25,7 @@ npx playwright install chromium
 CI host. It changes host packages, so local machines should install system
 dependencies through their normal package-management workflow.
 
-The checked-in Dev Container supplies Node 22, Go 1.26.4 and an isolated
+The checked-in Dev Container supplies full Python 3, Node 22, Go 1.26.4 and an isolated
 Docker-in-Docker daemon. In GitHub Codespaces it requests at least 4 cores and
 16 GB RAM, prepares the browser suite and desktop image, then automatically
 starts `vibestack-codespaces` on loopback port 8080. The source editor can attach

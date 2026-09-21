@@ -39,6 +39,7 @@
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
   },
+  "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3",
   "updateContentCommand": "npm ci && npx playwright install --with-deps chromium && python3 .devcontainer/codespaces.py prepare",
   "postStartCommand": "python3 .devcontainer/codespaces.py start",
   "waitFor": "onCreateCommand"

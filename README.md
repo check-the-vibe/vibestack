@@ -48,7 +48,8 @@ on a branch containing the Codespaces configuration. The source opens in the
 Codespaces editor; VibeStack builds and starts automatically on forwarded port
 **8080**. Keep that port **Private** and open it for the desktop web interface.
 The minimum machine is **4 cores / 16 GB RAM**. First creation needs time to build;
-the editor is usable during preparation. See
+full Python installs before the editor opens, and the desktop build continues
+in the background. See
 [the Codespaces guide](.context/github-codespaces.md) for persistence, prebuilds,
 rebuilding and troubleshooting.
 
