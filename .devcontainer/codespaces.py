@@ -169,7 +169,9 @@ def verify_existing(value, data, projects, host):
                               or source.get("RW") is not True):
         raise RuntimeError("Existing source mount is unexpected; inspect it manually")
     # Upgrade pre-source-mount Codespaces through the launcher's rollback flow.
-    return source is not None and f"VIBESTACK_ALLOWED_HOSTS={host}" in value["Config"].get("Env", [])
+    env = value["Config"].get("Env", [])
+    return (source is not None and f"VIBESTACK_ALLOWED_HOSTS={host}" in env
+            and f"VIBESTACK_SOURCE_PROJECT={ROOT.name}" in env)
 
 
 def start(data, projects, host):

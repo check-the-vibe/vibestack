@@ -1,5 +1,11 @@
 # VibeStack in GitHub Codespaces
 
+The launcher declares the shared checkout through `VIBESTACK_SOURCE_PROJECT`.
+Project file APIs and command working directories therefore support that one
+immediate source mount even on a different filesystem from `/projects`. Its
+opened directory defines the device boundary; ownership, no-symlink and deeper
+mount checks remain in force. No recursive ownership change is required.
+
 Maintained project context. Last checked against official documentation:
 21 September 2026. Read this before changing Codespaces configuration.
 

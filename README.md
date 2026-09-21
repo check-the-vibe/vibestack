@@ -5,6 +5,8 @@ The included `project_summary` example supports authenticated REST/browser calls
 Registered workspace tools also cover jobs, conditional project files, screenshots
 and desktop operations. The current source CLI supplies `vibestack mcp` as a thin
 stdio bridge; see [workspace MCP](docs/MCP.md) for inputs, limits and build/setup.
+The launcher-declared source checkout supports project file and command APIs
+even when its bind mount uses a different filesystem from other projects.
 
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:

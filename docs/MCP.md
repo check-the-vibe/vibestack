@@ -58,6 +58,11 @@ metadata or silently fall back to anonymous/trusted-tailnet access.
 
 ## Private Codespaces gateway
 
+Project file and command tools support the source mount declared by the launcher,
+including when `/projects/vibestack` uses a different filesystem from `/projects`.
+The opened source directory establishes that subtree's device boundary. Ownership,
+no-symlink and deeper mount checks still apply; requests cannot configure mounts.
+
 Use the forwarded **service** origin ending in `-8080.app.github.dev`, not the
 editor URL. Keep port 8080 Private. Two independent layers must authenticate:
 

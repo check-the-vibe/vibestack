@@ -100,7 +100,7 @@ PROJECTS_DIR="$(resolve "${PROJECTS_DIR:-$DATA_DIR/projects}")" || \
 HOME_DIR="$(resolve "$HOME")" || data_path_error "could not canonicalize HOME"
 SOURCE_NAME="${SCRIPT_DIR##*/}"
 if [[ "$MOUNT_SOURCE" == true ]]; then
-  [[ "$SOURCE_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ && "$SCRIPT_DIR" != *,* ]] || \
+  [[ "$SOURCE_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$ && "$SCRIPT_DIR" != *,* ]] || \
     projects_path_error "source checkout path cannot be represented as a named Docker mount"
   source_target="$PROJECTS_DIR/$SOURCE_NAME"
   # A nested bind must never hide a user's existing project or follow a link.
@@ -269,6 +269,7 @@ run_args=(-d --name "${CONTAINER_NAME}" --restart unless-stopped --hostname vibe
 if [[ "$MOUNT_SOURCE" == true ]]; then
   echo "[startup]   source:   ${SCRIPT_DIR} -> /projects/${SOURCE_NAME} (read/write)"
   run_args+=(--mount "type=bind,source=${SCRIPT_DIR},target=/projects/${SOURCE_NAME}")
+  run_args+=(-e "VIBESTACK_SOURCE_PROJECT=${SOURCE_NAME}")
 fi
 [[ -n "$ALLOWED_HOSTS" ]] && run_args+=(-e "VIBESTACK_ALLOWED_HOSTS=$ALLOWED_HOSTS")
 [[ "${SKIP_SETUP}" == "true" ]] && run_args+=(-e VIBESTACK_SKIP_SETUP=1)

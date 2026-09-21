@@ -1,5 +1,11 @@
 # Automating VibeStack
 
+When `startup.sh --mount-source` shares the checkout, it declares the immediate
+project directory through `VIBESTACK_SOURCE_PROJECT`. Project file and working
+directory operations allow that one mount to establish its own device boundary;
+all descendants retain ownership, no-symlink and same-device checks. This is
+operator configuration, never a request parameter or a recursive ownership change.
+
 Compiled extensions use the same authenticated workspace service; see
 [EXTENSIONS.md](EXTENSIONS.md). Existing raw file/job routes below retain their
 compatibility semantics. Authenticated `/mcp` exposes enabled compiled capabilities

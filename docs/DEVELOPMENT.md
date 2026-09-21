@@ -55,7 +55,10 @@ Docker-in-Docker daemon. In GitHub Codespaces it requests at least 4 cores and
 starts `vibestack-codespaces` on loopback port 8080. The source editor can attach
 while preparation runs. The checkout is shared read/write at
 `/projects/<repository-directory>` inside the desktop through `--mount-source`;
-other projects retain their separate persistent directory. Desktop data and
+other projects retain their separate persistent directory. The launcher declares
+that one immediate child with `VIBESTACK_SOURCE_PROJECT`; file APIs pin the opened
+directory's device, retaining ownership, no-symlink and deeper mount checks.
+Desktop data and
 projects use the outer named volume at `/vibestack-runtime/<repository-directory>`;
 a workspace witness detects missing or replaced storage. Existing Codespaces
 require the documented explicit migration after an outer rebuild. GitHub's private forwarding supplies remote HTTPS;

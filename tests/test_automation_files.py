@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from types import SimpleNamespace
 import sys
 
 
@@ -138,6 +139,56 @@ class DesktopFileStoreTests(unittest.TestCase):
             self.store.require_cwd("work-link")
         with self.assertRaises(files.FileError):
             self.store.require_cwd("/tmp")
+
+    def test_only_configured_immediate_project_mount_can_change_device(self):
+        source = self.desktop / "source"
+        nested = source / "nested"
+        nested.mkdir(parents=True)
+        other = self.desktop / "other"
+        other.mkdir()
+        (source / "file").write_bytes(b"source")
+        (other / "file").write_bytes(b"other")
+        (nested / "file").write_bytes(b"nested")
+        mounted = files.DesktopFileStore(str(self.desktop), mounted_subroots=("source",))
+        native_fstat, native_stat = os.fstat, os.stat
+
+        def with_device(info, path):
+            # Model distinct mounted devices without changing host mount state.
+            delta = 2 if str(path).startswith(str(nested)) else 1 if str(path).startswith((str(source), str(other))) else 0
+            if not delta:
+                return info
+            values = {name: getattr(info, name) for name in dir(info) if name.startswith("st_")}
+            values["st_dev"] += delta
+            return SimpleNamespace(**values)
+
+        def fstat(fd):
+            return with_device(native_fstat(fd), os.readlink(f"/proc/self/fd/{fd}"))
+
+        def path_stat(path, *args, **kwargs):
+            info = native_stat(path, *args, **kwargs)
+            parent = kwargs.get("dir_fd")
+            full = Path(os.readlink(f"/proc/self/fd/{parent}")) / path if parent is not None else path
+            return with_device(info, full)
+
+        with mock.patch.object(files.os, "fstat", side_effect=fstat), \
+             mock.patch.object(files.os, "stat", side_effect=path_stat):
+            with self.assertRaises(files.FileError):
+                self.store.read("source/file")
+            before = mounted.read("source/file")
+            mounted.write("source/file", b"edited", if_match=before.etag)
+            self.assertEqual(b"edited", mounted.read("source/file").data)
+            self.assertEqual(str(source), mounted.require_cwd("source"))
+            for value in ("other/file", "source/nested/file"):
+                with self.subTest(value=value), self.assertRaises(files.FileError):
+                    mounted.read(value)
+            with self.assertRaises(files.FileError):
+                mounted.require_cwd("source/nested")
+        (self.desktop / "linked").symlink_to(source, target_is_directory=True)
+        linked = files.DesktopFileStore(str(self.desktop), mounted_subroots=("linked",))
+        with self.assertRaises(files.FileError):
+            linked.read("linked/file")
+        with self.assertRaises(ValueError):
+            files.DesktopFileStore(str(self.desktop), mounted_subroots=("../source",))
 
 
 def stat_mode(path: Path) -> int:

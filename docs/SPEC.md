@@ -992,5 +992,10 @@ See [shared access, password, MCP and rollout contract](RUNNER.md#shared-tailnet
 The same Codespace can host successive ticket branches. `/workspaces/vibestack`
 and `/projects/vibestack` inside the desktop refer to one checkout; switching
 branches updates source without recreating the desktop or its persistent state.
+The launcher declares that immediate project child with `VIBESTACK_SOURCE_PROJECT`.
+Its opened directory establishes the device boundary for project file and working
+directory operations. Other or deeper cross-device paths remain rejected, along
+with wrong ownership, symlinks and non-regular or multiply-linked files. Requests
+cannot add allowed source mounts, and the checkout is never recursively chowned.
 Image-copied service code requires a deliberate tested rebuild. See the
 [operating steps](../.context/github-codespaces.md#reuse-this-codespace-for-the-next-ticket).

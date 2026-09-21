@@ -53,7 +53,9 @@ class DesktopFileStore:
 
     Each component is opened relative to an already-validated directory FD
     with ``O_NOFOLLOW``. Files must be regular, owned by the service uid, on
-    the Desktop's device, and have exactly one hard link.
+    the root's device, and have exactly one hard link. An operator-configured
+    immediate project mount may establish its own device boundary; requests
+    cannot choose or expand that list.
     """
 
     def __init__(
@@ -62,10 +64,15 @@ class DesktopFileStore:
         *,
         expected_uid: int | None = None,
         max_bytes: int = MAX_FILE_BYTES,
+        mounted_subroots: tuple[str, ...] = (),
     ):
         self.root = os.path.abspath(root)
         self.expected_uid = os.getuid() if expected_uid is None else expected_uid
         self.max_bytes = max_bytes
+        if any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", name)
+               for name in mounted_subroots):
+            raise ValueError("Configured project mount names are invalid")
+        self.mounted_subroots = frozenset(mounted_subroots)
         self._lock = threading.RLock()
 
     @staticmethod
@@ -107,10 +114,13 @@ class DesktopFileStore:
 
         fd, device = self._open_root()
         try:
-            for component in relative_parts:
-                next_fd = self._open_directory(fd, component, device)
+            for index, component in enumerate(relative_parts):
+                mounted = index == 0 and component in self.mounted_subroots
+                next_fd = self._open_directory(fd, component, None if mounted else device)
                 os.close(fd)
                 fd = next_fd
+                if mounted:
+                    device = os.fstat(fd).st_dev
             # /proc/self/fd resolves the exact validated directory. Commands
             # are launched soon after validation and this also rejects every
             # symlink in the requested path.
@@ -327,7 +337,7 @@ class DesktopFileStore:
             raise FileError("unsafe_desktop", "The Desktop root is not safe to access.", 503)
         return fd, info.st_dev
 
-    def _open_directory(self, parent_fd: int, component: str, device: int) -> int:
+    def _open_directory(self, parent_fd: int, component: str, device: int | None) -> int:
         flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
         flags |= getattr(os, "O_NOFOLLOW", 0)
         try:
@@ -338,7 +348,7 @@ class DesktopFileStore:
         if (
             not stat.S_ISDIR(info.st_mode)
             or info.st_uid != self.expected_uid
-            or info.st_dev != device
+            or (device is not None and info.st_dev != device)
         ):
             os.close(fd)
             raise FileError("unsafe_path", "A Desktop path component is not safe.", 403)
@@ -348,10 +358,17 @@ class DesktopFileStore:
         components = relative_path.split("/")
         fd, device = self._open_root()
         try:
-            for component in components[:-1]:
-                next_fd = self._open_directory(fd, component, device)
+            for index, component in enumerate(components[:-1]):
+                # Only an operator-configured immediate project child can
+                # establish another filesystem boundary. Pin that device from
+                # the opened descriptor; all descendants remain on it. Ownership,
+                # no-follow, regular-file and single-link checks still apply.
+                mounted = index == 0 and component in self.mounted_subroots
+                next_fd = self._open_directory(fd, component, None if mounted else device)
                 os.close(fd)
                 fd = next_fd
+                if mounted:
+                    device = os.fstat(fd).st_dev
             return fd, components[-1], device
         except BaseException:
             os.close(fd)

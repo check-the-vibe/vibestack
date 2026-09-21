@@ -449,6 +449,7 @@ class AutomationBackend:
         *,
         desktop_root: str = DEFAULT_DESKTOP_ROOT,
         projects_root: str = DEFAULT_PROJECTS_ROOT,
+        source_project: str | None = None,
         job_directory: str = DEFAULT_JOB_DIRECTORY,
         session_env_file: str = DEFAULT_SESSION_ENV_FILE,
         applications_file: str | None = None,
@@ -459,7 +460,10 @@ class AutomationBackend:
         ssh_key_store: SSHKeyStore | None = None,
     ):
         self.files = DesktopFileStore(desktop_root, expected_uid=expected_uid)
-        self.project_files = DesktopFileStore(projects_root, expected_uid=expected_uid)
+        self.project_files = DesktopFileStore(
+            projects_root, expected_uid=expected_uid,
+            mounted_subroots=(source_project,) if source_project else (),
+        )
         self.client_store = client_store or WorkspaceClientStore()
         self.ssh_keys = ssh_key_store or SSHKeyStore(os.path.dirname(desktop_root))
         self.environment = DesktopEnvironment(

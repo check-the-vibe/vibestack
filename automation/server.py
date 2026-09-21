@@ -861,6 +861,7 @@ def main() -> int:
         return 1
     backend = lib.AutomationBackend(
         desktop_root=os.environ.get("AUTOMATION_DESKTOP_ROOT", lib.DEFAULT_DESKTOP_ROOT),
+        source_project=os.environ.get("VIBESTACK_SOURCE_PROJECT") or None,
         job_directory=os.environ.get("AUTOMATION_JOB_DIR", lib.DEFAULT_JOB_DIRECTORY),
         session_env_file=os.environ.get(
             "AUTOMATION_SESSION_ENV_FILE", lib.DEFAULT_SESSION_ENV_FILE

@@ -38,7 +38,9 @@ REST operations are not automatically tools; check the capability catalog.
   from port 8080, and GitHub authentication protects remote browser access.
   The checkout is shared read/write at `/projects/vibestack` (or the actual
   repository-directory name); other projects remain under `/projects`. Source
-  edits affect the outer editor immediately. No outer credentials or Docker
+  edits affect the outer editor immediately. The launcher-declared source mount
+  supports project file and command APIs across a filesystem boundary; ownership,
+  no-symlink and deeper mount checks still apply. No outer credentials or Docker
   socket are injected; run authenticated Git operations in the Codespaces editor.
   Outer runtime storage is `/vibestack-runtime/<repository-directory>` in a
   dedicated volume. Missing storage or unsafe ownership requires operator

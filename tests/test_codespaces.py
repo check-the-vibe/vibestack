@@ -22,7 +22,8 @@ class CodespacesTests(unittest.TestCase):
         self.container = {
             'Image': 'sha256:test',
             'Config': {'Labels': {'dev.vibestack.launch-contract': '1'},
-                       'Env': [f'VIBESTACK_ALLOWED_HOSTS={self.host}']},
+                       'Env': [f'VIBESTACK_ALLOWED_HOSTS={self.host}',
+                               f'VIBESTACK_SOURCE_PROJECT={ROOT.name}']},
             'Mounts': [{'Type': 'bind', 'Source': str(self.data), 'Destination': '/data'},
                        {'Type': 'bind', 'Source': str(self.projects), 'Destination': '/projects'},
                        {'Type': 'bind', 'Source': str(ROOT), 'Destination': f'/projects/{ROOT.name}', 'RW': True}],
@@ -63,6 +64,11 @@ class CodespacesTests(unittest.TestCase):
     def test_old_codespace_without_source_mount_is_replaced(self):
         old = copy.deepcopy(self.container)
         old['Mounts'].pop()
+        self.assertEqual(self.exercise(old)[0].args[0], 'bash')
+
+    def test_source_mount_without_api_boundary_configuration_is_replaced(self):
+        old = copy.deepcopy(self.container)
+        old['Config']['Env'].pop()
         self.assertEqual(self.exercise(old)[0].args[0], 'bash')
 
     def test_unexpected_source_mount_is_not_adopted(self):

@@ -221,6 +221,7 @@ exit 0
         self.assertEqual(0, result.returncode, result.stderr)
         calls = self.docker_log.read_text()
         self.assertIn(f"type=bind,source={self.repo},target=/projects/vibestack", calls)
+        self.assertIn("VIBESTACK_SOURCE_PROJECT=vibestack", calls)
         self.assertIn(f"{projects}:/projects", calls)
         self.assertNotIn("docker.sock", calls)
 
