@@ -14,6 +14,13 @@ The version-matched operating guide is available inside the desktop at
 
 ## Authentication and URLs
 
+In GitHub Codespaces, use `http://127.0.0.1:8080` from the Codespaces terminal,
+with container name `vibestack-codespaces`. Remote browser access uses GitHub's
+Private forwarded port; external API clients additionally need GitHub forwarding
+authentication. VibeStack bearer authentication remains required for automation.
+Keep native SSH/VNC unforwarded and never make the web port public. The source
+checkout's `.context/github-codespaces.md` documents lifecycle and persistence.
+
 The pairing request and poll endpoints are the only unauthenticated bootstrap
 routes. Every other request below `/api/v1/automation` requires:
 

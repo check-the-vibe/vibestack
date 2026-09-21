@@ -7,6 +7,8 @@ versioned release yet; changes below describe the next release from `main`.
 
 ### Added
 
+- Automatic GitHub Codespaces desktop startup with a 4-core/16-GB minimum,
+  private port forwarding, persistent desktop state and agent setup guidance.
 - A dependency-free workspace launcher and installable noVNC shell with
   Desktop/Terminal switching, mobile input controls, bounded display resizing,
   service status, logs, and safe restarts.

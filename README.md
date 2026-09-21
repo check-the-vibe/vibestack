@@ -41,6 +41,19 @@ on first boot, by you, from a catalog. The full specification is in
 ./startup.sh --data ~/vibestack  # where logins and your setup choice persist
 ./startup.sh --data ~/vibestack --adopt-data  # one-time use for existing state
 ./startup.sh --projects ~/code   # mounted at /projects
+### GitHub Codespaces
+
+[Open in GitHub Codespaces](https://codespaces.new/check-the-vibe/vibestack)
+on a branch containing the Codespaces configuration. The source opens in the
+Codespaces editor; VibeStack builds and starts automatically on forwarded port
+**8080**. Keep that port **Private** and open it for the desktop web interface.
+The minimum machine is **4 cores / 16 GB RAM**. First creation needs time to build;
+the editor is usable during preparation. See
+[the Codespaces guide](.context/github-codespaces.md) for persistence, prebuilds,
+rebuilding and troubleshooting.
+
+### Local Docker
+
 ./startup.sh --ssh-port 2222     # password/key SSH, loopback only (0 disables)
 ./startup.sh --vnc-port 5900     # full-password native VNC (0 disables)
 ./startup.sh --allowed-host workspace.example.test  # explicit custom Host allowlist

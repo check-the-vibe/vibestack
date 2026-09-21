@@ -5,19 +5,41 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "22"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.26.4"
     }
   },
-  "forwardPorts": [8080],
+  "forwardPorts": [
+    8080
+  ],
   "portsAttributes": {
     "8080": {
       "label": "VibeStack (private)",
-      "onAutoForward": "notify",
+      "onAutoForward": "openBrowser",
       "requireLocalPort": false,
-      "protocol": "http",
-      "visibility": "private"
+      "protocol": "http"
     }
   },
-  "runArgs": ["--shm-size=1g"],
-  "postCreateCommand": "npm ci && npx playwright install --with-deps chromium",
-  "remoteUser": "vscode"
+  "runArgs": [
+    "--shm-size=1g"
+  ],
+  "remoteUser": "vscode",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb"
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        ".context/github-codespaces.md"
+      ]
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "updateContentCommand": "npm ci && npx playwright install --with-deps chromium && python3 .devcontainer/codespaces.py prepare",
+  "postStartCommand": "python3 .devcontainer/codespaces.py start",
+  "waitFor": "onCreateCommand"
 }

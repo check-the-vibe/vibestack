@@ -25,11 +25,14 @@ npx playwright install chromium
 CI host. It changes host packages, so local machines should install system
 dependencies through their normal package-management workflow.
 
-The checked-in Dev Container is a tooling environment, not the VibeStack
-runtime image. It supplies Node 22 and an isolated Docker-in-Docker daemon,
-installs the browser suite after creation, forwards port 8080 privately, and
-can run `test`, `build`, `accept`, and local-container commands from the same
-helper. Tailscale remains a host concern; run `serve` outside the Dev Container.
+The checked-in Dev Container supplies Node 22, Go 1.26.4 and an isolated
+Docker-in-Docker daemon. In GitHub Codespaces it requests at least 4 cores and
+16 GB RAM, prepares the browser suite and desktop image, then automatically
+starts `vibestack-codespaces` on loopback port 8080. The source editor can attach
+while preparation runs. GitHub's private forwarding supplies remote HTTPS;
+no Tailscale is needed there. Local Dev Containers skip desktop autostart.
+Read [the Codespaces context](../.context/github-codespaces.md) before changing
+this workflow, especially its persistent paths and real-Codespaces test gates.
 
 ## Fast edit loop
 

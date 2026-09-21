@@ -70,6 +70,8 @@ run_fast_tests() {
     python3 -m json.tool api/command-coverage.json >/dev/null
     python3 -m json.tool contracts/launch-v1.json >/dev/null
     python3 -m json.tool release-manifest.json >/dev/null
+    python3 -m json.tool .devcontainer/devcontainer.json >/dev/null
+    python3 -m py_compile .devcontainer/codespaces.py
     git diff --check HEAD
   )
 }

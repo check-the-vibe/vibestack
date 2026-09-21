@@ -12,6 +12,12 @@ runtime path, dependency, security boundary, or operator workflow changes.
 
 ## Source map
 
+For GitHub Codespaces work, first read
+[`.context/github-codespaces.md`](.context/github-codespaces.md). It defines the
+4-core/16-GB minimum, automatic desktop lifecycle, private forwarded-port boundary,
+persistent paths, and the checks that require a real Codespace. Keep it aligned
+with `.devcontainer/`; never infer private visibility from a port label.
+
 - `Dockerfile`, `entrypoint.sh`, `supervisord.conf`, `nginx.conf`: image and
   long-running service topology.
 - `desktop/`: dependency-free browser shell using upstream noVNC RFB modules.

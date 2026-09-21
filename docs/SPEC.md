@@ -15,6 +15,18 @@ repository identities, suites, components, and signing keys are unchanged.
 
 ## 1. Goals
 
+GitHub Codespaces provides a development entrypoint with a minimum of 4 CPU
+cores and 16 GB RAM. The repository remains in the Codespaces source editor;
+a separate nested VibeStack container starts automatically after preparation.
+Only its loopback HTTP port 8080 is forwarded, using GitHub's Private visibility
+and the exact environment-derived hostname in the existing Host allowlist.
+Desktop state and projects persist outside the source checkout under
+`/workspaces/.vibestack-codespaces/<repository-directory>/`. Startup resumes an
+unchanged desktop and rebuild/replacement preserves those mounts. The source
+checkout and GitHub credentials are not mounted into the desktop. First builds
+are asynchronous with editor access; instant desktop availability is not assumed.
+See [Codespaces operation and verification](../.context/github-codespaces.md).
+
 1. Give VibeStack full ownership of the visible browser desktop while retaining
    noVNC's maintained RFB engine as an upstream dependency.
 2. Expose a browser terminal and first-boot setup wizard beside that desktop.

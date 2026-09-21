@@ -12,7 +12,11 @@ exact automation schemas, limits, and longer examples are at
 
 - Treat the entire web workspace as an administrative, single-user surface.
   Keep Docker bound to host loopback and use private Tailscale Serve for remote
-  access. Never use Tailscale Funnel or a public bind.
+  access, or GitHub Codespaces private port forwarding for a Codespaces desktop.
+  Never use Tailscale Funnel, a public forwarded port or a public bind.
+  In Codespaces, the source editor is outside this desktop, HTTP is forwarded
+  from port 8080, and GitHub authentication protects remote browser access.
+  The desktop's `/projects` is separate from the VibeStack source checkout.
 - `/setup/`, `/terminal/`, `/vnc/`, and the small desktop-control API rely on
   that loopback/tailnet boundary. The automation API additionally requires a
   paired client credential or compatible legacy token, but authentication does
