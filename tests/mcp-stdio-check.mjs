@@ -17,6 +17,9 @@ async function main() {
   if (origin.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error();
   const command = process.env.VIBESTACK_MCP_CLI;
   if (!command || !isAbsolute(command)) throw new Error();
+  const project = process.env.VIBESTACK_MCP_PROBE_PROJECT;
+  const sourceRoot = process.env.VIBESTACK_MCP_SOURCE_ROOT;
+  if (Boolean(project) !== Boolean(sourceRoot) || (project && (!/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(project) || !isAbsolute(sourceRoot)))) throw new Error();
   const file = await open(process.env.VIBESTACK_MCP_CREDENTIAL_FILE, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   let credential;
   try {
@@ -55,7 +58,8 @@ async function main() {
     if (job.status !== 'succeeded' || job.exit_code !== 0) throw new Error();
     return id;
   };
-  const path = `vst-stdio-probe-${randomUUID()}.txt`;
+  const filename = `vst-stdio-probe-${randomUUID()}.txt`;
+  const path = project ? `${project}/${filename}` : filename;
   let created = false;
   try {
     stage = 'stdio connection';
@@ -83,6 +87,14 @@ async function main() {
     if (!stale.isError || stale.structuredContent?.error?.code !== 'precondition_failed') throw new Error();
     const current = await call('readProjectFile', { path });
     if (!Buffer.from(current.data_base64, 'base64').equals(updated)) throw new Error();
+    if (sourceRoot) {
+      stage = 'shared source visibility';
+      const visible = await open(join(sourceRoot, filename), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      try {
+        const info = await visible.stat();
+        if (!info.isFile() || info.nlink !== 1 || info.size !== updated.length || !(await visible.readFile()).equals(updated)) throw new Error();
+      } finally { await visible.close(); }
+    }
     stage = 'screenshot';
     const screenshot = await call('captureWorkspaceScreenshot', {});
     const png = Buffer.from(screenshot.data_base64, 'base64');
@@ -92,6 +104,7 @@ async function main() {
     created = false;
     if (diagnostics) throw new Error();
     console.log('PASS TypeScript SDK 1.30.0 → CLI stdio → authenticated HTTP: tool coverage, status, argv job/output, conditional project update, stale-write denial, PNG screenshot; no diagnostic or credential output');
+    if (sourceRoot) console.log('PASS MCP project update was visible in the outer source checkout; probe file removed');
   } finally {
     if (created) { try { await job(['/usr/bin/rm', '--', `/projects/${path}`]); } catch { /* disposable fixture cleanup owns the remaining file */ } }
     await client.close();
