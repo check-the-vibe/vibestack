@@ -207,6 +207,10 @@ run_acceptance() (
 
   start_acceptance_container
   wait_for_health "$acceptance_container"
+  # The file/command API deliberately requires its configured root to belong
+  # to vibe. GitHub's runner UID is different; prepare only this disposable
+  # mount root. Never recursively adopt its host-owned sentinel or contents.
+  docker exec "$acceptance_container" chown vibe:vibe /projects
   docker exec -u vibe "$acceptance_container" vibestack-service credential create \
     --label disposable-acceptance --owner --expires-in 4h \
     --output /data/vibestack/acceptance-owner.token
