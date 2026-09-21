@@ -15,6 +15,7 @@ async function fixture(page, {password=true,editor=true}={}) {
     if(url.origin!==origin) return route.abort();
     const path=url.pathname;
     const json=value=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(value)});
+    if(path==='/auth/session') return json({authenticated:true,csrf:'isolated-browser-fixture'});
     if(path==='/setup/api/state') return json(state);
     if(path==='/setup/api/password') {state.authentication.password_configured=true;return json({authentication:state.authentication});}
     if(path==='/setup/api/install') {installs.push(route.request().postDataJSON());return json({ok:true});}
@@ -24,7 +25,7 @@ async function fixture(page, {password=true,editor=true}={}) {
     if(path==='/novnc/core/rfb.js') return route.fulfill({contentType:'application/javascript',body:fakeRfb});
     if(path==='/terminal/'||path==='/editor/') return route.fulfill({contentType:'text/html',body:'<!doctype html><p>Full-screen workspace content</p>'});
     if(route.request().method()!=='GET') return route.fulfill({status:403,body:'Unexpected mutation blocked'});
-    const mappings={'/':'desktop/launcher.html','/launcher.js':'desktop/launcher.js','/launcher.css':'desktop/launcher.css','/vnc/':'desktop/index.html','/setup/':'setup/index.html'};
+    const mappings={'/':'desktop/launcher.html','/launcher.js':'desktop/launcher.js','/launcher.css':'desktop/launcher.css','/vnc/':'desktop/index.html','/setup/':'setup/index.html','/auth.js':'web/public/auth.js'};
     let file=mappings[path] || (path.startsWith('/vnc/')?'desktop/'+path.slice(5):path.startsWith('/setup/')?'setup/'+path.slice(7):null);
     if(!file || file.includes('..')) return route.fulfill({status:404,body:''});
     try {const body=await readFile(new URL(file,root));return route.fulfill({contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html',body});}

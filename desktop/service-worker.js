@@ -85,6 +85,8 @@ const SHELL_ASSETS = [
 
 const NEVER_CACHE_PREFIXES = [
   '/api/',
+  '/auth/',
+  '/mcp',
   '/terminal/',
   '/setup/',
 ];
@@ -96,6 +98,9 @@ function isForbidden(url) {
 
 function isShellAsset(url) {
   return url.pathname === '/'
+    || url.pathname === '/auth.js'
+    || url.pathname === '/connect.js'
+    || url.pathname === '/connect.css'
     || url.pathname === '/launcher.css'
     || url.pathname === '/launcher.js'
     || url.pathname.startsWith('/vnc/')

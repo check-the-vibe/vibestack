@@ -9,6 +9,8 @@ test('browser credential exchange creates a private session and rejects missing 
   await input.fill(readFileSync(process.env.VIBESTACK_BROWSER_CREDENTIAL_FILE, 'utf8').trim());
   await page.getByRole('button', {name:'Connect', exact:true}).click();
   await expect(page).toHaveURL(/\/status\.txt$/);
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.locator('body')).toContainText('VibeStack published files are available.');
   const properties = (await context.cookies()).filter(c => c.name === 'vibestack_session')
     .map(({httpOnly, sameSite, path}) => ({httpOnly, sameSite, path}));
   expect(properties).toEqual([{httpOnly:true, sameSite:'Strict', path:'/'}]);
@@ -21,7 +23,7 @@ test('browser credential exchange creates a private session and rejects missing 
       remaining:(await fetch('/api/v1/status')).status,
       browserStorage:localStorage.length + sessionStorage.length};
   });
-  expect(result).toEqual({session:200,denied:403,ended:200,remaining:401,browserStorage:0});
+  expect(result).toEqual({session:200,denied:401,ended:200,remaining:401,browserStorage:0});
 });
 
 test('failed browser sign-in clears the input and keeps credentials out of the URL', async ({page, context}) => {

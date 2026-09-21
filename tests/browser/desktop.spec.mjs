@@ -310,9 +310,9 @@ test('Connect your agent is secret-free and can approve and revoke individual cl
   await page.goto('/setup/?force=1');
   await expect(page.getByRole('heading', { name: 'Connect your agent' })).toBeVisible();
   const commands = await page.locator('#agent-connect').locator('pre').allTextContents();
-  expect(commands.join('\n')).toContain('/cli.sh');
-  expect(commands.join('\n')).toContain('--version 0.2.0');
-  expect(commands.join('\n')).not.toMatch(/credential|bearer|token/i);
+  expect(commands.join('\n')).toContain('/SERVICE.md');
+  expect(commands.join('\n')).toContain('--token-stdin < /path/to/protected/credential-file');
+  expect(commands.join('\n')).not.toMatch(/Bearer\s+\S+|vss_[A-Za-z0-9_-]{40,}/i);
 
   await expect(page.getByText(/ABCD-2345.*Claude on laptop/)).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
