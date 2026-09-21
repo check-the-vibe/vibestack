@@ -10,9 +10,9 @@ Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,
 runtime path, dependency, security boundary, or operator workflow changes.
 
-For the next API/MCP phase, read
-[`docs/architecture/agent-access-redesign.md`](docs/architecture/agent-access-redesign.md).
-It is a proposal: distinguish existing interfaces from planned adapters.
+For the next API/MCP phase, read the four feature specifications in
+[`.context/specifications/README.md`](.context/specifications/README.md).
+They are drafts: distinguish existing interfaces from proposed behavior.
 
 ## Source map
 

@@ -16,6 +16,24 @@ new specifications, not the file to edit for these four features.
 Read state from each specification. These are initial drafts, with proposed
 choices and unresolved decisions. No feature implementation is implied.
 
+## Review together
+
+All four drafts are on `codex/vst-004-feature-specifications` (PR #10), owned by
+VST-004. There is no separate branch for each specification yet. Implementation
+branches will be created when their individual tickets begin.
+
+Review one specification at a time in this order:
+
+1. [SPEC-002: REST API and distribution](SPEC-002-rest-api-agent-distribution.md): agree on service boundaries, shared operations and agent bootstrap first.
+2. [SPEC-001: Public machine broker](SPEC-001-public-machine-broker.md): resolve identity, enrollment and routing against those operations.
+3. [SPEC-003: Authenticated MCP](SPEC-003-authenticated-mcp.md): expose the agreed operations with the correct authorization.
+4. [SPEC-004: Chat agent interface](SPEC-004-chat-agent-interface.md): define the user journeys over the agreed service/tool contract.
+
+The first review file is SPEC-002. Its initial review should establish the shared
+contract; broker identity decisions remain coordinated with SPEC-001. Keep each
+specification draft until its required decisions are resolved. The retired
+combined agent-access proposal is no longer a separate design authority.
+
 ## Development order
 
 1. Review the drafts and resolve shared identity, operation and deployment decisions.

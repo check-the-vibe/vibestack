@@ -5,7 +5,7 @@
 - Owner: project owner for product decisions; Codex for this drafting pass
 - Updated: 2026-09-21
 - Decision authority: user's request to specify these four features; recommendations below are proposed, not approved implementation choices
-- Supersedes: none; refines the [earlier access proposal](../../docs/architecture/agent-access-redesign.md)
+- Supersedes: the retired combined agent-access proposal; these four feature specifications now define the proposed work
 - Planning ticket: [VST-004](../tickets/VST-004.md)
 
 This is a target contract, not a claim of shipped behavior. Unresolved decisions
@@ -154,3 +154,5 @@ covers onboarding, agent connectivity and recovery.
 ## Decision history
 
 - 2026-09-21: Replacing the current UI with a service-connected chat agent is user-requested. Secure handoffs, provider choice and service retirement sequencing above remain proposed decisions.
+
+- 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.

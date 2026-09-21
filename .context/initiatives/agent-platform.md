@@ -27,7 +27,7 @@ corresponding feature contracts and migration work are implemented.
 - [VST-001: Codespaces](../tickets/VST-001.md)
 - [VST-002: agent access foundation](../tickets/VST-002.md)
 - [VST-003: context workflow](../tickets/VST-003.md)
-- [Prior API/MCP proposal](../../docs/architecture/agent-access-redesign.md)
 
-The prior proposal is input to the new specifications, not a decision that
-preselects the public broker, authentication architecture or chat design.
+The combined agent-access proposal was removed at the user's request. The four
+feature specifications above are the planning entry points; architecture choices
+remain draft until resolved in their decision histories.

@@ -5,7 +5,7 @@
 - Owner: project owner for product decisions; Codex for this drafting pass
 - Updated: 2026-09-21
 - Decision authority: user's request to specify these four features; recommendations below are proposed, not approved implementation choices
-- Supersedes: none; refines the [earlier access proposal](../../docs/architecture/agent-access-redesign.md)
+- Supersedes: the retired combined agent-access proposal; these four feature specifications now define the proposed work
 - Planning ticket: [VST-004](../tickets/VST-004.md)
 
 This is a target contract, not a claim of shipped behavior. Unresolved decisions
@@ -129,3 +129,5 @@ prototyped independently, but release acceptance covers both local and remote us
 - 2026-09-21: Authentication is user-required; the OAuth/stdio split is a design recommendation, with no provider or harness silently selected.
 - [MCP authorization specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/basic/authorization/index.mdx) describes HTTP authorization and discovery. The local stdio transport has a different credential boundary. Check the pinned implementation against the selected version before claiming compliance.
 - [Go SDK protocol guidance](https://github.com/modelcontextprotocol/go-sdk/blob/main/docs/protocol.md) informs middleware and protocol integration; its current documentation is not proof that installed v1.7.0 implements every newer capability.
+
+- 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
