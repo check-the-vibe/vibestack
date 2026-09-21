@@ -7,6 +7,9 @@ and desktop operations. The 0.3 CLI supplies generic `capability list/schema/cal
 `vibestack mcp` as a thin
 stdio bridge; see [workspace MCP](docs/MCP.md) and the [CLI guide](docs/CLI.md)
 for inputs, protected gateway profiles and versioned installation.
+Generic REST, CLI, browser sessions and MCP share capability errors and grants;
+MCP discovery lists only callable tools. See the [parity checks](docs/DEVELOPMENT.md#fast-edit-loop)
+for the real-client acceptance workflow and pinned historical CLI checks.
 The launcher-declared source checkout supports project file and command APIs
 even when its bind mount uses a different filesystem from other projects.
 

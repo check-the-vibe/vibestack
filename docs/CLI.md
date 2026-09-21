@@ -120,6 +120,9 @@ silently normalized. No request is automatically replayed. The JSON result retai
 the shared instance/request/capability envelope; service failures retain stable
 codes and exit statuses. The older plural `capabilities` command retains its
 legacy automation/runner behavior.
+Grant denial is `forbidden` across the generic CLI, REST, browser session and MCP
+surfaces. The CLI reports the safe code on stderr and returns the existing exit
+status mapping; it never turns a rejected or uncertain mutation into a replay.
 
 `mcp` is launched by a stdio-capable harness and uses the same protected workspace
 profile. No credentials belong in harness JSON. Its optional gateway-file override

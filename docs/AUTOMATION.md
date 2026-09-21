@@ -17,6 +17,10 @@ registered inputs also use `POST /api/v1/operations/ID`; existing raw/friendly
 REST responses below stay compatible. Registered file transfers use base64 up
 to 8 MiB and require create-only or observed-ETag write conditions. Check the
 generated capability schema before forming a tool input.
+The generic surfaces retain stable `forbidden`, `not_found`, `invalid_input`,
+`limit_exceeded` and `precondition_failed` failures. MCP grant/policy denials use
+the same errors even when the requested tool is absent from filtered discovery.
+Legacy raw routes keep the compatibility error formats described below.
 
 VibeStack exposes its live XFCE desktop through a privileged REST API. It can
 run commands in the graphical session, capture screenshots, start and stop

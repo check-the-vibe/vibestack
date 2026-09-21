@@ -98,7 +98,7 @@ func TestDispatchValidationPermissionFailureAndPanic(t *testing.T) {
 		calls.Add(1)
 		return validResult(), nil
 	})
-	for _, input := range []string{`{}`, `{"project":"../secret"}`, `{"project":"demo","command":"secret"}`, `{"project":"demo","max_entries":0}`, `{"project":"demo"} trailing`} {
+	for _, input := range []string{`{}`, `{"project":"../secret"}`, `{"project":"demo","command":"secret"}`, `{"project":"demo","max_entries":0}`, `{"project":"demo"} trailing`, `{"project":"first","project":"demo"}`, `{"project":"first","pro\u006aect":"demo"}`} {
 		if _, failure := r.Execute(context.Background(), grant{true}, "project_summary", []byte(input)); failure == nil || failure.Code != "invalid_input" {
 			t.Fatal("invalid input reached handler")
 		}
@@ -133,6 +133,32 @@ func TestDispatchValidationPermissionFailureAndPanic(t *testing.T) {
 	r = registry(t, definition(t, func(d map[string]any) { d["response_bytes"] = 2 }), func(context.Context, Principal, json.RawMessage) (any, error) { return validResult(), nil })
 	if _, f := r.Execute(context.Background(), grant{true}, "project_summary", []byte(`{"project":"demo"}`)); f == nil || f.Code != "limit_exceeded" {
 		t.Fatal("result limit not enforced")
+	}
+}
+
+func TestNestedDuplicateKeysNeverReachAHandler(t *testing.T) {
+	var calls atomic.Int32
+	d := definition(t, func(d map[string]any) {
+		d["input_schema"] = map[string]any{"type": "object", "additionalProperties": false, "required": []string{"record"}, "properties": map[string]any{"record": map[string]any{"type": "object", "additionalProperties": true}}}
+	})
+	r := registry(t, d, func(context.Context, Principal, json.RawMessage) (any, error) {
+		calls.Add(1)
+		return validResult(), nil
+	})
+	for _, input := range []string{
+		`{"record":{"a":1,"a":2}}`,
+		`{"record":{"items":[{"a":1,"\u0061":2}]}}`,
+		`{"record":` + strings.Repeat(`{"a":`, 34) + `0` + strings.Repeat(`}`, 34) + `}`,
+	} {
+		if _, f := r.Execute(context.Background(), grant{true}, "project_summary", []byte(input)); f == nil || f.Code != "invalid_input" {
+			t.Fatal("ambiguous or over-depth input accepted")
+		}
+	}
+	if calls.Load() != 0 {
+		t.Fatal("rejected input reached the handler")
+	}
+	if _, f := r.Execute(context.Background(), grant{true}, "project_summary", []byte(`{"record":{"items":[{"a":1},{"a":2}]}}`)); f != nil || calls.Load() != 1 {
+		t.Fatal("independent object keys were rejected")
 	}
 }
 

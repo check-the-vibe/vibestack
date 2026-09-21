@@ -3,10 +3,12 @@
 package capabilities
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -318,7 +320,7 @@ func (r *Registry) Execute(ctx context.Context, p Principal, id string, raw json
 		return nil, Fail("limit_exceeded")
 	}
 	var input any
-	if json.Unmarshal(raw, &input) != nil || jsonDepth(input, 0) > 32 || e.input.Validate(input) != nil {
+	if !validInputJSON(raw) || json.Unmarshal(raw, &input) != nil || e.input.Validate(input) != nil {
 		return nil, Fail("invalid_input")
 	}
 	if ctx.Err() != nil {
@@ -387,6 +389,61 @@ func (r *Registry) Execute(ctx context.Context, p Principal, id string, raw json
 		return result.data, result.failure
 	}
 }
+
+// JSON unmarshalling otherwise silently keeps the last duplicate key. Reject
+// ambiguous inputs before either schema validation or any operation handler;
+// the same check applies to REST, MCP, CLI and browser dispatch.
+func validInputJSON(raw []byte) bool {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var visit func(int) bool
+	visit = func(depth int) bool {
+		if depth > 32 {
+			return false
+		}
+		token, err := decoder.Token()
+		if err != nil {
+			return false
+		}
+		delimiter, composite := token.(json.Delim)
+		if !composite {
+			return true
+		}
+		switch delimiter {
+		case '{':
+			seen := map[string]bool{}
+			for decoder.More() {
+				keyToken, err := decoder.Token()
+				key, ok := keyToken.(string)
+				if err != nil || !ok || seen[key] {
+					return false
+				}
+				seen[key] = true
+				if !visit(depth + 1) {
+					return false
+				}
+			}
+			end, err := decoder.Token()
+			return err == nil && end == json.Delim('}')
+		case '[':
+			for decoder.More() {
+				if !visit(depth + 1) {
+					return false
+				}
+			}
+			end, err := decoder.Token()
+			return err == nil && end == json.Delim(']')
+		default:
+			return false
+		}
+	}
+	if !visit(0) {
+		return false
+	}
+	_, err := decoder.Token()
+	return errors.Is(err, io.EOF)
+}
+
 func jsonDepth(value any, depth int) int {
 	if depth > 32 {
 		return depth

@@ -115,6 +115,10 @@ storage, with `X-VibeStack-Expected-Instance` set to the discovery identity. Use
 CLI `capability call ID --input FILE` uses that same dispatcher; new compiled
 capabilities need no bespoke CLI update. `/AUTOMATION.md` documents compatible
 legacy/raw routes; `/EXTENSIONS.md` explains trusted server modules and static files.
+Generic invocation and MCP share `forbidden` for a denied grant or excluded tool,
+`not_found` for an unknown capability, and `precondition_failed` for a stale file
+write. Refresh discovery or inspect the current resource before retrying; a
+different transport does not grant additional authority.
 
 The browser desktop is `/vnc/?view=desktop`; `/connect.html` is the private human
 workspace-credential handoff. API browser mutations also need the session's CSRF

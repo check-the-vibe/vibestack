@@ -52,6 +52,7 @@ run_fast_tests() {
     node --check setup/app.js
     node --check web/public/auth.js
     node --check web/public/connect.js
+    node --check tests/capability-parity-check.mjs
     node --test tests/walkthrough-privacy.test.mjs
     python3 -m py_compile \
       automation/automationlib.py automation/server.py automation/sshkeys.py \
@@ -288,6 +289,18 @@ run_acceptance() (
     VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
     node tests/agent-bootstrap-check.mjs)
+  docker exec -u vibe "$acceptance_container" vibestack-service credential create \
+    --label disposable-parity-summary --capabilities project_summary --expires-in 4h \
+    --output /data/vibestack/acceptance-summary.token
+  docker cp "$acceptance_container:/data/vibestack/acceptance-summary.token" \
+    "$acceptance_password_dir/summary.token"
+  chmod 0600 "$acceptance_password_dir/summary.token"
+  (cd "$REPO_ROOT" && \
+    VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+    VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+    VIBESTACK_PARITY_SCOPED_FILE="$acceptance_password_dir/summary.token" \
+    VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
+    VIBESTACK_ALLOW_MUTATING_MCP_TESTS=1 node tests/capability-parity-check.mjs)
   (cd "$REPO_ROOT" && \
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \

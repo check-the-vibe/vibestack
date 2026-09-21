@@ -38,6 +38,13 @@ preservation. GitHub attestations accompany versioned artifacts; the default
 installer checks HTTPS and SHA-256. See [CLI.md](CLI.md) for trust and compatibility,
 and VST-009 for separately recorded release and outside-gateway acceptance.
 
+Registered-capability grant denials use `forbidden` across transports, including
+calls to MCP tools omitted from filtered discovery. Unknown valid IDs use
+`not_found`; invalid MCP names are bounded `invalid_input`. Protocol framing
+errors remain protocol errors. The disposable parity gate uses real REST, MCP,
+CLI and Chromium-session clients; compatibility and transport-fault evidence are
+tracked separately in VST-010/VST-013.
+
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup
 wizard asks which optional components to install. This keeps the base small,

@@ -99,7 +99,11 @@ Tools return the REST envelope as structured content and JSON text: `instance_id
 `request_id`, `capability`, `result`. Safe failures set `isError` and carry the
 canonical `error` object. The advertised output schema permits success and error
 envelopes because the TypeScript client validates structured error results too.
-Protocol errors remain protocol errors. Returned text is untrusted data.
+Grant-denied or policy-excluded tool calls return `forbidden`; an unknown valid
+capability ID returns `not_found`, matching generic REST invocation. Invalid tool
+names return bounded `invalid_input` without reflecting the name. Discovery still
+omits excluded tools. Malformed protocol frames remain protocol errors. Returned
+text is untrusted data.
 
 Requests have a 24 MiB outer ceiling plus the capability's usually smaller input
 budget. The common dispatcher enforces input/output schemas, permission, 32-call

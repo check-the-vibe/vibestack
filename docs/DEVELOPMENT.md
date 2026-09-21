@@ -96,6 +96,17 @@ backends, existing operation IDs and preserved legacy routes. Registered JSON
 operations use `/api/v1/operations/ID` or the generic invocation route; raw files
 retain their legacy route. See MCP.md for the 8 MiB registered binary limit.
 
+The disposable gate also runs `tests/capability-parity-check.mjs` through nginx:
+real REST, TypeScript MCP, native CLI and Chromium session calls share extension
+results, grant/identity denials, invalid and excessive inputs, conditional files
+and jobs with bounded output. Credentials are issued only in the disposable
+container and kept in protected fixture files; browser traces are disabled.
+For historical compatibility, set `VIBESTACK_LEGACY_CLI` to an absolute path to
+the 0.2 executable built from `a3fa6ac5242d9f3a6123a305c27a3af084974251` before
+running `accept`. This adds real old/new argv/job/raw-API checks and the documented
+old unauthenticated-status migration. It is source-version evidence, not proof
+of a published 0.2 artifact. Without the variable, that extra matrix is not run.
+
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least
 one ticket, use the specification and plan as its scope, and update acceptance

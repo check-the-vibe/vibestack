@@ -127,6 +127,56 @@ func TestWorkspaceMCPAdmissionDenials(t *testing.T) {
 	}
 }
 
+func TestWorkspaceMCPDeniedAndUnknownCallsUseSharedErrors(t *testing.T) {
+	f := serviceFixture(t)
+	_, token := issue(t, f.store, false, "project_summary")
+	session := connectMCP(t, f.server, token)
+	for _, tc := range []struct{ id, code string }{
+		{"workspaceStatus", "forbidden"},
+		{"not_a_registered_capability", "not_found"},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			rest := request(f.server, "POST", "/api/v1/capabilities/"+tc.id+"/invoke", token, `{}`, map[string]string{"Content-Type": "application/json"})
+			var restEnvelope struct {
+				Error struct {
+					Code string `json:"code"`
+				} `json:"error"`
+			}
+			if json.Unmarshal(rest.Body.Bytes(), &restEnvelope) != nil || restEnvelope.Error.Code != tc.code {
+				t.Fatal("REST denial lost shared error")
+			}
+			result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: tc.id, Arguments: map[string]any{}})
+			if err != nil || !result.IsError {
+				t.Fatal("MCP denial must be a canonical tool error, not an unrelated protocol failure")
+			}
+			raw, _ := json.Marshal(result.StructuredContent)
+			var envelope struct {
+				Instance   string `json:"instance_id"`
+				Capability string `json:"capability"`
+				Error      struct {
+					Code  string `json:"code"`
+					Retry bool   `json:"retryable"`
+				} `json:"error"`
+			}
+			if json.Unmarshal(raw, &envelope) != nil || envelope.Instance != f.store.Identity || envelope.Capability != tc.id || envelope.Error.Code != tc.code || envelope.Error.Retry {
+				t.Fatal("MCP denial differs from shared instance, capability or error semantics")
+			}
+		})
+	}
+	if f.calls.Load() != 0 {
+		t.Fatal("denied requests reached a backend")
+	}
+	oversizedName := "do-not-reflect-" + strings.Repeat("x", 8192)
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: oversizedName, Arguments: map[string]any{}})
+	if err != nil || !result.IsError {
+		t.Fatal("invalid tool name did not return a safe tool error")
+	}
+	raw, _ := json.Marshal(result)
+	if len(raw) > 2048 || strings.Contains(string(raw), "do-not-reflect") || !strings.Contains(string(raw), "invalid_input") {
+		t.Fatal("invalid tool name was reflected or returned an unbounded error")
+	}
+}
+
 func TestWorkspaceMCPChangedGrantsAndHumanPolicies(t *testing.T) {
 	var calls atomic.Int32
 	registrations := []capabilities.Registration{}
