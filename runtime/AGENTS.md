@@ -1,32 +1,155 @@
 # Operating VibeStack
 
-Discover registered operations at authenticated `GET /api/v1/capabilities` and
-invoke `POST /api/v1/capabilities/{id}/invoke` with the input JSON object. The
-`project_summary` example takes `project` and optional `max_entries` and counts
-immediate entries only. Read `/EXTENSIONS.md` before adding a compiled module.
-Discovery reports current MCP availability explicitly.
-The current source CLI supports `vibestack --profile NAME mcp` for a stdio harness.
-Read `/MCP.md` for bootstrap and exact input schemas; older released CLIs may
-need rebuilding. Registered tools include jobs, conditional file updates and
-screenshots. Keep credentials in the protected profile, never harness JSON or
-tool arguments. A job timeout or disconnected MCP call does not justify replaying
-a mutation. Clipboard, SSH keys and human authentication are not default tools.
+Service and CLI release: **0.3.0**. This guide is the starting point for a
+single-user Linux desktop and its authenticated workspace service.
 
-You are working with VibeStack: a private, single-user Ubuntu 24.04/XFCE
-desktop running inside Docker. This file is the canonical quick-start for both
-agents inside the desktop and authorized agents on the Docker host or private
-tailnet. It is packaged at `/usr/share/doc/vibestack/AGENTS.md` and served at
-`/AGENTS.md`. The client and runner guides are `/CLI.md` and `/RUNNER.md`; the
-exact automation schemas, limits, and longer examples are at
-`/usr/share/doc/vibestack/AUTOMATION.md` and `/AUTOMATION.md`.
+## Start from the URL you were given
 
-All API/setup operations now pass through the workspace service. Read
-`/SERVICE.md` for local credential creation, browser sign-in, expiry/revocation
-and CLI migration. Browser users connect at `/connect.html`; agents use protected
-credential files or their CLI profile. Never request a credential in chat. The
-workspace `/mcp` endpoint exposes enabled registered capabilities. Read `/MCP.md`
-for supported bearer clients and the separate private Codespaces gateway. Legacy
-REST operations are not automatically tools; check the capability catalog.
+Use the scheme and authority of this guide's URL as `SERVICE_ORIGIN`. A Codespace
+service origin ends in `-8080.app.github.dev`; the `github.dev` editor URL is a
+different application. Resolve every `/path` below against that origin. Do not
+ask for a second URL, infer another workspace, or follow a login page as Markdown.
+
+1. Fetch `/.well-known/vibestack`. Expect `kind: "workspace"`, version `0.3.0`, a
+   32-character `identity`, `canonical_origin`, authentication metadata and
+   document/endpoint URLs. `/healthz` returns HTTP 200 for service readiness;
+   this alone does not mean applications or provider APIs are ready.
+2. Use the existing compatible CLI or install it below. Let the operator supply
+   a workspace credential through a protected file. `connect` records the
+   discovered identity; authenticated workspace requests pin that identity.
+3. Run `capability list`, then `capability schema`. The catalog reflects the
+   credential's grants. Call a listed read operation, such as `workspaceStatus`
+   with `{}`. Its JSON envelope identifies the instance, request, capability and
+   result. Missing grants require the operator, not a different transport.
+4. Choose REST, the CLI, a supported MCP client, or the private browser desktop.
+   They address the same workspace. The optional host runner is separate and is
+   not required for this journey.
+
+In a private Codespace, GitHub protects the entire forwarded origin, including
+this guide. Browser sign-in does not authenticate an external harness. A client
+that receives HTML or a redirect must stop and complete gateway setup; it must
+not make the port public. From within that Codespace, use loopback
+`http://127.0.0.1:8080` to avoid the external gateway while retaining workspace
+credential checks. This is the supported alternative for a harness running in
+the Codespaces editor. `/CLI.md` and `/MCP.md` explain explicit protected gateway
+files for outside clients; no ambient GitHub credential is read automatically.
+
+## Install, authenticate and make the first call
+
+The publisher is `check-the-vibe/vibestack` on GitHub. Installer downloads require
+curl 8.4+, a SHA-256 utility, Linux or macOS, and amd64 or arm64. No Docker or Go
+installation is needed on the client. Download and inspect the script before
+running it; this public release URL does not require workspace credentials:
+
+```sh
+curl -q -fLsS --proto '=https' --proto-redir '=https' \
+  'https://github.com/check-the-vibe/vibestack/releases/download/v0.3.0/cli.sh' \
+  -o /tmp/vibestack-cli.sh
+# Inspect /tmp/vibestack-cli.sh, then install the selected version:
+sh /tmp/vibestack-cli.sh --version 0.3.0 --server "$SERVICE_ORIGIN"
+vibestack version
+```
+
+A compatible installed CLI can skip installation. Add `~/.local/bin` to your
+shell's PATH yourself if needed. `/cli.sh` on this service is the same versioned
+installer; `/release-manifest.json` describes compatibility and publisher trust.
+The installer checks HTTPS and SHA-256, stages an atomic replacement and preserves
+an old binary on failure. Optional signed build-provenance verification is in
+`/CLI.md`; a checksum alone does not authenticate a compromised publisher.
+
+The local operator issues an expiring, capability-scoped credential as `vibe`:
+
+```sh
+vibestack-service credential create --label agent-status \
+  --capabilities workspaceStatus --expires-in 24h \
+  --output /data/vibestack/agent-status.token
+```
+
+That command runs **inside VibeStack**, not on the customer laptop. From the outer
+Codespace terminal, prefix it with `docker exec -u vibe vibestack-codespaces`.
+It prints metadata only, preserves an existing output file, and creates a mode
+0600 credential file. The operator privately transfers it to the client's
+protected storage; do not print it, paste it into chat, or put it in an argument,
+URL, MCP configuration, source file or environment variable. See `/SERVICE.md`
+for browser credentials, expiry, revocation and existing paired credentials.
+
+```sh
+vibestack connect --name workspace --url "$SERVICE_ORIGIN" \
+  --token-stdin < /path/to/protected/workspace.token
+vibestack --profile workspace capability list
+vibestack --profile workspace capability schema
+vibestack --profile workspace capability call workspaceStatus
+```
+
+For an external private Codespaces origin, add
+`--gateway-token-file /path/to/protected/github-gateway.token` to `connect`.
+The user supplies that distinct GitHub gateway credential privately. It must be
+a single-link regular file owned by the current user, with no group/other access.
+The profile stores its absolute path; the CLI reads it afresh for each request and
+sends it only to the explicitly selected HTTPS `*.app.github.dev` origin.
+Redirects are rejected. A gateway token is never a workspace grant.
+
+## MCP, REST and browser access
+
+A stdio-capable harness launches this command after the profile is connected:
+
+```text
+command: /absolute/path/to/vibestack
+args: ["--profile", "workspace", "mcp"]
+```
+
+Only MCP frames use stdout. List tools and call the allowed `workspaceStatus`
+tool with `{}` to confirm the connection. The bridge passes calls to this
+workspace's authenticated `/mcp`; it is not a second execution engine. Official
+Go SDK 1.7.0 and TypeScript SDK 1.30.0 clients are exercised independently, including
+an actual CLI stdio subprocess. See `/MCP.md` for protocol versions and client
+verification limits. OAuth-only clients are unsupported in this configuration;
+use the stdio adapter or a tested bearer-capable client instead. Never infer
+support for a desktop harness from an SDK test alone.
+
+For REST, send the credential as `Authorization: Bearer …` from protected client
+storage, with `X-VibeStack-Expected-Instance` set to the discovery identity. Use
+`GET /api/v1/capabilities`, the authenticated
+`/api/capabilities.openapi.json`, and
+`POST /api/v1/capabilities/{id}/invoke` with the declared input object. The generic
+CLI `capability call ID --input FILE` uses that same dispatcher; new compiled
+capabilities need no bespoke CLI update. `/AUTOMATION.md` documents compatible
+legacy/raw routes; `/EXTENSIONS.md` explains trusted server modules and static files.
+
+The browser desktop is `/vnc/?view=desktop`; `/connect.html` is the private human
+workspace-credential handoff. API browser mutations also need the session's CSRF
+header. Keep the Codespaces port **Private**. Browser access is not Linux password
+or provider sign-in, and a screenshot tool's success does not prove a browser
+user completed that handoff.
+
+For a local desktop editor, use Microsoft's VS Code with its GitHub Codespaces
+extension, sign into the same GitHub account, then open **Remote Explorer → GitHub Codespaces** and click the connection icon
+for this Codespace. The editor opens `/workspaces/vibestack`,
+the same source mounted at `/projects/vibestack` inside VibeStack. Follow
+[the official VS Code connection steps](https://docs.github.com/en/codespaces/developing-in-a-codespace/using-github-codespaces-in-visual-studio-code).
+The VibeStack desktop itself remains the browser URL above; no separate native
+VibeStack desktop application is shipped. A generic desktop agent may use the
+stdio configuration only if its harness supports it; `/MCP.md` states what has
+actually been tested. Opening the browser alone does not configure that harness.
+
+Provider installation/activation APIs and the chat overlay are separate planned
+work. Do not invent a provider activation endpoint or treat an application window
+as a ready API. Existing applications can be installed via the authenticated
+catalog, but this release does not yet claim managed Codex/OpenCode chat sessions.
+
+## Recover without changing targets or replaying work
+
+| Observed result | Next action |
+| --- | --- |
+| Codespace stopped/offline | Open the existing Codespace in GitHub and wait for startup; reuse the saved profile and verify identity. |
+| HTML login page or redirect | Complete GitHub gateway access separately, or run the CLI inside the Codespace on loopback; do not send the workspace token to the login page. |
+| 401 from VibeStack | Ask the operator to renew/revoke/reissue the scoped workspace credential privately. |
+| 403 or tool absent | Check grants and the catalog's `next_action`; do not bypass the restriction through another transport. |
+| `wrong_instance` | Stop; inspect the selected URL and profile before explicitly reconnecting. |
+| Desktop/app still restoring | Check the authenticated state/status operations; process health is not app readiness. |
+| File precondition conflict | Read the new ETag and reconcile changes before submitting a new conditional write. |
+| Timeout, lost reply or disconnected mutation | Inspect the returned job/operation ID and remote state; do not blindly submit it again. |
+| Installer 404/version unavailable | Preserve the installed binary and report the missing release; do not select an untrusted download. |
 
 ## Trust boundary
 
@@ -52,9 +175,10 @@ REST operations are not automatically tools; check the capability catalog.
 - An authenticated owner can set or replace the `vibe` Linux password without the old value.
   Do this only when the user explicitly asks. Never collect a password in an
   agent prompt, command argument, file, clipboard, screenshot, or log.
-- Any automation credential has the full authority of `vibe`, including shell
-  execution, application control, screenshots, clipboard text, and Desktop
-  files. Handle it like a password and never put it in a URL, repository,
+- Legacy workspace-wide credentials, or a grant for arbitrary commands, convey
+  the full authority of `vibe`. Narrow new credentials retain their declared
+  grants; command grants are not a sandbox. Handle every credential like a
+  password and never put it in a URL, repository,
   prompt, screenshot, clipboard value, command argument, or shared log.
 
 ## Identify your execution context

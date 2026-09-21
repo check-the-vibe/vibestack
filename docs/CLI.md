@@ -1,38 +1,79 @@
 # VibeStack CLI reference
 
-The current source build includes `vibestack --profile NAME mcp`, a stdio bridge
-to the selected authenticated workspace. See [MCP.md](MCP.md) for building it,
-protected-profile setup and the optional private gateway file. Released 0.2
-binaries do not yet include this command; updated packaging is tracked in VST-009.
-
-The `vibestack` client runs beside an agent on Linux or macOS. It does not
-require Docker, Go, Python, Node, sudo, or agent-specific configuration. Every
-command supports human-readable output; structured commands accept global
-`--json`. Diagnostics go to stderr and binary file, screenshot, clipboard, and
-job output is written unchanged to stdout or the requested file.
+Release 0.3.0 adds generic registered-capability calls and the thin workspace MCP
+stdio bridge. [The agent guide](https://github.com/check-the-vibe/vibestack/blob/main/runtime/AGENTS.md)
+is the one-URL entry point; use the deployed service's `/AGENTS.md` for its version.
+The CLI runs beside an agent on Linux/macOS, amd64/arm64. It needs no Docker, Go,
+Python, Node or sudo after installation. JSON goes to stdout; diagnostics go to
+stderr, and binary file/screenshot/job output retains its documented raw format.
 
 ## Install and connect
 
-```bash
-curl -fsSL 'https://workspace.example/cli.sh' | \
-  sh -s -- --version 0.2.0 --server 'https://workspace.example'
-vibestack connect --name studio --url 'https://workspace.example'
+Download and inspect the release installer before running it:
+
+```sh
+curl -q -fLsS --proto '=https' --proto-redir '=https' \
+  https://github.com/check-the-vibe/vibestack/releases/download/v0.3.0/cli.sh \
+  -o /tmp/vibestack-cli.sh
+sh /tmp/vibestack-cli.sh --version 0.3.0 --server "$SERVICE_ORIGIN"
+vibestack version
+vibestack connect --name studio --url "$SERVICE_ORIGIN" \
+  --token-stdin < /path/to/protected/workspace.token
+vibestack --profile studio capability list
+vibestack --profile studio capability call workspaceStatus
 ```
 
-The installer detects Linux/macOS and amd64/arm64, downloads the versioned
-release binary over HTTPS, checks the separately published SHA-256, and uses an
-atomic rename into `~/.local/bin`. It never edits a shell profile. A failed
-download or checksum leaves an existing binary untouched. HTTPS authenticates
-the delivery channel; the checksum detects corruption or substitution inside
-that channel and is not described as an independent publisher signature.
+`SERVICE_ORIGIN` is the origin of the supplied `/AGENTS.md` URL. A compatible
+existing CLI can skip installation. Installation requires curl 8.4+, a SHA-256
+utility and a POSIX shell; it checks bounded HTTPS downloads and redirects,
+explicit MAJOR.MINOR.PATCH versions and a published checksum. It atomically
+replaces `~/.local/bin/vibestack`, without sudo or shell-profile edits. Failure
+preserves the prior binary. An existing destination directory or symlink is
+rejected. Native CI runs the real HTTPS installer and native executable for all
+four release platforms; cross-compilation alone is not installation evidence.
 
-`connect` reads `/.well-known/vibestack`. For trusted-tailnet runners it records
-the advertised mode without credentials or pairing. For paired servers it displays a short verification code,
-and polls with a separate high-entropy secret. Approve workspace requests in
-Setup. Approve runner requests locally with `vibestack-runner pairings approve
-CODE`. The returned credential is stored only in the mode-0600 profile file.
-For migration only, `--token-stdin` accepts an existing workspace automation
-token without placing it in argv.
+The release owner is `check-the-vibe/vibestack`; assets and checksums are tied to
+`v0.3.0`. The workflow refuses to overwrite an existing release and attaches
+GitHub Actions build provenance to the exact tested binaries. The default
+installer trusts GitHub HTTPS and checksums; it does not independently verify a
+compromised publisher. For the stronger provenance check, download the binary
+and use GitHub CLI's
+[attestation verifier](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations)
+before installing it:
+
+```sh
+gh attestation verify ./vibestack_0.3.0_linux_amd64 \
+  --repo check-the-vibe/vibestack \
+  --signer-workflow check-the-vibe/vibestack/.github/workflows/publish-client.yml
+```
+
+Review the attested source commit against the release/tag you selected. GitHub
+identity and its Sigstore-backed attestation are the trust roots; no unconfigured
+private signing key or independent signature service is implied. Published
+release delivery and its verification are recorded in VST-009.
+
+Workspace credentials are issued by the local operator, can expire and carry
+capability grants. Follow [SERVICE.md](SERVICE.md). The current workspace does
+not advertise anonymous pairing; `connect --token-stdin` privately reads an
+issued credential, validates access to the current catalog and saves the profile
+as mode 0600 in a protected directory. No token belongs in argv, environment,
+chat or a URL. An existing profile is preserved until explicitly removed.
+
+For an **outside** private Codespaces origin, add
+`--gateway-token-file /absolute/protected/github-gateway.token` to `connect`.
+The file is a distinct user-supplied GitHub gateway credential, not a VibeStack
+credential. Only its absolute path is saved in the profile; REST, discovery,
+document downloads and MCP read it afresh per request. It must be a regular,
+single-link file owned by the current user with no group/other access. The client
+accepts it only for the selected HTTPS `*.app.github.dev` origin on port 443,
+never follows redirects and never reads ambient GitHub tokens. Gateway tokens
+may need replacement after a Codespace restart. Use the Codespace-local
+`http://127.0.0.1:8080` profile when external gateway access is unavailable.
+Actual outside-gateway compatibility is separate from local SDK verification.
+
+Optional runners retain their advertised pairing or explicit trusted-tailnet
+flow. They have their own profile, identity and authority; workspace bootstrap
+does not require a runner or automatically select one.
 
 Global options must precede the command:
 
@@ -44,13 +85,13 @@ Global options must precede the command:
 ```
 
 HTTP is accepted only for loopback development. HTTPS certificates are always
-validated. Credentials are never followed across an origin-changing redirect,
+validated. HTTP redirects are not followed,
 and server URLs cannot contain reverse-proxy subpaths.
 
 ## Connection and diagnostics
 
 ```text
-connect --name NAME --url ORIGIN [--label LABEL] [--token-stdin]
+connect --name NAME --url ORIGIN [--label LABEL] [--token-stdin] [--gateway-token-file FILE]
 profiles list | show NAME | remove NAME
 doctor
 capabilities
@@ -59,6 +100,31 @@ capabilities
 `doctor` verifies discovery identity, API compatibility, certificate trust,
 authentication, and the selected target kind. A command may select the only
 compatible profile; it never guesses when several profiles exist.
+
+## Registered capabilities and MCP
+
+```text
+capability list
+capability schema
+capability call ID [--input FILE|-]
+mcp [--gateway-token-file FILE]
+```
+
+Use a direct workspace profile. The generic commands discover authorized
+capabilities, fetch their current input/output schemas and invoke their registered
+IDs without maintaining another operation table in the CLI. Omitted input is `{}`;
+provided input must be one JSON object of at most 24 MiB. The service applies the
+smaller declared limit and strict schema. JSON responses are bounded at 24 MiB.
+Unknown input and duplicate keys reach strict server validation without being
+silently normalized. No request is automatically replayed. The JSON result retains
+the shared instance/request/capability envelope; service failures retain stable
+codes and exit statuses. The older plural `capabilities` command retains its
+legacy automation/runner behavior.
+
+`mcp` is launched by a stdio-capable harness and uses the same protected workspace
+profile. No credentials belong in harness JSON. Its optional gateway-file override
+has the same destination/file checks as the saved path. See [MCP.md](MCP.md) for
+client versions, coverage, transport limits and explicit unsupported cases.
 
 ## Workspace work
 
@@ -83,8 +149,9 @@ job ID; disconnecting the client does not cancel it and an uncertain command
 submission is never automatically retried.
 
 `files put ... -` and `clipboard set` read stdin. ETags, ranges, size limits,
-and conditional writes are enforced by the server. Passwords are deliberately
-not accepted by any CLI command.
+and conditional writes are enforced by the server. Workspace password entry
+uses the human browser handoff. The separate runner has explicit private password
+commands documented below; no password is accepted in argv or an environment variable.
 
 ## Workspace status and recovery
 

@@ -48,6 +48,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-011](tickets/VST-011.md) | Authenticated workspace MCP transport | [VST-011](branches/VST-011.md) |
 | [VST-017](tickets/VST-017.md) | Codespaces persistence and authenticated readiness | [VST-017](branches/VST-017.md) |
 | [VST-012](tickets/VST-012.md) | Registered workspace tools and local stdio bridge | [VST-012](branches/VST-012.md) |
+| [VST-009](tickets/VST-009.md) | One-URL guidance and verified CLI distribution | [VST-009](branches/VST-009.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

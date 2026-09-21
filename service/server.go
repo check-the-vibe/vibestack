@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/check-the-vibe/vibestack/api"
+	clientapi "github.com/check-the-vibe/vibestack/pkg/vibestack"
 	"github.com/check-the-vibe/vibestack/service/capabilities"
 )
 
@@ -372,7 +373,7 @@ func (s *Server) discovery(w http.ResponseWriter, r *http.Request) {
 		}
 		origin = scheme + "://" + r.Host
 	}
-	s.json(w, 200, map[string]any{"kind": "workspace", "version": "0.3.0-dev", "identity": s.cfg.Store.Identity, "api_versions": []string{"1"}, "api_roots": map[string]string{"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"}, "documentation": map[string]string{"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md"}, "canonical_origin": origin, "authentication_mode": "paired", "authentication": map[string]any{"modes": []string{"bearer", "browser-session"}, "credential_issuance": "local-operator", "session_url": origin + "/auth/session"}, "endpoints": map[string]string{"agents": origin + "/AGENTS.md", "api": origin + "/api/v1", "schema": origin + "/api/workspace.openapi.json", "capabilities": origin + "/api/v1/capabilities"}, "mcp": map[string]any{"state": "available", "url": origin + "/mcp", "transport": "streamable-http", "stateless": true, "authentication": "configured-bearer", "oauth": "unavailable", "next_action": "Use a verified bearer-capable client; private Codespaces gateway authentication is separate."}})
+	s.json(w, 200, map[string]any{"kind": "workspace", "version": clientapi.Version, "identity": s.cfg.Store.Identity, "api_versions": []string{"1"}, "api_roots": map[string]string{"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"}, "documentation": map[string]string{"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md", "mcp": "/MCP.md", "service": "/SERVICE.md", "extensions": "/EXTENSIONS.md"}, "canonical_origin": origin, "mcp_url": origin + "/mcp", "cli": map[string]string{"version": clientapi.Version, "installer": origin + "/cli.sh", "manifest": origin + "/release-manifest.json", "compatible": ">=0.2.0 <1.0.0", "generic_minimum": "0.3.0"}, "authentication_mode": "paired", "authentication": map[string]any{"modes": []string{"bearer", "browser-session"}, "credential_issuance": "local-operator", "session_url": origin + "/auth/session"}, "endpoints": map[string]string{"agents": origin + "/AGENTS.md", "api": origin + "/api/v1", "schema": origin + "/api/workspace.openapi.json", "registered_schema": origin + "/api/capabilities.openapi.json", "capabilities": origin + "/api/v1/capabilities"}, "mcp": map[string]any{"state": "available", "url": origin + "/mcp", "transport": "streamable-http", "stateless": true, "authentication": "configured-bearer", "oauth": "unavailable", "next_action": "Use a verified bearer-capable client; private Codespaces gateway authentication is separate."}})
 }
 
 func readBounded(r io.Reader, limit int64) ([]byte, error) {

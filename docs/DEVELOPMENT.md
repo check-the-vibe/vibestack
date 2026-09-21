@@ -22,6 +22,15 @@ registration and schemas; Python source checks catch published API/CLI mapping
 and setup-route omissions. These checks are part of `bin/vibestack-dev test`.
 They do not replace live authentication or transport-parity acceptance.
 
+The 0.3 CLI provides `capability list`, `capability schema`, and generic
+`capability call ID --input FILE`; new registered endpoints do not require a
+bespoke command release. The release workflow executes native installation on
+Linux/macOS amd64/arm64 before publishing tagged binaries and build attestations.
+Run `python3 tests/cli_release_check.py /absolute/path/to/native/vibestack` to
+exercise fresh install, upgrade and failure preservation over disposable HTTPS.
+Installer downloads require curl 8.4+ for streaming size limits. Read
+[CLI.md](CLI.md) for release trust and explicit private gateway profiles.
+
 ## Prerequisites
 
 The [workspace service guide](SERVICE.md) covers loopback 7996, protected

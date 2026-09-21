@@ -168,7 +168,7 @@ func (s *Server) capabilityCatalog(w http.ResponseWriter, r *http.Request) {
 		if workspaceMCPEnabled(definition) {
 			state, next = "implemented", "Call the named MCP tool or the REST invocation route."
 		}
-		list = append(list, map[string]any{"id": definition.ID, "definition": definition, "rest": "implemented", "web": "implemented", "mcp": state, "next_action": next})
+		list = append(list, map[string]any{"id": definition.ID, "definition": definition, "rest": "implemented", "web": "implemented", "cli": "implemented", "cli_command": "capability call " + definition.ID + " --input FILE", "mcp": state, "next_action": next})
 	}
 	for _, route := range s.operations {
 		if _, registered := s.registry.Entry(route.ID); registered {

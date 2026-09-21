@@ -19,6 +19,7 @@ type Profile struct {
 	Identity           string `json:"identity"`
 	Credential         string `json:"credential,omitempty"`
 	CAFile             string `json:"ca_file,omitempty"`
+	GatewayTokenFile   string `json:"gateway_token_file,omitempty"`
 	ClientID           string `json:"client_id,omitempty"`
 }
 

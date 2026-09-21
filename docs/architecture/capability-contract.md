@@ -47,7 +47,7 @@ Docker socket, machine router, plugin uploader or second agent loop.
 | Discovery | Authenticated `GET /api/v1/capabilities` returns visible definitions, limits and readiness |
 | Generic REST | `POST /api/v1/capabilities/{id}/invoke` with the input JSON object |
 | Friendly REST | A registered method/path, for example `POST /api/v1/project-summary`; same dispatcher |
-| CLI | `vibestack capability list` and `vibestack capability call <id> --input <JSON>`; human secrets use stdin/file handoffs, never that JSON flag |
+| CLI | `vibestack capability list`, `capability schema`, and `capability call <id> --input FILE\|-`; input is a JSON object read from the file or stdin, never a human-secret argument |
 | MCP | The registered ID is the tool name; input/output schemas come from the same definition |
 | Web | Same-origin authenticated fetch of the REST route; the future overlay is a client |
 

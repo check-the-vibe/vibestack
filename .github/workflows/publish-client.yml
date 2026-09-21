@@ -3,14 +3,31 @@ name: Publish VibeStack client and runner
 on:
   workflow_dispatch:
   push:
+    branches: ['codex/vst-009-agent-bootstrap']
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release-binaries:
-    runs-on: ubuntu-24.04
+  native-cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+          - runner: macos-15-intel
+            os: darwin
+            arch: amd64
+          - runner: macos-15
+            os: darwin
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -19,37 +36,78 @@ jobs:
         with:
           go-version: '1.26.x'
           cache: true
-      - name: Test
-        run: go test ./...
-      - name: Build release binaries and checksums
+      - name: Test, build and execute the native installer
+        env:
+          CGO_ENABLED: '0'
+          RELEASE_OS: ${{ matrix.os }}
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: |
+          go test ./pkg/vibestack ./cmd/vibestack
+          python3 -m unittest tests.test_cli_installer
+          version=$(python3 -c 'import json; print(json.load(open("release-manifest.json"))["version"])')
+          test "$(go env GOOS)/$(go env GOARCH)" = "$RELEASE_OS/$RELEASE_ARCH"
+          mkdir dist
+          output="dist/vibestack_${version}_${RELEASE_OS}_${RELEASE_ARCH}"
+          go build -trimpath -ldflags='-s -w' -o "$output" ./cmd/vibestack
+          python3 tests/cli_release_check.py "$PWD/$output"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release-binaries:
+    needs: native-cli
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cli-*
+          path: dist
+          merge-multiple: true
+      - name: Test and assemble versioned assets
         env:
           CGO_ENABLED: '0'
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          test "$version" = "0.2.0"
-          mkdir dist
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-            os="${target%/*}"
-            arch="${target#*/}"
-            output="dist/vibestack_${version}_${os}_${arch}"
-            GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags='-s -w' -o "$output" ./cmd/vibestack
-            sha256sum "$output" > "$output.sha256"
-          done
+          go test ./...
+          version=$(python3 -c 'import json; print(json.load(open("release-manifest.json"))["version"])')
+          test "$GITHUB_REF_NAME" = "v$version"
           for arch in amd64 arm64; do
             output="dist/vibestack-runner_${version}_linux_${arch}"
             GOOS=linux GOARCH="$arch" go build -trimpath -ldflags='-s -w' -o "$output" ./cmd/vibestack-runner
-            sha256sum "$output" > "$output.sha256"
             package="dist/vibestack-runner_${version}_ubuntu_${arch}.tar.gz"
             stage="dist/runner-package-$arch"
             mkdir "$stage"
             cp "$output" "$stage/vibestack-runner"
             cp packaging/install-runner.sh packaging/vibestack-runner.service docs/RUNNER.md "$stage/"
             tar -C "$stage" -czf "$package" .
-            sha256sum "$package" > "$package.sha256"
             rm -rf "$stage"
           done
           cp cli.sh release-manifest.json packaging/install-runner.sh packaging/vibestack-runner.service dist/
-      - name: Publish versioned release assets
-        uses: softprops/action-gh-release@v2
+          cd dist
+          for asset in vibestack_* vibestack-runner_*; do
+            sha256sum "$asset" > "$asset.sha256"
+          done
+      - name: Attest the exact tested release artifacts
+        uses: actions/attest@v4
         with:
-          files: dist/*
+          subject-path: dist/*
+      - name: Publish a new version without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "VibeStack $GITHUB_REF_NAME" --notes-file docs/releases/0.3.0.md

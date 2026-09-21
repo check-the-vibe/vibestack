@@ -28,8 +28,10 @@ func MCPBridge(ctx context.Context, profile Profile, client *Client, gatewayFile
 	if profile.Kind != "workspace" || profile.AuthenticationMode == "trusted-tailnet" || !bridgeIdentity.MatchString(profile.Identity) || client == nil || client.Base == nil || client.HTTP == nil || client.HTTP.Transport == nil || client.Credential == "" {
 		return errors.New("MCP requires an authenticated workspace profile with a pinned instance identity")
 	}
-	if gatewayFile != "" && (client.Base.Scheme != "https" || !strings.HasSuffix(strings.ToLower(client.Base.Hostname()), ".app.github.dev")) {
-		return errors.New("A GitHub gateway credential requires an explicit HTTPS Codespaces forwarded origin")
+	gatewayCheck := *client
+	gatewayCheck.GatewayTokenFile = gatewayFile
+	if err := gatewayCheck.ValidateGateway(); err != nil {
+		return err
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	httpClient := *client.HTTP

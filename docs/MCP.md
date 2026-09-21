@@ -118,8 +118,8 @@ by their workspace capability adapters. Fault injection is tracked in VST-013.
 
 ### Local stdio connection
 
-Build the current CLI from this checkout; the older published 0.2 binary does
-not contain the bridge. Release packaging is tracked in VST-009.
+Use CLI 0.3.0 from the versioned release installer in [CLI.md](CLI.md), or build
+this checkout for development. The earlier 0.2 source lacks the bridge.
 
 ```sh
 go build -o /tmp/vibestack ./cmd/vibestack
@@ -141,8 +141,10 @@ sanitized errors use stderr. Lists refresh remote grants; no local tool registry
 host mediation or anonymous fallback is introduced. For an explicitly configured
 remote private Codespaces origin, `mcp --gateway-token-file /private/path` reads
 the separate gateway file on each request and rejects redirects. It does not
-read ambient GitHub tokens. Profile creation through a private remote gateway is
-a separate bootstrap concern; use loopback from the Codespace terminal initially.
+read ambient GitHub tokens. `connect --gateway-token-file FILE` supports explicit
+private gateway bootstrap and saves only its absolute path; later REST, document
+and MCP requests use that file. The command override is optional. Use loopback
+from the Codespace terminal when outside-gateway access is unavailable.
 
 File inputs name a relative `path`. Registered reads return `data_base64`, `bytes`,
 `content_type` and an ETag; optional `range`, `if_range` and `if_none_match` retain

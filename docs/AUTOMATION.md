@@ -10,7 +10,9 @@ Compiled extensions use the same authenticated workspace service; see
 [EXTENSIONS.md](EXTENSIONS.md). Existing raw file/job routes below retain their
 compatibility semantics. Authenticated `/mcp` exposes enabled compiled capabilities
 through that dispatcher; [MCP.md](MCP.md) describes supported clients and limits.
-The source CLI includes a stdio bridge (`vibestack --profile NAME mcp`). Built-in
+CLI 0.3 provides `capability list/schema/call` and a stdio bridge
+(`vibestack --profile NAME mcp`). Both use an explicitly selected workspace
+profile and identity; configured gateway credentials remain separate. Built-in
 registered inputs also use `POST /api/v1/operations/ID`; existing raw/friendly
 REST responses below stay compatible. Registered file transfers use base64 up
 to 8 MiB and require create-only or observed-ETag write conditions. Check the

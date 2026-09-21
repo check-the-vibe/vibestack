@@ -18,7 +18,7 @@ func mcpCommand(ctx context.Context, client *api.Client, profile api.Profile, ar
 	}
 	flags := flag.NewFlagSet("mcp", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
-	gateway := flags.String("gateway-token-file", "", "protected GitHub private gateway credential file")
+	gateway := flags.String("gateway-token-file", profile.GatewayTokenFile, "protected GitHub private gateway credential file")
 	if flags.Parse(args) != nil || flags.NArg() != 0 {
 		return errors.New("usage: vibestack --profile NAME mcp [--gateway-token-file PATH]")
 	}

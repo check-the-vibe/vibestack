@@ -3,8 +3,10 @@
 Add trusted workspace endpoints through the [capability registry](docs/EXTENSIONS.md).
 The included `project_summary` example supports authenticated REST/browser calls and the same named MCP tool.
 Registered workspace tools also cover jobs, conditional project files, screenshots
-and desktop operations. The current source CLI supplies `vibestack mcp` as a thin
-stdio bridge; see [workspace MCP](docs/MCP.md) for inputs, limits and build/setup.
+and desktop operations. The 0.3 CLI supplies generic `capability list/schema/call` commands and
+`vibestack mcp` as a thin
+stdio bridge; see [workspace MCP](docs/MCP.md) and the [CLI guide](docs/CLI.md)
+for inputs, protected gateway profiles and versioned installation.
 The launcher-declared source checkout supports project file and command APIs
 even when its bind mount uses a different filesystem from other projects.
 

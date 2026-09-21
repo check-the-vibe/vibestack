@@ -133,6 +133,8 @@ func run(args []string) error {
 	switch command {
 	case "mcp":
 		return mcpCommand(ctx, client, profile, rest)
+	case "capability":
+		return capabilityCommand(ctx, client, profile, rest, g)
 	case "doctor":
 		return doctor(ctx, client, profile, g)
 	case "capabilities":
@@ -163,7 +165,7 @@ func run(args []string) error {
 		if err := requireWorkspace(profile); err != nil {
 			return err
 		}
-		return jsonRequest(ctx, client, http.MethodGet, "/setup/api/state", nil, false, g)
+		return jsonRequest(ctx, client, http.MethodGet, "/setup/api/state", nil, true, g)
 	case "account":
 		if err := requireWorkspace(profile); err != nil {
 			return err
@@ -218,7 +220,7 @@ func parseGlobal(args []string) (globalOptions, string, []string, error) {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, `VibeStack client 0.2.0
+	fmt.Fprintln(w, `VibeStack client 0.3.0
 
 Usage: vibestack [--profile NAME] [--instance ID] [--json] COMMAND [OPTIONS]
 
@@ -226,7 +228,7 @@ Connection: connect, profiles, doctor, capabilities
 Work:       exec, shell, jobs, files, screenshot, apps, windows, clipboard
 Workspace:  status, display, services, logs, setup, account, ssh-keys
 Runner:     instances, operations
-Agent:      mcp, skill, docs, api
+Agent:      capability, mcp, skill, docs, api
 
 Trusted-tailnet brokers connect without pairing or a bearer credential.
 Workspace commands through a runner require --instance ID before COMMAND.
@@ -248,6 +250,14 @@ func selectedClient(g globalOptions, kind string) (api.Profile, *api.Client, err
 	client, err := api.NewClient(profile.URL, profile.Credential, ca)
 	if err == nil {
 		client.AuthenticationMode = profile.AuthenticationMode
+		client.GatewayTokenFile = profile.GatewayTokenFile
+		if profile.Kind == "workspace" {
+			if len(profile.Identity) != 32 || strings.Trim(profile.Identity, "0123456789abcdef") != "" {
+				return profile, nil, errors.New("workspace profile has no valid identity; reconnect explicitly")
+			}
+			client.ExpectedIdentity = profile.Identity
+		}
+		err = client.ValidateGateway()
 	}
 	return profile, client, err
 }
@@ -259,6 +269,7 @@ func connect(ctx context.Context, args []string, g globalOptions) error {
 	rawURL := fs.String("url", "", "server origin")
 	label := fs.String("label", hostname(), "device label")
 	tokenStdin := fs.Bool("token-stdin", false, "read a legacy token from stdin")
+	gatewayFile := fs.String("gateway-token-file", "", "protected private Codespaces gateway token file")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -271,6 +282,16 @@ func connect(ctx context.Context, args []string, g globalOptions) error {
 	client, err := api.NewClient(*rawURL, "", g.ca)
 	if err != nil {
 		return err
+	}
+	if *gatewayFile != "" {
+		*gatewayFile, err = filepath.Abs(*gatewayFile)
+		if err != nil {
+			return errors.New("gateway credential path is invalid")
+		}
+		client.GatewayTokenFile = *gatewayFile
+		if err := client.ValidateGateway(); err != nil {
+			return err
+		}
 	}
 	discovery, err := client.Discover(ctx)
 	if err != nil {
@@ -351,7 +372,19 @@ func connect(ctx context.Context, args []string, g globalOptions) error {
 			time.Sleep(interval)
 		}
 	}
-	profilesFile.Profiles[*name] = api.Profile{AuthenticationMode: discovery.AuthenticationMode, Name: *name, URL: strings.TrimSuffix(*rawURL, "/"), Kind: discovery.Kind, Identity: discovery.Identity, Credential: credential, CAFile: g.ca, ClientID: clientID}
+	if discovery.Kind == "workspace" && discovery.Endpoints["capabilities"] != "" {
+		client.Credential, client.ExpectedIdentity = credential, discovery.Identity
+		var catalog struct {
+			InstanceID string `json:"instance_id"`
+		}
+		if _, err := client.JSON(ctx, http.MethodGet, "/api/v1/capabilities", nil, &catalog, true, nil); err != nil {
+			return err
+		}
+		if catalog.InstanceID != discovery.Identity {
+			return errors.New("authenticated response did not match the discovered workspace")
+		}
+	}
+	profilesFile.Profiles[*name] = api.Profile{AuthenticationMode: discovery.AuthenticationMode, Name: *name, URL: strings.TrimSuffix(*rawURL, "/"), Kind: discovery.Kind, Identity: discovery.Identity, Credential: credential, CAFile: g.ca, ClientID: clientID, GatewayTokenFile: *gatewayFile}
 	if err := api.SaveProfiles(profilesFile); err != nil {
 		return err
 	}
@@ -1118,13 +1151,7 @@ func rawAPI(ctx context.Context, client *api.Client, args []string, g globalOpti
 	contentType := ""
 	if *dataFile != "" {
 		contentType = "application/json"
-		var data []byte
-		var err error
-		if *dataFile == "-" {
-			data, err = io.ReadAll(io.LimitReader(os.Stdin, (16<<20)+1))
-		} else {
-			data, err = os.ReadFile(*dataFile)
-		}
+		data, err := readInputFile(*dataFile, 16<<20)
 		if err != nil {
 			return err
 		}
@@ -1162,9 +1189,12 @@ func jsonRequestHeaders(ctx context.Context, client *api.Client, method, path st
 }
 
 func copyJSONOrRaw(reader io.Reader, g globalOptions) error {
-	data, err := io.ReadAll(io.LimitReader(reader, 16<<20))
+	data, err := io.ReadAll(io.LimitReader(reader, (16<<20)+1))
 	if err != nil {
 		return err
+	}
+	if len(data) > 16<<20 {
+		return errors.New("response exceeds 16 MiB")
 	}
 	if g.json {
 		var value any

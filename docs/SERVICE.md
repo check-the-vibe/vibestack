@@ -43,8 +43,8 @@ eight hours and end when their credential expires/revokes or the service restart
 Credential and Linux password state persist through image replacement. Provider
 authentication is separate from workspace authentication.
 
-For CLI access, use the updated client built from this source. Release/bootstrap
-verification belongs to VST-009. Protected stdin is supported:
+For CLI access, use version 0.3 following [CLI.md](CLI.md). The image publishes
+`/release-manifest.json` and versioned discovery/guide links. Protected stdin is supported:
 
 ```sh
 vibestack connect --name workspace --url https://YOUR-SERVICE-ORIGIN \
@@ -55,7 +55,10 @@ vibestack --profile workspace status
 Use the actual forwarded service origin, not the Codespace editor URL. Private
 Codespaces forwarding still needs its own GitHub authorization or an approved
 local tunnel; a workspace credential does not bypass that gateway. The guide and
-two-client MCP bootstrap are verified in their dependent tickets.
+two-client MCP bootstrap are verified in their dependent tickets. The 0.3 CLI
+accepts an explicit `connect --gateway-token-file FILE` and stores its absolute
+path, never an ambient GitHub token. Requests reject redirects and pin the
+workspace identity; new capability commands use the same grants and dispatcher.
 
 Local management commands, run as `vibe`:
 

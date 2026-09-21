@@ -116,8 +116,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack capabilities",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call workspaceCapabilities --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -146,7 +147,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -263,8 +266,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack exec",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call submitArgvCommand --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -293,7 +297,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_command",
       "published_schema": "api/workspace.openapi.json",
@@ -315,8 +321,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack shell",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call submitShellCommand --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -345,7 +352,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -366,8 +375,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack jobs get",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call getWorkspaceJob --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -396,7 +406,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_job",
       "published_schema": "api/workspace.openapi.json",
@@ -418,8 +430,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack jobs output",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call getWorkspaceJobOutput --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -448,7 +461,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_output",
       "published_schema": "api/workspace.openapi.json",
@@ -470,8 +485,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack jobs cancel",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call cancelWorkspaceJob --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -500,7 +516,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -521,8 +539,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack screenshot",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call captureWorkspaceScreenshot --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -551,7 +570,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "optional_runner_proxy_tool": "workspace_screenshot",
       "published_schema": "api/workspace.openapi.json",
@@ -573,8 +594,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack apps list",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call listWorkspaceApplications --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -603,7 +625,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -624,8 +648,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack apps start|stop",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call operateWorkspaceApplication --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -654,7 +679,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -675,8 +702,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack windows list",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call listWorkspaceWindows --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -705,7 +733,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -726,8 +756,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack windows state",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call setWorkspaceWindowState --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -756,7 +787,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -777,8 +810,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack clipboard get",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call readWorkspaceClipboard --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -807,7 +841,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -828,8 +864,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack clipboard set",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call writeWorkspaceClipboard --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -858,7 +895,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -879,8 +918,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files --desktop get",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call readDesktopFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -909,7 +949,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -930,8 +972,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files --desktop head",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call headDesktopFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -960,7 +1003,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -981,8 +1026,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files --desktop put",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call writeDesktopFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1011,7 +1057,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1032,8 +1080,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files get",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call readProjectFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1062,7 +1111,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1083,8 +1134,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files head",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call headProjectFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1113,7 +1165,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1134,8 +1188,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack files put",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call writeProjectFile --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1164,7 +1219,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1185,8 +1242,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack ssh-keys list",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call listWorkspaceSSHKeys --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -1215,7 +1273,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1236,8 +1296,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack ssh-keys add",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call addWorkspaceSSHKey --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -1266,7 +1327,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1287,8 +1350,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack ssh-keys remove",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call removeWorkspaceSSHKey --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -1317,7 +1381,9 @@
         "tests/test_automation_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1338,8 +1404,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack status",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call workspaceStatus --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1368,7 +1435,9 @@
         "tests/test_control_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1389,8 +1458,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack display get",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call getWorkspaceDisplay --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1419,7 +1489,9 @@
         "tests/test_control_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1440,8 +1512,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack display set",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call setWorkspaceDisplay --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1470,7 +1543,9 @@
         "tests/test_control_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1491,8 +1566,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack services start|stop|restart",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call operateWorkspaceService --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1521,7 +1597,9 @@
         "tests/test_control_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -1542,8 +1620,9 @@
         "cli": {
           "state": "implemented",
           "entry": "vibestack logs",
-          "reason": "Published CLI coverage.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call readWorkspaceServiceLog --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -1572,7 +1651,9 @@
         "tests/test_control_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "published_schema": "api/workspace.openapi.json",
       "boundary_source": "service/legacy.go",
@@ -2557,10 +2638,11 @@
           "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No published workspace CLI mapping.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "state": "implemented",
+          "entry": "vibestack --profile NAME capability call workspaceSetupState --input FILE",
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call workspaceSetupState --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -2589,7 +2671,9 @@
         "tests/test_setup_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "boundary_source": "service/legacy.go",
       "registered_source": "service/workspace_capabilities.go"
@@ -2654,10 +2738,11 @@
           "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No published workspace CLI mapping.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "state": "implemented",
+          "entry": "vibestack --profile NAME capability call listWorkspaceClients --input FILE",
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call listWorkspaceClients --input FILE"
         },
         "mcp": {
           "state": "unavailable",
@@ -2686,7 +2771,9 @@
         "tests/test_setup_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "boundary_source": "service/legacy.go",
       "registered_source": "service/workspace_capabilities.go"
@@ -2704,10 +2791,11 @@
           "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No published workspace CLI mapping.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "state": "implemented",
+          "entry": "vibestack --profile NAME capability call workspaceInstallOutput --input FILE",
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call workspaceInstallOutput --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -2736,7 +2824,9 @@
         "tests/test_setup_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "boundary_source": "service/legacy.go",
       "registered_source": "service/workspace_capabilities.go"
@@ -2942,10 +3032,11 @@
           "next_action": "Use the updated CLI or an authenticated REST client; consult docs/SERVICE.md for migration."
         },
         "cli": {
-          "state": "unavailable",
-          "entry": null,
-          "reason": "No published workspace CLI mapping.",
-          "next_action": "Use the existing explicit REST route; add generic capability invocation in VST-009."
+          "state": "implemented",
+          "entry": "vibestack --profile NAME capability call installWorkspaceComponents --input FILE",
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call installWorkspaceComponents --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -2974,7 +3065,9 @@
         "tests/test_setup_api.py",
         "service/server_test.go",
         "service/workspace_capabilities_test.go",
-        "tests/mcp-stdio-check.mjs"
+        "tests/mcp-stdio-check.mjs",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ],
       "boundary_source": "service/legacy.go",
       "registered_source": "service/workspace_capabilities.go"
@@ -3410,9 +3503,10 @@
         },
         "cli": {
           "state": "implemented",
-          "entry": "vibestack api",
-          "reason": "One compiled handler through shared schema/grant dispatch.",
-          "next_action": "Invoke the authenticated generic capability route with a declared input object."
+          "entry": "vibestack --profile NAME capability call project_summary --input FILE",
+          "reason": "Generic CLI 0.3 invokes the compiled capability through the shared authenticated dispatcher. Legacy commands retain their documented compatibility bodies.",
+          "next_action": "Read capability list/schema for grants and the exact input; use a protected named workspace profile.",
+          "generic_entry": "vibestack --profile NAME capability call project_summary --input FILE"
         },
         "mcp": {
           "state": "implemented",
@@ -3437,7 +3531,9 @@
         "tests/runtime_service_check.py",
         "service/mcp_test.go",
         "tests/mcp-client-check.mjs",
-        "tests/mcp-client/main.go"
+        "tests/mcp-client/main.go",
+        "cmd/vibestack/capability_test.go",
+        "tests/agent-bootstrap-check.mjs"
       ]
     },
     {

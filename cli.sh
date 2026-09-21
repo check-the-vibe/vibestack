@@ -2,7 +2,7 @@
 # Install the versioned VibeStack client without sudo or profile edits.
 set -eu
 
-version="0.2.0"
+version="0.3.0"
 install_dir="${VIBESTACK_INSTALL_DIR:-${HOME}/.local/bin}"
 release_base="${VIBESTACK_RELEASE_BASE:-https://github.com/check-the-vibe/vibestack/releases/download}"
 server=""
@@ -28,9 +28,21 @@ case "$version" in
   v*) release_version=$version; binary_version=${version#v} ;;
   *) release_version="v$version"; binary_version=$version ;;
 esac
-case "$binary_version" in
-  ''|*[!0-9A-Za-z._-]*) printf '%s\n' 'cli.sh: invalid version' >&2; exit 2 ;;
+printf '%s\n' "$binary_version" | LC_ALL=C grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
+  printf '%s\n' 'cli.sh: version must be MAJOR.MINOR.PATCH' >&2; exit 2;
+}
+case "$release_base" in
+  https://*) ;;
+  *) printf '%s\n' 'cli.sh: release origin must use HTTPS' >&2; exit 2 ;;
 esac
+# Streaming size enforcement for unknown-length responses was added in curl 8.4.
+curl_version=$(curl --version | awk 'NR == 1 {print $2}')
+printf '%s\n' "$curl_version" | awk -F. '{exit !($1 > 8 || ($1 == 8 && $2 >= 4))}' || {
+  printf '%s\n' 'cli.sh: curl 8.4 or newer is required for bounded downloads' >&2; exit 1;
+}
+if [ -L "$install_dir/vibestack" ] || { [ -e "$install_dir/vibestack" ] && [ ! -f "$install_dir/vibestack" ]; }; then
+  printf '%s\n' 'cli.sh: existing destination must be a regular file, not a link or directory' >&2; exit 1
+fi
 
 case "$(uname -s)" in
   Linux) os=linux ;;
@@ -51,10 +63,11 @@ cleanup() {
   [ -z "$staged" ] || rm -f -- "$staged"
   rm -rf "$tmp_dir"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
 
-curl -fL --proto '=https' --tlsv1.2 --max-time 300 -o "$tmp_dir/vibestack" "$url"
-curl -fL --proto '=https' --tlsv1.2 --max-time 60 -o "$tmp_dir/checksum" "$url.sha256"
+curl -q -fLsS --proto '=https' --proto-redir '=https' --tlsv1.2 --max-redirs 5 --max-filesize 67108864 --max-time 300 -o "$tmp_dir/vibestack" "$url"
+curl -q -fLsS --proto '=https' --proto-redir '=https' --tlsv1.2 --max-redirs 5 --max-filesize 4096 --max-time 60 -o "$tmp_dir/checksum" "$url.sha256"
 expected=$(awk 'NR == 1 && $1 ~ /^[0-9a-fA-F]{64}$/ { print tolower($1) }' "$tmp_dir/checksum")
 [ -n "$expected" ] || { printf '%s\n' 'cli.sh: release checksum is invalid' >&2; exit 1; }
 if command -v sha256sum >/dev/null 2>&1; then
@@ -84,4 +97,4 @@ esac
 if [ -n "$server" ]; then
   printf "Next: vibestack connect --name my-workspace --url '%s'\n" "$server"
 fi
-printf '%s\n' 'HTTPS authenticates the download source; the published SHA-256 detects corruption or substitution within that release channel.'
+printf '%s\n' 'HTTPS authenticates the publisher channel; SHA-256 detects mismatches, not a compromised publisher. See CLI.md for optional GitHub attestation verification.'

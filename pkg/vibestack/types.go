@@ -3,7 +3,7 @@ package vibestack
 import "encoding/json"
 
 const (
-	Version       = "0.2.0"
+	Version       = "0.3.0"
 	WorkspaceAPI  = "/api/v1/automation"
 	RunnerAPI     = "/api/v1/runner"
 	DiscoveryPath = "/.well-known/vibestack"
@@ -18,6 +18,7 @@ type Discovery struct {
 	APIVersions        []string          `json:"api_versions"`
 	APIRoots           map[string]string `json:"api_roots"`
 	Documentation      map[string]string `json:"documentation"`
+	Endpoints          map[string]string `json:"endpoints,omitempty"`
 	Pairing            struct {
 		Request     string   `json:"request"`
 		Approval    string   `json:"approval"`

@@ -29,7 +29,14 @@ capabilities share REST/MCP dispatch. Compiled workspace adapters expose jobs,
 conditional project/Desktop files, screenshots and desktop diagnostics. Legacy
 raw/friendly REST responses remain compatible; complete cross-client parity is
 tracked in VST-010. The source CLI's `mcp` command bridges stdio to an explicitly
-selected authenticated workspace profile; published binary packaging is VST-009.
+selected authenticated workspace profile. CLI 0.3 adds generic capability
+list/schema/call commands, identity pins and explicit protected private-gateway
+files. `/AGENTS.md` explains one-URL bootstrap; `/release-manifest.json`, the CLI,
+installer and service discovery share the release version. Native release checks
+cover Linux/macOS amd64/arm64, HTTPS size/redirect limits, installation and upgrade
+preservation. GitHub attestations accompany versioned artifacts; the default
+installer checks HTTPS and SHA-256. See [CLI.md](CLI.md) for trust and compatibility,
+and VST-009 for separately recorded release and outside-gateway acceptance.
 
 The image ships **slim**. Only the desktop, browser interfaces, automation
 primitives, and operational services are built in. On first boot a setup
