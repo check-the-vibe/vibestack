@@ -22,8 +22,12 @@ desktop image prepare in the background, then VibeStack starts automatically.
 A fresh uncached build takes several minutes: editor access can precede desktop
 readiness. The **Ports** panel lists **VibeStack (private)** on **8080**. Open it
 in a browser if automatic opening is blocked. Wait for the lifecycle log's
-`VibeStack ready` message. On first use, set your Linux password in Setup;
-Desktop, Terminal, Editor, Apps and Settings are then available.
+`VibeStack ready` message. The authenticated service additionally needs a browser
+credential handoff: follow [the service guide](../docs/SERVICE.md) to create an
+owner credential from the Codespace terminal and connect at `/connect.html`.
+Then set your Linux password in Setup. Workspace credentials, the Linux password
+and provider sign-in are separate. Desktop, Terminal, Editor, Apps and Settings
+remain available during the UI migration.
 
 The Codespaces repository is bind-mounted read/write at
 `/projects/<repository-directory>` inside VibeStack (`/projects/vibestack` for
