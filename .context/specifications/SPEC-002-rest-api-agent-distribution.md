@@ -46,7 +46,7 @@ that every advertised release artifact is currently published or functional.
 
 Specify the canonical operation inventory, resource/version/error contract,
 discovery, guidance and tested installer URLs. Preserve local workspace access
-without requiring a public broker. Exclude inventing a separate execution engine,
+using the service host in [SPEC-001](SPEC-001-service-host.md). Exclude inventing a separate execution engine,
 embedding tokens in documentation, or changing authentication independently of
 SPEC-001/SPEC-003. Windows distribution is outside the first target matrix.
 
@@ -104,27 +104,27 @@ beyond the user's request and the harness's own permission controls.
 
 ### Discovery and shared capabilities
 
-Separate service kinds: workspace (desktop work), runner (one Docker host), broker
-(machine routing). Discovery must identify kind, server version, supported API
-versions, canonical origin, relative route/document URLs and supported auth modes.
-Anonymous discovery exposes no machine inventory, user identity or credentials.
-Authenticated capabilities report the caller's effective access, target IDs,
-limits and readiness; readiness separates healthy services, machine online,
-app restoration and human onboarding.
+The primary service kind is workspace: one instance, one service origin and its
+capabilities. The existing host runner has separate discovery and authority; it
+is optional and not part of workspace bootstrap. Discovery identifies kind,
+server version, supported API versions, canonical origin, document/endpoint URLs
+and supported authentication modes. Anonymous discovery exposes no private
+workspace state or credentials. Authenticated discovery reports available
+capabilities, limits and readiness, including onboarding or app restoration.
 
-Retain working `/api/v1/automation` and `/api/v1/runner` clients. Proposed public
-broker routes use `/api/v1/broker/machines` and
-`/api/v1/broker/workspaces/{workspace_id}`; route names are a draft to finalize in
-VST-008. Derive owner and authorized machine from the registry, not caller claims.
-Every multi-workspace action uses an explicit target. Local adapters may bind one
-workspace at connection time and must identify it in results.
+Preserve supported workspace routes under `/api/v1/automation` through the
+service's authenticated compatibility adapters. The separate runner retains its
+own `/api/v1/runner` interface; do not forward workspace callers to host authority.
+New capabilities register under `/api/v1/...` without a machine registry or routing
+tier. A client profile selects an explicit service URL; concurrent profiles cannot
+change another caller's destination. Responses identify the connected instance.
 
 | Surface | Target behavior |
 | --- | --- |
 | `/.well-known/vibestack` | Minimal discovery and compatibility, no secrets/inventory |
 | `/AGENTS.md` | Complete one-URL harness bootstrap, capability overview and desktop/CLI/MCP/REST/web connection guidance tied to the deployed version |
 | `/CLI.md`, `/AUTOMATION.md`, `/RUNNER.md` | Applicable versioned references; discovery does not advertise irrelevant documents |
-| `/api/workspace.openapi.json`, `/api/runner.openapi.json` | Preserve current contracts; publish a separate broker OpenAPI document |
+| `/api/workspace.openapi.json`, `/api/runner.openapi.json` | Preserve current contracts; advertise the workspace service schema including registered extensions |
 | `/cli.sh` | Reviewable installer with explicit version/install directory and release-channel identity |
 
 Use one operation inventory to map each capability to REST operation IDs, CLI
@@ -138,9 +138,11 @@ Cross-surface parity means the same targets, permissions, effects, result states
 and errors, while allowing transport-appropriate presentation. Preserve argv versus
 shell distinction. Workspace jobs and host lifecycle operations have different
 IDs, states and cancellation semantics; return bounded cursor-based output.
-File writes retain preconditions and no-follow/project-root boundaries. Apply
-idempotency to broker mutation submission and return a conflict for key/payload
-mismatch. Existing APIs get additive changes; breaking behavior requires a new
+File writes retain preconditions and no-follow/project-root boundaries. Keep each
+operation's declared retry/idempotency behavior; where keys are
+supported, conflicting payload reuse fails. Do not add a global dispatch ledger
+or blindly retry a command whose result is unknown. Existing APIs get additive
+changes; breaking behavior requires a new
 version and a documented migration window.
 
 Errors use a documented envelope containing stable code, safe message, request
@@ -156,14 +158,17 @@ or unsupported platform leaves the existing CLI intact. Publish immutable
 versioned assets and a tested compatibility matrix. A checksum from the same
 channel detects mismatches; it does not independently authenticate a compromised
 publisher. Decide signed release provenance/trust roots before public release.
-Print the next connect action without credentials; do not auto-enroll, elevate,
+Print the next connect action without credentials; do not elevate,
 edit shell profiles or embed secrets. Document download-and-inspect installation.
 
 ## Design decisions and alternatives
 
 Recommend shared operation definitions and thin transport adapters over rewriting
-APIs into a single new route tree. Keep broker discovery separate from workspace
-instructions so an agent does not accidentally use host authority. Human-readable
+APIs into a single new route tree. Keep optional runner discovery separate from
+workspace
+instructions so an agent does not accidentally use host authority. Use SPEC-001's
+capability registration for new endpoints/tools and a generic CLI invocation path
+to avoid needing a client release for every user-authored capability. Human-readable
 guidance plus OpenAPI supports both agent context and deterministic clients;
 neither is a substitute for runtime authorization.
 
@@ -180,15 +185,15 @@ deprecation before removal. API contract tests and coverage checks run in CI.
 ## Acceptance criteria
 
 - AC-01: A contract inventory maps every capability to CLI, REST, MCP and web service access, authority and verification. All four are the default; any unavailable surface or human-only handoff has an explicit reason and next action. Schema/coverage checks catch undocumented omissions and drift.
-- AC-02: Give a supported agent harness only `CODESPACE_URL/AGENTS.md`, with no repository context or extra setup prompt. Verify it retrieves Markdown through the supported gateway access path, identifies the service and available capabilities, gives working desktop-app and CLI connection guidance, and discovers authenticated MCP, REST and web access. Follow the guide to a harmless authenticated REST/CLI operation and MCP tool call using supported clients; verify the desktop connection instructions. Record any human authentication steps and client versions. Anonymous discovery leaks no private inventory or secrets; authenticated discovery reflects the caller's grants. Include a fresh Codespace and non-Codespaces service-kind cases.
+- AC-02: Give a supported agent harness only `CODESPACE_URL/AGENTS.md`, with no repository context or extra setup prompt. Verify it retrieves Markdown through the supported gateway access path, identifies the service and available capabilities, gives working desktop-app and CLI connection guidance, and discovers authenticated MCP, REST and web access. Follow the guide to a harmless authenticated REST/CLI operation and MCP tool call using supported clients; verify the desktop connection instructions. Record any human authentication steps and client versions. Anonymous discovery leaks no private inventory or secrets; authenticated discovery reflects the caller's grants. Include a fresh Codespace and a locally hosted instance; optional host-runner access remains explicitly separate.
 - AC-03: Fresh install and upgrade succeed for each supported OS/architecture; invalid checksum, redirect, missing version or interruption preserves the prior CLI. Verify disposable native/release environments, not just shell syntax.
-- AC-04: Calls through CLI, REST, MCP and web services apply the same target authority, operation semantics, file preconditions and job/output limits for direct and broker-mediated access. Cross-owner, oversized and malformed requests have consistent bounded failures. Verify a shared operation matrix across all four surfaces, including declared unavailable capabilities and human handoffs; no transport bypasses authentication.
+- AC-04: Calls through CLI, REST, MCP and web services apply the same target authority, operation semantics, file preconditions and job/output limits for built-in and user-authored capabilities. Denied-permission, wrong-instance, oversized and malformed requests have consistent bounded failures. Verify a shared operation matrix across all four surfaces, including declared unavailable capabilities and human handoffs; no transport bypasses authentication.
 - AC-05: Lost responses and duplicate submissions obey the documented idempotency contract; concurrent target selection cannot send one client's job to another workspace. Verify concurrency and retry cases.
 - AC-06: A supported old client still operates after rollout; public docs, OpenAPI and actual installer artifacts match the release. Verify a pinned old/new compatibility matrix and rollback.
 
 ## Open decisions
 
-- D1: Final broker resource/error schema and operation limits; resolve in VST-008 alongside the identity contract before dependent code.
+- D1: Final capability definition, route/CLI invocation conventions, error schema and operation limits; resolve in VST-008 against the small extension example in SPEC-001.
 - D2: Public origin, release owner, provenance verification and supported compatibility window; blocks installer release, not the inventory pass.
 - D3: Which legacy routes need a deprecation window versus permanent aliases? Resolve before changing any existing route.
 - D4: Which desktop applications and agent harnesses are supported initially, and how can each fetch the guide and authenticate through a private Codespaces gateway? Resolve the client/bootstrap matrix in VST-009 with SPEC-003 before claiming end-to-end one-URL access. The one-URL entry point and four-surface capability requirement are user decisions, not open alternatives.
@@ -198,14 +203,14 @@ deprecation before removal. API contract tests and coverage checks run in CI.
 | Ticket | Bounded outcome | Depends on | Criteria covered | Verification |
 | --- | --- | --- | --- | --- |
 | [VST-008](../tickets/VST-008.md) | Operation inventory and API contract | None | AC-01 | Source/contract mapping and schema validation |
-| [VST-009](../tickets/VST-009.md) | One-URL guide, desktop/CLI bootstrap and transport discovery | VST-008 | AC-02, AC-03, AC-06 | Guide-only harness/client journey, gateway access and release install/failure matrix |
-| [VST-010](../tickets/VST-010.md) | Authorized routing parity and compatibility | VST-008, VST-005, VST-006 | AC-04, AC-05, AC-06 | REST/client parity, replay and upgrade tests |
+| [VST-009](../tickets/VST-009.md) | One-URL guide, desktop/CLI bootstrap and transport discovery | VST-008, VST-005 | AC-02, AC-03, AC-06 | Guide-only harness/client journey, gateway access and release install/failure matrix |
+| [VST-010](../tickets/VST-010.md) | Capability parity and compatibility | VST-006, VST-012 | AC-04, AC-05, AC-06 | Built-in/extension behavior through CLI, REST, MCP and browser HTTP |
 
-VST-008 is the first actionable contract task. Guidance/release work can proceed
-independently of connector implementation after that shared contract is settled.
-Full AC-02/AC-04 validation also needs the authenticated MCP implementation from
-SPEC-003 and web access from SPEC-004. VST-009/VST-010 record their portion;
-linked instructions or mocked transports alone do not complete those criteria.
+VST-008 is the first actionable contract task. Guidance/release work follows the
+shared contract and running service. Full AC-02/AC-04 validation needs the real MCP
+adapter from SPEC-003. An authenticated browser HTTP client can verify web access
+before SPEC-004's chat UI exists. VST-009/VST-010 record their portion; linked
+instructions or mocked transports alone do not complete those criteria.
 
 ## Decision history
 
@@ -214,3 +219,5 @@ linked instructions or mocked transports alone do not complete those criteria.
 - 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
 
 - 2026-09-21: User requires supplying only `CODESPACE_URL/AGENTS.md` to bootstrap an agent harness, including desktop-app/CLI guidance, authenticated MCP and capabilities exposed through CLI, REST, MCP and web services. Added the guide contract and end-to-end criteria; client selection and private-gateway bootstrap remain implementation decisions.
+
+- 2026-09-21: Aligned with the user-requested SPEC-001 rewrite: one extensible workspace service, no required machine broker, shared authenticated REST/MCP capabilities. Other feature-specific decisions remain draft.

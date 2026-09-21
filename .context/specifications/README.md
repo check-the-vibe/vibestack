@@ -8,7 +8,7 @@ new specifications, not the file to edit for these four features.
 
 | ID | File to edit | Focus |
 | --- | --- | --- |
-| SPEC-001 | [Public machine broker](SPEC-001-public-machine-broker.md) | nginx, broker service, machine enrollment/connections and public-client authority |
+| SPEC-001 | [Extensible service host](SPEC-001-service-host.md) | Static files, one authenticated API/MCP process and user-authored capabilities |
 | SPEC-002 | [REST API and distribution](SPEC-002-rest-api-agent-distribution.md) | Shared operations, discovery, AGENTS.md and CLI installer URLs |
 | SPEC-003 | [Authenticated MCP](SPEC-003-authenticated-mcp.md) | Remote authorization, local adapter and tool coverage |
 | SPEC-004 | [Chat agent interface](SPEC-004-chat-agent-interface.md) | Chat replacing existing UI, authorized tools and migration |
@@ -25,23 +25,24 @@ branches will be created when their individual tickets begin.
 Review one specification at a time in this order:
 
 1. [SPEC-002: REST API and distribution](SPEC-002-rest-api-agent-distribution.md): agree on service boundaries, shared operations and agent bootstrap first.
-2. [SPEC-001: Public machine broker](SPEC-001-public-machine-broker.md): resolve identity, enrollment and routing against those operations.
+2. [SPEC-001: Extensible service host](SPEC-001-service-host.md): review the simple static/API/MCP topology and capability authoring workflow. This is the current review file.
 3. [SPEC-003: Authenticated MCP](SPEC-003-authenticated-mcp.md): expose the agreed operations with the correct authorization.
 4. [SPEC-004: Chat agent interface](SPEC-004-chat-agent-interface.md): define the user journeys over the agreed service/tool contract.
 
-The first review file is SPEC-002. Its initial review should establish the shared
-contract; broker identity decisions remain coordinated with SPEC-001. Keep each
+SPEC-002 establishes the one-URL guide and shared capability contract. The review
+is now on the rewritten SPEC-001; authentication compatibility is coordinated
+with SPEC-003. Keep each
 specification draft until its required decisions are resolved. The retired
 combined agent-access proposal is no longer a separate design authority.
 
 ## Development order
 
-1. Review the drafts and resolve shared identity, operation and deployment decisions.
-2. Start [VST-008](../tickets/VST-008.md), the shared operation/API contract pass.
-3. Build enrollment [VST-005](../tickets/VST-005.md), then connector [VST-006](../tickets/VST-006.md).
-4. Discovery/installers [VST-009](../tickets/VST-009.md) can proceed after the contract; REST parity [VST-010](../tickets/VST-010.md) follows identity/routing.
-5. Broker recovery [VST-007](../tickets/VST-007.md), MCP [VST-011](../tickets/VST-011.md)–[VST-013](../tickets/VST-013.md), and chat [VST-014](../tickets/VST-014.md)–[VST-015](../tickets/VST-015.md) follow their explicit ticket dependencies.
-6. Retire the old interface with [VST-016](../tickets/VST-016.md) only after replacement journeys and agent access pass.
+1. Define the small shared capability/registration contract in [VST-008](../tickets/VST-008.md), including one harmless extension example.
+2. Build the static host and authenticated service foundation in [VST-005](../tickets/VST-005.md).
+3. Add capability authoring in [VST-006](../tickets/VST-006.md), one-URL guidance/CLI distribution in [VST-009](../tickets/VST-009.md), and MCP authentication in [VST-011](../tickets/VST-011.md).
+4. Expose registered MCP tools in [VST-012](../tickets/VST-012.md), then verify four-surface parity in [VST-010](../tickets/VST-010.md) and transport compatibility in [VST-013](../tickets/VST-013.md).
+5. Complete fresh Codespaces and extension/deployment acceptance in [VST-007](../tickets/VST-007.md). No fleet infrastructure is required.
+6. Build chat in [VST-014](../tickets/VST-014.md)–[VST-015](../tickets/VST-015.md), then retire the old interface in [VST-016](../tickets/VST-016.md) after its replacement journeys pass.
 
 This is dependency order, not an automatic launch of parallel agents or an
 estimate. Each implementation ticket gets an owning branch when it is started.

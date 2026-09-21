@@ -13,10 +13,11 @@ keep the specification in draft; no runtime changes are part of this pass.
 
 ## Outcome and user journeys
 
-A local Codespaces agent discovers workspace tools without a host broker. An
-external MCP client connects to the public broker, authenticates as its user,
-selects an authorized workspace and calls those same operations. Revocation
-removes access. A client cannot gain host authority merely by connecting to MCP.
+A local or external harness follows the instance's `/AGENTS.md`, connects to its
+`/mcp` endpoint, authenticates and calls workspace capabilities. New capabilities
+registered in [SPEC-001](SPEC-001-service-host.md) appear through the same adapter.
+An optional local stdio bridge supports clients that need it. No machine broker
+or enrollment is required, and workspace tools do not grant Docker-host control.
 
 ## Current behavior and evidence
 
@@ -28,7 +29,8 @@ proposed public OAuth service. A direct workspace MCP adapter is not implemented
 
 ## Scope and exclusions
 
-Deliver a local stdio adapter and authenticated remote HTTP service, shared
+Deliver authenticated HTTP MCP in the workspace service and a thin local stdio
+bridge for supported clients that need it, with shared
 operation authorization, a documented tool inventory and real client verification.
 Keep passwords, provider keys, raw Docker access, arbitrary upstream URLs and
 irreversible volume purge out of model tool arguments/results. Linux passwords
@@ -37,25 +39,32 @@ execution engine or authorization store.
 
 ## Contract
 
-Remote endpoint recommendation: `/mcp` on the public broker origin, behind the
-same identity/resource grants as REST. Use Streamable HTTP and publish the
-protected resource metadata/challenges needed by supported clients. Use OAuth
-for remote user delegation; do not confuse a GitHub/private-port login with
-VibeStack authorization. Bind tokens to intended resource/audience, issuer,
-expiry and capabilities; reject machine credentials as client access tokens.
-Never pass a client's bearer token through to a local desktop. Broker/connector
-uses its separate authenticated channel and operation-bound target authorization.
+Expose `/mcp` in the same workspace service process and origin as REST, using
+Streamable HTTP and the shared authentication/authorization middleware. Configured
+personal bearer credentials are supported only for clients verified to accept
+them. Clients needing OAuth discovery/consent use an established authorization
+server integration, with protected-resource metadata and challenges validated
+against the selected protocol version. A token-only integration must not be
+advertised as universal remote-client support.
+
+Validate the selected credential type's instance/resource binding, validity and
+permissions; for OAuth validate issuer, audience and expiry. Reuse protected
+internal credentials for backend adapters rather than passing external access
+tokens to local services. GitHub/private-port login is a separate gateway layer,
+not a substitute for this authentication. Do not enable anonymous fallback.
 
 Pin supported MCP protocol versions against actual SDK and client behavior.
 Select the authorization-server/client registration approach in the compatibility
 matrix, rather than assuming every harness supports the newest published option.
-Token issuance/refresh belongs to the chosen identity service. Enforce resource
-ownership on every call and recheck revocation for continuing sessions. Bind
+OAuth issuance/refresh belongs to the configured authorization server; personal
+credentials use the local protected configuration. Enforce instance permissions
+on every call and recheck revocation for continuing connections. Bind
 session identifiers to principals; session IDs themselves are not credentials.
 Validate Origin and exact public host, bound request/result sizes and ensure
 nginx does not stall streaming responses through inappropriate buffering.
 
-Local recommendation: a `vibestack mcp` subcommand runs stdio, calls loopback REST
+Local recommendation: a `vibestack mcp` subcommand bridges stdio to the same
+HTTP MCP endpoint (loopback when running inside the workspace)
 and obtains credentials from an explicitly configured protected local profile or
 credential file. The command does not exist yet. No token in repository MCP JSON,
 command-line arguments, stdout or prompt context. Stdout contains protocol frames
@@ -68,11 +77,12 @@ not the Docker socket. Host trust and tool approval controls remain in effect.
 | Workspace jobs | Explicit argv submission, inspect, bounded output and cancel; broad workspace execution authority |
 | Projects | Read/write authorized roots with preconditions and existing traversal protections |
 | Desktop operations | Screenshot, supported apps/windows and bounded diagnostics |
-| Host lifecycle | Separate grant and explicit instance/machine; never bundled into workspace access |
+| Host lifecycle | Remains in the optional existing runner; not exposed by the workspace endpoint |
 | Credential-adjacent actions | Explicit coverage decision; no implicit clipboard/SSH-key tools in the default set |
 
-Single-workspace stdio binds its target for that process. Public multi-workspace
-tools require explicit workspace IDs; host actions also select the machine.
+HTTP connects to one explicit workspace origin; stdio binds that origin for its
+process. Target identity stays stable for the connection. Host management requires
+a separate runner connection and is not introduced by this implementation.
 Tools retain REST operation IDs/idempotency semantics internally. Return structured
 job/operation handles and bounded content, not unbounded terminal transcripts.
 Annotate read/write/destructive behavior accurately; annotations do not enforce
@@ -81,11 +91,10 @@ remote job was cancelled: expose its confirmed state and explicit cancel tool.
 
 ## Design decisions and alternatives
 
-Recommend thin adapters over the common operation contract from SPEC-002. Preserve
-current runner tool compatibility for supported private clients. Static personal
-tokens can remain an explicit private integration option, but are not the sole
-public-client design. Do not require every Codespace to enroll with the public
-broker merely to run local tools.
+Use thin adapters over SPEC-001's registered capabilities and SPEC-002's operation
+contract. Preserve the separate runner's existing private-client behavior. Choose
+authentication support from the tested harness matrix; do not add a fleet registry,
+custom OAuth server or independent MCP execution engine.
 
 ## Failure, migration and operations
 
@@ -95,13 +104,13 @@ fail without execution. Partial stream loss can resume only according to the
 negotiated protocol; mutations must not silently replay. Return bounded safe tool
 errors with request IDs. Tool output and retrieved documents are untrusted data,
 not permission to execute follow-on instructions. Preserve existing private MCP
-clients while staging the new public endpoint; rollback revokes new grants and
+clients while staging the new workspace endpoint; rollback revokes new grants and
 routes without deleting workspace data.
 
 ## Acceptance criteria
 
 - AC-01: Two independent supported remote clients complete discovery/login, list allowed tools and execute a harmless targeted operation. Record actual client/SDK/protocol versions and authenticated endpoint results.
-- AC-02: Missing/expired/wrong-audience/revoked credentials, wrong Origin and cross-owner targets fail with no side effects, including session reuse after revocation. Verify through both REST and MCP.
+- AC-02: Missing/expired/wrong-resource/revoked credentials, wrong Origin and wrong-instance or denied-capability requests fail with no side effects, including connection/session reuse after revocation. Verify through both REST and MCP.
 - AC-03: A real Codespaces-local client uses stdio for status, argv job, file update and screenshot; source changes appear in the shared repo and secrets stay out of config/protocol logs.
 - AC-04: Coverage checks map all exposed tools to shared operation policy; unsupported tools are explicit and host grants cannot be obtained from workspace grants. Verify parity and denial cases.
 - AC-05: Stream loss, retries, output limits and cancellation preserve job identity and honest state without duplicate mutations. Verify fault injection through nginx.
@@ -109,8 +118,8 @@ routes without deleting workspace data.
 
 ## Open decisions
 
-- D1: Identity provider and supported remote client matrix, including their registration/discovery support. Blocks the remote implementation contract; shares SPEC-001 D1.
-- D2: Initial operation/tool coverage, especially clipboard and SSH-key actions; resolve against the shared inventory before exposing tools.
+- D1: Initial supported harnesses, token configuration support and any required OAuth provider/registration flow. Verify private Codespaces gateway access too. Shares SPEC-001 D1 and gates claiming those clients work.
+- D2: Initial operation/tool coverage, especially clipboard and SSH-key actions; resolve against the shared inventory before exposing tools; user-authored tools inherit the same checks.
 - D3: Confirm local credential bootstrap/storage and the desired revocation bound. Do not check a working token into Codespaces settings.
 
 ## Project plan
@@ -118,10 +127,10 @@ routes without deleting workspace data.
 | Ticket | Bounded outcome | Depends on | Criteria covered | Verification |
 | --- | --- | --- | --- | --- |
 | [VST-011](../tickets/VST-011.md) | Remote discovery and authorization | VST-005, VST-008 | AC-01, AC-02 | Two-client auth and session isolation |
-| [VST-012](../tickets/VST-012.md) | Shared tools and local stdio adapter | VST-011, VST-010 | AC-03, AC-04 | Codespaces and operation parity |
-| [VST-013](../tickets/VST-013.md) | Transport faults and compatibility | VST-012, VST-007 | AC-05, AC-06 | nginx interruption and old/new client tests |
+| [VST-012](../tickets/VST-012.md) | Registered workspace tools and optional stdio bridge | VST-011, VST-006 | AC-03, AC-04 | Codespaces and operation parity |
+| [VST-013](../tickets/VST-013.md) | Transport faults and compatibility | VST-012, VST-010 | AC-05, AC-06 | nginx interruption and old/new client tests |
 
-The shared grant contract must settle first; local adapter internals can be
+The shared authentication and capability contract must settle first; local adapter internals can be
 prototyped independently, but release acceptance covers both local and remote use.
 
 ## Decision history and references
@@ -131,3 +140,5 @@ prototyped independently, but release acceptance covers both local and remote us
 - [Go SDK protocol guidance](https://github.com/modelcontextprotocol/go-sdk/blob/main/docs/protocol.md) informs middleware and protocol integration; its current documentation is not proof that installed v1.7.0 implements every newer capability.
 
 - 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
+
+- 2026-09-21: Aligned with the user-requested SPEC-001 rewrite: one extensible workspace service, no required machine broker, shared authenticated REST/MCP capabilities. Other feature-specific decisions remain draft.

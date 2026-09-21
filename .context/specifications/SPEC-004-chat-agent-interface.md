@@ -14,13 +14,13 @@ keep the specification in draft; no runtime changes are part of this pass.
 ## Outcome and user journeys
 
 The VibeStack web experience becomes a conversation with an agent connected to
-its services. A user selects a workspace conversationally, asks for work, sees
+its services. The chat is bound to its VibeStack workspace. A user asks for work, sees
 what the agent is doing, reviews results and can stop or correct it. The existing
 Desktop/Terminal/Editor/Apps/Settings navigation is removed from the final product
 UI. Source editing remains available through the outer Codespaces editor.
 
 Example: “In this repository, run the tests and explain the failures.” The chat
-shows the selected workspace, submits an authorized job, displays progress and
+shows the connected workspace, submits an authorized job, displays progress and
 returns evidence-linked results. “Install a browser” uses the same app service
 as other clients, showing status and any human-only sign-in handoff. A fluent
 answer without execution evidence must not be presented as completed work.
@@ -52,10 +52,12 @@ model direct Docker access. Internal invocation need not round-trip through MCP,
 but must use the same target/grant checks and operation semantics. A provider
 adapter is proposed; provider/model, key ownership and cost policy remain open.
 
-A conversation is owner-scoped and binds an explicit workspace. Persist message,
+A conversation belongs to the authenticated instance owner and binds that
+instance. It uses registered service capabilities; it does not require machine
+enrollment or a multi-tenant broker. Persist message,
 run and tool-call IDs, sequence numbers, target, minimal result references and
-approval outcomes. Switching targets starts a clearly identified new context;
-already-running work retains its original target. Untrusted file/tool text cannot
+approval outcomes. If multiple service profiles are supported later, switching origins starts a
+clearly identified new context; running work retains its original origin. Untrusted file/tool text cannot
 change the principal, target or allowed tools. Agent instructions and service
 authorization are enforced separately.
 
@@ -82,7 +84,7 @@ If “no UI elements” is interpreted as text-only with no secure handoff, cred
 setup must happen externally; it must not fall back to asking for secrets in chat.
 
 Render output as untrusted text/escaped Markdown; artifact downloads and image
-previews must be owner-authorized. Show the machine/workspace, action summary,
+previews must be owner-authorized. Show the connected workspace, action summary,
 progress, exit/result status and evidence links in conversation. Distinguish
 agent suggestions from executed actions. Provide keyboard navigation, labelled
 controls, accessible stream announcements and responsive desktop/tablet layout.
@@ -125,11 +127,11 @@ only selected tool results needed for the authorized task enter model context.
 
 ## Acceptance criteria
 
-- AC-01: A first-time and returning user can select a workspace, run a command, inspect results and install a supported app entirely through chat/human handoffs. Verify browser-to-service-to-result journeys.
+- AC-01: A first-time and returning user can connect to the instance workspace, run a command, inspect results and install a supported app entirely through chat/human handoffs. Verify browser-to-service-to-result journeys.
 - AC-02: The final default has no old navigation/panels/embedded editor or terminal; every prior required journey has a tested replacement or declared retirement. Verify legacy route inventory and desktop/tablet browsers.
 - AC-03: Refresh, network loss and double submission resume the same run without duplicate effects; stop accurately reports jobs it could and could not cancel. Verify reconnect and fault scenarios.
-- AC-04: Cross-owner access, forged approvals, prompt injection in tool output and credential capture attempts cannot enlarge authority or leak secrets. Verify service and browser adversarial tests, including history/log scans.
-- AC-05: Keyboard/screen-reader flows and responsive result/approval rendering work; provider failure, budget exhaustion and offline machines have recoverable honest states. Record real accessibility/browser checks and provider failure simulation.
+- AC-04: Unauthenticated or wrong-instance access, forged approvals, prompt injection in tool output and credential capture attempts cannot enlarge authority or leak secrets. Verify service and browser adversarial tests, including history/log scans.
+- AC-05: Keyboard/screen-reader flows and responsive result/approval rendering work; provider failure, budget exhaustion and an unavailable workspace service have recoverable honest states. Record real accessibility/browser checks and provider failure simulation.
 - AC-06: Upgrade/removal and rollback preserve repo mounts, files, app state and credentials; image services/health/docs match the new UI while Codespaces source editing works. Verify disposable migration and real Codespaces behavior.
 
 ## Open decisions
@@ -156,3 +158,5 @@ covers onboarding, agent connectivity and recovery.
 - 2026-09-21: Replacing the current UI with a service-connected chat agent is user-requested. Secure handoffs, provider choice and service retirement sequencing above remain proposed decisions.
 
 - 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
+
+- 2026-09-21: Aligned with the user-requested SPEC-001 rewrite: one extensible workspace service, no required machine broker, shared authenticated REST/MCP capabilities. Other feature-specific decisions remain draft.
