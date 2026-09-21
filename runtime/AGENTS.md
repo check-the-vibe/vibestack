@@ -16,7 +16,10 @@ exact automation schemas, limits, and longer examples are at
   Never use Tailscale Funnel, a public forwarded port or a public bind.
   In Codespaces, the source editor is outside this desktop, HTTP is forwarded
   from port 8080, and GitHub authentication protects remote browser access.
-  The desktop's `/projects` is separate from the VibeStack source checkout.
+  The checkout is shared read/write at `/projects/vibestack` (or the actual
+  repository-directory name); other projects remain under `/projects`. Source
+  edits affect the outer editor immediately. No outer credentials or Docker
+  socket are injected; run authenticated Git operations in the Codespaces editor.
 - `/setup/`, `/terminal/`, `/vnc/`, and the small desktop-control API rely on
   that loopback/tailnet boundary. The automation API additionally requires a
   paired client credential or compatible legacy token, but authentication does

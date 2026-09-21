@@ -25,8 +25,9 @@ Only its loopback HTTP port 8080 is forwarded, using GitHub's Private visibility
 and the exact environment-derived hostname in the existing Host allowlist.
 Desktop state and projects persist outside the source checkout under
 `/workspaces/.vibestack-codespaces/<repository-directory>/`. Startup resumes an
-unchanged desktop and rebuild/replacement preserves those mounts. The source
-checkout and GitHub credentials are not mounted into the desktop. First builds
+unchanged desktop and rebuild/replacement preserves those mounts. The checkout
+is additionally mounted read/write at `/projects/<repository-directory>`, including
+Git metadata. Codespaces environment credentials and Docker socket are not mounted. First builds
 are asynchronous with editor access; instant desktop availability is not assumed.
 See [Codespaces operation and verification](../.context/github-codespaces.md).
 
@@ -503,7 +504,9 @@ the repository or any path above or below it, common credential directories,
 OS-owned hierarchies, and a path shared with `/projects` are rejected before
 Docker runs. The projects mount likewise rejects root, OS-owned hierarchy
 descendants, the host home, credential-directory overlap, Git credential or
-metadata paths, and the VibeStack source tree. During a
+metadata paths, and the VibeStack source tree as the projects root. Explicit
+`--mount-source` adds only the current checkout below `/projects/<repo-name>`;
+it rejects an occupied or symlinked destination. Codespaces enables this flag. During a
 replacement, the old container is retained until Docker health and the saved
 auto-restore component set both converge.
 

@@ -47,6 +47,8 @@ capabilities against the current specification.
 on a branch containing the Codespaces configuration. The source opens in the
 Codespaces editor; VibeStack builds and starts automatically on forwarded port
 **8080**. Keep that port **Private** and open it for the desktop web interface.
+The same Git checkout is writable at `/projects/vibestack` inside the desktop;
+other projects keep their separate persistent storage.
 The minimum machine is **4 cores / 16 GB RAM**. First creation needs time to build;
 full Python installs before the editor opens, and the desktop build continues
 in the background. See
@@ -62,6 +64,7 @@ rebuilding, private credential-directory permissions and troubleshooting.
 ./startup.sh --data ~/vibestack  # where logins and your setup choice persist
 ./startup.sh --data ~/vibestack --adopt-data  # one-time use for existing state
 ./startup.sh --projects ~/code   # mounted at /projects
+./startup.sh --mount-source     # additionally share this checkout under /projects/<repo-name>
 ./startup.sh --ssh-port 2222     # password/key SSH, loopback only (0 disables)
 ./startup.sh --vnc-port 5900     # full-password native VNC (0 disables)
 ./startup.sh --allowed-host workspace.example.test  # explicit custom Host allowlist
@@ -143,7 +146,9 @@ directory contains a top-level name VibeStack does not own, which catches a
 mistyped personal directory before its metadata can change.
 The projects mount similarly rejects root, OS-owned hierarchy descendants,
 your home, credential-directory overlap, Git credential/metadata paths, and
-the VibeStack source tree; choose the ordinary project directory you want the
+the VibeStack source tree as the projects root. The explicit `--mount-source`
+flag separately shares this checkout in a named subfolder and refuses to hide
+an existing project. Choose the ordinary project directory you want the
 remote development user to edit.
 
 ## Linux password and sudo

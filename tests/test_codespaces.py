@@ -22,7 +22,8 @@ class CodespacesTests(unittest.TestCase):
             'Config': {'Labels': {'dev.vibestack.launch-contract': '1'},
                        'Env': [f'VIBESTACK_ALLOWED_HOSTS={self.host}']},
             'Mounts': [{'Type': 'bind', 'Source': str(self.data), 'Destination': '/data'},
-                       {'Type': 'bind', 'Source': str(self.projects), 'Destination': '/projects'}],
+                       {'Type': 'bind', 'Source': str(self.projects), 'Destination': '/projects'},
+                       {'Type': 'bind', 'Source': str(ROOT), 'Destination': f'/projects/{ROOT.name}', 'RW': True}],
             'State': {'Running': True, 'Health': {'Status': 'healthy'}},
         }
 
@@ -54,6 +55,19 @@ class CodespacesTests(unittest.TestCase):
             self.assertEqual(args[args.index(flag) + 1], value)
         self.assertEqual(kwargs['env']['VIBESTACK_PUBLIC_URL'], 'https://' + self.host)
         self.assertNotIn('--skip-setup', args)
+        self.assertIn('--mount-source', args)
+
+    def test_old_codespace_without_source_mount_is_replaced(self):
+        old = copy.deepcopy(self.container)
+        old['Mounts'].pop()
+        self.assertEqual(self.exercise(old)[0].args[0], 'bash')
+
+    def test_unexpected_source_mount_is_not_adopted(self):
+        for key, value in [('Source', '/another/repository'), ('RW', False)]:
+            wrong = copy.deepcopy(self.container)
+            wrong['Mounts'][-1][key] = value
+            with self.assertRaisesRegex(RuntimeError, 'source mount'):
+                self.exercise(wrong)
 
     def test_changed_image_or_hostname_replaces_through_normal_launcher(self):
         for key, value in [('Image', 'sha256:old'), ('Config', {'Labels': {'dev.vibestack.launch-contract': '1'}, 'Env': []})]:

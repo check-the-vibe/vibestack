@@ -7,6 +7,7 @@
 #   ./startup.sh --data DIR       persistent tool state (default: ../vibestack-data)
 #   ./startup.sh --adopt-data      mark a safe pre-existing --data directory once
 #   ./startup.sh --projects DIR   host folder for /projects (default: <data>/projects)
+#   ./startup.sh --mount-source   also mount this checkout at /projects/<repo-name>
 #   ./startup.sh --ssh-port 2222  publish SSH on host loopback (0 disables)
 #   ./startup.sh --vnc-port 5900  publish password-authenticated native VNC (0 disables)
 #   ./startup.sh --allowed-host NAME explicitly allow a custom browser hostname
@@ -29,6 +30,7 @@ BIND_ADDRESS="${VIBESTACK_BIND_ADDRESS:-127.0.0.1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 DATA_DIR="${VIBESTACK_DATA:-${SCRIPT_DIR}/../vibestack-data}"
 PROJECTS_DIR=""
+MOUNT_SOURCE=false
 FOLLOW=false
 CHECK=false
 SKIP_SETUP=false
@@ -67,6 +69,7 @@ while [[ $# -gt 0 ]]; do
     --flatpak) FLATPAK_MODE=true; shift ;;
     --adopt-data) ADOPT_DATA=true; shift ;;
     --no-build) BUILD=false; shift ;;
+    --mount-source) MOUNT_SOURCE=true; shift ;;
     --image) IMAGE_NAME="$2"; shift 2 ;;
     --image=*) IMAGE_NAME="${1#*=}"; shift ;;
     --name) CONTAINER_NAME="$2"; shift 2 ;;
@@ -86,7 +89,7 @@ while [[ $# -gt 0 ]]; do
     --projects) PROJECTS_DIR="$2"; shift 2 ;;
     --projects=*) PROJECTS_DIR="${1#*=}"; shift ;;
     *)
-      echo "Usage: $(basename "$0") [follow|check] [--bind ADDRESS] [--port N] [--ssh-port N|0] [--vnc-port N|0] [--allowed-host NAME] [--data DIR] [--adopt-data] [--projects DIR] [--image TAG] [--name NAME] [--no-build] [--skip-setup] [--flatpak]" >&2
+      echo "Usage: $(basename "$0") [follow|check] [--bind ADDRESS] [--port N] [--ssh-port N|0] [--vnc-port N|0] [--allowed-host NAME] [--data DIR] [--adopt-data] [--projects DIR] [--mount-source] [--image TAG] [--name NAME] [--no-build] [--skip-setup] [--flatpak]" >&2
       exit 1 ;;
   esac
 done
@@ -95,6 +98,19 @@ DATA_DIR="$(resolve "$DATA_DIR")" || data_path_error "could not canonicalize pat
 PROJECTS_DIR="$(resolve "${PROJECTS_DIR:-$DATA_DIR/projects}")" || \
   data_path_error "could not canonicalize projects path"
 HOME_DIR="$(resolve "$HOME")" || data_path_error "could not canonicalize HOME"
+SOURCE_NAME="${SCRIPT_DIR##*/}"
+if [[ "$MOUNT_SOURCE" == true ]]; then
+  [[ "$SOURCE_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ && "$SCRIPT_DIR" != *,* ]] || \
+    projects_path_error "source checkout path cannot be represented as a named Docker mount"
+  source_target="$PROJECTS_DIR/$SOURCE_NAME"
+  # A nested bind must never hide a user's existing project or follow a link.
+  if [[ -L "$source_target" || ( -e "$source_target" && ! -d "$source_target" ) ]]; then
+    projects_path_error "source mount destination is not a plain directory"
+  fi
+  if [[ -d "$source_target" && -n "$(find "$source_target" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    projects_path_error "source mount would hide an existing project"
+  fi
+fi
 
 # /data is deliberately chowned/chmodded by the container's root bootstrap.
 # Reject broad or source-containing bind mounts before creating anything or
@@ -250,6 +266,10 @@ echo "[startup]   projects: ${PROJECTS_DIR} -> /projects"
 run_args=(-d --name "${CONTAINER_NAME}" --restart unless-stopped --hostname vibestack \
   --label dev.vibestack.launch-contract=1 \
   --label dev.vibestack.runner.managed=false)
+if [[ "$MOUNT_SOURCE" == true ]]; then
+  echo "[startup]   source:   ${SCRIPT_DIR} -> /projects/${SOURCE_NAME} (read/write)"
+  run_args+=(--mount "type=bind,source=${SCRIPT_DIR},target=/projects/${SOURCE_NAME}")
+fi
 [[ -n "$ALLOWED_HOSTS" ]] && run_args+=(-e "VIBESTACK_ALLOWED_HOSTS=$ALLOWED_HOSTS")
 [[ "${SKIP_SETUP}" == "true" ]] && run_args+=(-e VIBESTACK_SKIP_SETUP=1)
 if [[ "${FLATPAK_MODE}" == "true" ]]; then

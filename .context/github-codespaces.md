@@ -25,9 +25,14 @@ in a browser if automatic opening is blocked. Wait for the lifecycle log's
 `VibeStack ready` message. On first use, set your Linux password in Setup;
 Desktop, Terminal, Editor, Apps and Settings are then available.
 
-The two editors serve different purposes: the Codespaces editor edits this
-repository; VibeStack's embedded editor edits its own persistent `/projects`.
-The repository and Codespaces credentials are not mounted into the desktop.
+The Codespaces repository is bind-mounted read/write at
+`/projects/<repository-directory>` inside VibeStack (`/projects/vibestack` for
+this repository). Both editors see the same source files and Git metadata;
+changes are immediate in both directions. Other projects remain in the separate
+persistent projects directory. This shares the checkout, including any files
+you put in it; it does not forward Codespaces environment credentials, the
+outer home directory, or the Docker socket. Git authentication remains in the
+outer Codespace.
 
 ## Copilot and desktop development
 
@@ -39,7 +44,9 @@ prompt before enabling terminal execution or agent tools; do not disable trust
 globally. Copilot may also ask the human to sign in.
 
 Copilot's terminal is in the **outer Codespace**, not the graphical desktop.
-For application projects, add
+The current checkout is already visible inside VibeStack at `/projects/vibestack`;
+use `docker exec -u vibe -w /projects/vibestack vibestack-codespaces ...` to
+run tools against that source in the desktop environment. For other projects, add
 `/workspaces/.vibestack-codespaces/vibestack/projects` to the Codespaces editor
 (or substitute the actual repository-directory name). This is the same tree as
 `/projects` inside VibeStack. Run desktop-side tools as `vibe`, for example:
@@ -67,9 +74,11 @@ still supported; removing it would be a separate product change.
 - `waitFor: onCreateCommand` lets the editor connect before that preparation
   finishes. `postStartCommand` subsequently runs the helper's `start` action.
 - Startup waits for Docker, uses a lifecycle lock, creates the desktop through
-  the existing launcher, and checks Docker health plus HTTP with the forwarded
+  the existing launcher with `--mount-source`, and checks Docker health plus HTTP with the forwarded
   hostname. It resumes an unchanged container; a changed image or hostname uses
-  the launcher's replacement/rollback flow. Unexpected mounts stop the operation.
+  the launcher's replacement/rollback flow. Unexpected mounts stop the operation. Older containers without the source
+  mount are replaced once; a nonempty or symlinked destination is rejected so
+  an existing project cannot be hidden by the mount.
 - Reattaching the editor alone does not recreate the desktop. Local Dev
   Containers still install test tools but skip Codespaces-specific startup.
 
@@ -123,7 +132,9 @@ validation remains strict.
 
 State lives outside the repository at
 `/workspaces/.vibestack-codespaces/<repository-directory>/data`, with a sibling
-`projects` directory. They are bind-mounted as `/data` and `/projects`. Files under
+`projects` directory. They are bind-mounted as `/data` and `/projects`. The source
+checkout is an additional nested bind at `/projects/<repository-directory>`;
+it is not copied into that projects directory. Files under
 `/workspaces` survive stopping and rebuilding a Codespace; deleting the Codespace
 deletes its storage. Commit source and export important desktop work separately.
 Docker images/cache are rebuildable; the helper rebuilds a missing image. See

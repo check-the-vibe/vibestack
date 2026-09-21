@@ -40,7 +40,9 @@ The checked-in Dev Container supplies full Python 3, Node 22, Go 1.26.4 and an i
 Docker-in-Docker daemon. In GitHub Codespaces it requests at least 4 cores and
 16 GB RAM, prepares the browser suite and desktop image, then automatically
 starts `vibestack-codespaces` on loopback port 8080. The source editor can attach
-while preparation runs. GitHub's private forwarding supplies remote HTTPS;
+while preparation runs. The checkout is shared read/write at
+`/projects/<repository-directory>` inside the desktop through `--mount-source`;
+other projects retain their separate persistent directory. GitHub's private forwarding supplies remote HTTPS;
 no Tailscale is needed there. Local Dev Containers skip desktop autostart.
 Read [the Codespaces context](../.context/github-codespaces.md) before changing
 this workflow, especially its persistent paths and real-Codespaces test gates.
@@ -285,7 +287,10 @@ limited to VibeStack's known top-level state names; an unrelated entry aborts
 without creating the marker.
 The projects path independently rejects root, OS-owned hierarchy descendants,
 the host home, credential-directory overlap, Git credential/metadata paths,
-and the VibeStack repository; ordinary dedicated user project directories
+and the VibeStack repository as the projects root. `--mount-source` is a
+separate opt-in nested bind of the exact checkout at `/projects/<repo-name>`,
+enabled automatically in Codespaces. It never hides an existing project and
+does not recursively change source ownership. Ordinary dedicated user project directories
 remain supported.
 
 For a candidate that already passed disposable acceptance, avoid rebuilding it

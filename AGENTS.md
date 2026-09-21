@@ -10,12 +10,16 @@ Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,
 runtime path, dependency, security boundary, or operator workflow changes.
 
+For the next API/MCP phase, read
+[`docs/architecture/agent-access-redesign.md`](docs/architecture/agent-access-redesign.md).
+It is a proposal: distinguish existing interfaces from planned adapters.
+
 ## Source map
 
 For GitHub Codespaces work, first read
 [`.context/github-codespaces.md`](.context/github-codespaces.md). It defines the
 4-core/16-GB minimum, automatic desktop lifecycle, private forwarded-port boundary,
-persistent paths, and the checks that require a real Codespace. Keep it aligned
+persistent paths, shared source mount, and the checks that require a real Codespace. Keep it aligned
 with `.devcontainer/`; never infer private visibility from a port label.
 
 - `Dockerfile`, `entrypoint.sh`, `supervisord.conf`, `nginx.conf`: image and

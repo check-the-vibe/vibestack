@@ -20,6 +20,10 @@ Private forwarded port; external API clients additionally need GitHub forwarding
 authentication. VibeStack bearer authentication remains required for automation.
 Keep native SSH/VNC unforwarded and never make the web port public. The source
 checkout's `.context/github-codespaces.md` documents lifecycle and persistence.
+The source is shared read/write at `/projects/vibestack` (actual repository
+directory name). Commands targeting it use `root: projects`, `cwd: vibestack`;
+Git authentication remains in the outer Codespace. File API ownership, no-follow
+and filesystem checks still apply to this tree; do not relax them for a mount.
 
 The pairing request and poll endpoints are the only unauthenticated bootstrap
 routes. Every other request below `/api/v1/automation` requires:

@@ -213,6 +213,41 @@ exit 0
         self.assertTrue(projects.is_dir())
         self.assertTrue(self.docker_log.exists())
 
+    def test_source_mount_is_opt_in_and_keeps_projects_parent(self) -> None:
+        projects = self.root / "projects"
+        result = self.run_startup("--no-build", "--mount-source",
+                                  "--data", str(self.root / "state"),
+                                  "--projects", str(projects))
+        self.assertEqual(0, result.returncode, result.stderr)
+        calls = self.docker_log.read_text()
+        self.assertIn(f"type=bind,source={self.repo},target=/projects/vibestack", calls)
+        self.assertIn(f"{projects}:/projects", calls)
+        self.assertNotIn("docker.sock", calls)
+
+    def test_source_mount_does_not_hide_existing_projects(self) -> None:
+        projects = self.root / "projects"
+        target = projects / "vibestack"
+        target.mkdir(parents=True)
+        sentinel = target / "keep.txt"
+        sentinel.write_text("keep")
+        result = self.run_startup("--mount-source", "--data", str(self.root / "state"),
+                                  "--projects", str(projects))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("hide an existing project", result.stderr)
+        self.assertEqual("keep", sentinel.read_text())
+        self.assertFalse(self.docker_log.exists())
+        self.assertFalse((self.root / "state").exists())
+
+    def test_source_mount_rejects_link_destination(self) -> None:
+        projects = self.root / "projects"
+        projects.mkdir()
+        (projects / "vibestack").symlink_to(self.repo, target_is_directory=True)
+        result = self.run_startup("--mount-source", "--data", str(self.root / "state"),
+                                  "--projects", str(projects))
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("not a plain directory", result.stderr)
+        self.assertFalse(self.docker_log.exists())
+
     def test_flatpak_security_options_require_explicit_mode(self) -> None:
         default = self.run_startup(
             "--data", str(self.root / "default-state"),
@@ -222,6 +257,7 @@ exit 0
         default_calls = self.docker_log.read_text(encoding="utf-8")
         self.assertNotIn("seccomp=unconfined", default_calls)
         self.assertNotIn("VIBESTACK_FLATPAK_ENABLED=1", default_calls)
+        self.assertNotIn("type=bind,source=", default_calls)
 
         self.docker_log.unlink()
         enabled = self.run_startup(

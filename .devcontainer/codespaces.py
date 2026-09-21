@@ -53,7 +53,13 @@ def verify_existing(value, data, projects, host):
         for target, source in expected.items()
     ):
         raise RuntimeError("Existing container has unexpected mounts/labels; inspect it manually")
-    return f"VIBESTACK_ALLOWED_HOSTS={host}" in value["Config"].get("Env", [])
+    source = mounts.get(f"/projects/{ROOT.name}")
+    if source is not None and (source.get("Type") != "bind"
+                              or source.get("Source") != str(ROOT)
+                              or source.get("RW") is not True):
+        raise RuntimeError("Existing source mount is unexpected; inspect it manually")
+    # Upgrade pre-source-mount Codespaces through the launcher's rollback flow.
+    return source is not None and f"VIBESTACK_ALLOWED_HOSTS={host}" in value["Config"].get("Env", [])
 
 
 def start(data, projects, host):
@@ -73,7 +79,7 @@ def start(data, projects, host):
         run("bash", str(ROOT / "startup.sh"), "--no-build", "--image", IMAGE,
             "--name", CONTAINER, "--bind", "127.0.0.1", "--port", "8080",
             "--ssh-port", "0", "--vnc-port", "0", "--allowed-host", host,
-            "--data", str(data), "--projects", str(projects), env=env)
+            "--data", str(data), "--projects", str(projects), "--mount-source", env=env)
     for _ in range(90):
         value = inspect("container", CONTAINER)
         state = (value or {}).get("State", {})
