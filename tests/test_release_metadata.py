@@ -14,7 +14,7 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertRegex(version, r"^\d+\.\d+\.\d+$")
         self.assertEqual(version, manifest["workspace"]["version"])
         self.assertEqual(version, manifest["runner"]["version"])
-        source_version = re.search(r'Version\s*=\s*"([^"]+)"', (ROOT / "pkg/vibestack/types.go").read_text()).group(1)
+        source_version = re.search(r'Version\s*=\s*"([^"]+)"', (ROOT / "internal/release/version.go").read_text()).group(1)
         self.assertEqual(version, source_version)
         self.assertIn(f'version="{version}"', (ROOT / "cli.sh").read_text())
         self.assertIn(f"**{version}**", (ROOT / "runtime/AGENTS.md").read_text())

@@ -1,9 +1,12 @@
 package vibestack
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/check-the-vibe/vibestack/internal/release"
+)
 
 const (
-	Version       = "0.3.0"
+	Version       = release.Version
 	WorkspaceAPI  = "/api/v1/automation"
 	RunnerAPI     = "/api/v1/runner"
 	DiscoveryPath = "/.well-known/vibestack"

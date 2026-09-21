@@ -5,6 +5,7 @@ RUN go mod download
 COPY api/ api/
 COPY contracts/ contracts/
 COPY service/ service/
+COPY internal/ internal/
 COPY cmd/vibestack-service/ cmd/vibestack-service/
 ARG TARGETARCH
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/vibestack-service ./cmd/vibestack-service
