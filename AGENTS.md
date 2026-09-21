@@ -16,6 +16,15 @@ It is a proposal: distinguish existing interfaces from planned adapters.
 
 ## Source map
 
+For planning and every development pass, start at
+[`.context/README.md`](.context/README.md) and follow
+[the ticket workflow](.context/workflow.md). Each development branch must have
+a manifest naming at least one ticket and exactly one primary ticket. Keep
+ticket progress and verification evidence with the change; distinguish a
+validated branch from delivery to main. Use the specification, planning and
+development prompts there. Proposed features do not change the current runtime
+contract until their implementation and corresponding documentation land.
+
 For GitHub Codespaces work, first read
 [`.context/github-codespaces.md`](.context/github-codespaces.md). It defines the
 4-core/16-GB minimum, automatic desktop lifecycle, private forwarded-port boundary,
@@ -97,6 +106,10 @@ VibeStack helpers are `NOPASSWD`.
   `--privileged` and added Linux capabilities.
 
 ## Validation
+
+Documentation-only planning/tracking changes require relative-link, metadata,
+branch/ticket consistency and whitespace checks, not a Docker rebuild. This
+exception does not cover source changes or changes to the runtime contract.
 
 Fast checks:
 

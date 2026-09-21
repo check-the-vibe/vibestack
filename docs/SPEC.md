@@ -1,5 +1,11 @@
 # VibeStack Specification
 
+This document describes the implemented product contract at the current Git ref.
+Future feature specifications and their ticket plans live in
+[`.context`](../.context/README.md), governed by [its workflow](../.context/workflow.md).
+Drafts and queue entries do not change the implemented contract. Main records
+checked-in state; feature branches additionally carry their in-flight work.
+
 VibeStack is a Docker image that gives people and AI coding tools a full Linux
 desktop through a browser and an authenticated desktop-automation API.
 

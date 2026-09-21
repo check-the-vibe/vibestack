@@ -51,6 +51,15 @@ automation-token and SSH directories `0700`, including on resumed state.
 
 ## Fast edit loop
 
+Before a development pass, read [the context index](../.context/README.md) and
+[ticket workflow](../.context/workflow.md). Associate the branch with at least
+one ticket, use the specification and plan as its scope, and update acceptance
+evidence with the change. Main is the checked-in ledger; branch records describe
+work in flight. Validated branch work is delivered only when its record and
+implementation reach main. For planning/tracking documentation alone, check
+relative links, metadata, branch ownership and `git diff --check`; no image
+rebuild is needed. Runtime and source changes retain the full workflow below.
+
 Run the source tests before editing so pre-existing failures are visible, and
 again before building:
 

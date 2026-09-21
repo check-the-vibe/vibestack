@@ -41,6 +41,10 @@ capabilities against the current specification.
 
 ## Run
 
+Development plans, feature specifications and branch-owned tickets live in
+[`.context`](.context/README.md). Read its [operating instructions](.context/workflow.md)
+to distinguish checked-in main state from work in flight.
+
 ### GitHub Codespaces
 
 [Open in GitHub Codespaces](https://codespaces.new/check-the-vibe/vibestack)

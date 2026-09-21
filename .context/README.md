@@ -1,0 +1,48 @@
+# Project context and work tracking
+
+Start here, then read [the operating instructions](workflow.md). This is a
+Git-native system: Markdown records travel with the code they describe.
+
+## Hierarchy
+
+```text
+.context/
+  README.md                    navigation, not a duplicate status board
+  workflow.md                  operating rules and Git state semantics
+  github-codespaces.md          environment-specific guidance
+  initiatives/                 outcomes and feature queues
+  specifications/              feature contracts and project plans
+  tickets/                     bounded work, progress and evidence
+  branches/                    branch-to-ticket manifests
+  templates/                   specification, ticket and branch templates
+  prompts/                     specification, planning and development passes
+```
+
+An initiative groups specifications. A specification defines a feature and its
+ordered ticket plan. A ticket belongs to one specification (or is explicitly a
+bootstrap/imported exception). A branch manifest lists at least one ticket and
+exactly one primary ticket. Prefer one bounded ticket per branch.
+
+## Start points
+
+- [Agent platform initiative and specification queue](initiatives/agent-platform.md)
+- [Specification directory](specifications/README.md)
+- [Specification-writing prompt](prompts/specify.md)
+- [Project-planning prompt](prompts/plan.md)
+- [Development-pass prompt](prompts/develop.md)
+- [Specification template](templates/specification.md)
+- [Ticket template](templates/ticket.md)
+- [Branch manifest template](templates/branch.md)
+
+## Registered work
+
+| Ticket | Scope | Branch manifest |
+| --- | --- | --- |
+| [VST-001](tickets/VST-001.md) | Existing Codespaces startup PR | [VST-001](branches/VST-001.md) |
+| [VST-002](tickets/VST-002.md) | Existing broker/access foundation and source mount PR | [VST-002](branches/VST-002.md) |
+| [VST-003](tickets/VST-003.md) | This context and ticket workflow | [VST-003](branches/VST-003.md) |
+
+Read status from the ticket on the ref you are inspecting. This table deliberately
+contains no status column. The first two records are retrospective; the workflow
+becomes checked-in policy only when this change reaches main. The feature queue
+contains future work, not completed specifications or implementation tickets.
