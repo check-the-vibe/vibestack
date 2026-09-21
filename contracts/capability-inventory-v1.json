@@ -3296,6 +3296,99 @@
       "verification": [
         "service/server_test.go"
       ]
+    },
+    {
+      "id": "project_summary",
+      "authority": "workspace",
+      "kind": "capability",
+      "current_authentication": "shared workspace principal and capability grant",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "POST /api/v1/project-summary",
+          "reason": "One compiled handler through shared schema/grant dispatch.",
+          "next_action": "Invoke the authenticated generic capability route with a declared input object."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "POST /api/v1/project-summary",
+          "reason": "One compiled handler through shared schema/grant dispatch.",
+          "next_action": "Invoke the authenticated generic capability route with a declared input object."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "One compiled handler through shared schema/grant dispatch.",
+          "next_action": "Invoke the authenticated generic capability route with a declared input object."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "The direct workspace MCP adapter is not installed yet.",
+          "next_action": "VST-011/VST-012 add the registered adapter and independent-client verification."
+        }
+      },
+      "target": {
+        "rest": "Same registered capability through the shared dispatcher.",
+        "web": "Same registered capability through the shared dispatcher.",
+        "cli": "Same registered capability through the shared dispatcher.",
+        "mcp": "Same registered capability through the shared dispatcher."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/capabilities/register.go",
+      "verification": [
+        "service/capabilities/registry_test.go",
+        "service/capabilities_test.go",
+        "tests/runtime_service_check.py"
+      ]
+    },
+    {
+      "id": "registeredCapabilitySchema",
+      "authority": "workspace",
+      "kind": "transport-control",
+      "current_authentication": "shared principal with grant-filtered definitions",
+      "current": {
+        "rest": {
+          "state": "implemented",
+          "entry": "GET /api/capabilities.openapi.json",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "web": {
+          "state": "implemented",
+          "entry": "GET /api/capabilities.openapi.json",
+          "reason": "Workspace service transport metadata or browser session operation; source support only.",
+          "next_action": "Follow docs/SERVICE.md and use the correct credential/session boundary."
+        },
+        "cli": {
+          "state": "implemented",
+          "entry": "vibestack api",
+          "reason": "Generic authenticated HTTP command; browser cookies are a separate transport.",
+          "next_action": "Use the CLI profile for capability access; use the browser handoff for a session."
+        },
+        "mcp": {
+          "state": "unavailable",
+          "entry": null,
+          "reason": "Browser authentication is a human flow; metadata is transport discovery, not a model operation.",
+          "next_action": "Use service discovery or the human browser sign-in; the direct MCP adapter is a dependent ticket."
+        }
+      },
+      "target": {
+        "rest": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "cli": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "mcp": "Transport metadata or browser-session handoff, not a shared workspace tool.",
+        "web": "Transport metadata or browser-session handoff, not a shared workspace tool."
+      },
+      "effect": "read",
+      "retry": "safe-read",
+      "limit_profile": "control",
+      "source": "service/capabilities.go",
+      "verification": [
+        "service/capabilities_test.go",
+        "tests/runtime_service_check.py"
+      ]
     }
   ],
   "browser_transports": [
@@ -3372,5 +3465,5 @@
     }
   },
   "baseline_commit": "d8ece5ece3d3d269a51305b0ac002bd91b4b1771",
-  "audit_ticket": "VST-005"
+  "audit_ticket": "VST-006"
 }

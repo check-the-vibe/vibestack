@@ -10,10 +10,10 @@ FIXTURE = PUBLISH / 'acceptance-publish-boundary'
 PRIVATE = Path('/tmp/vibestack-private-publish-sentinel')
 
 
-def request(path, method='GET', headers=None):
+def request(path, method='GET', headers=None, body=None):
     connection = http.client.HTTPConnection('127.0.0.1', 80, timeout=10)
     try:
-        connection.request(method, path, headers=headers or {})
+        connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
         return response.status, response.read(65536)
     finally:
@@ -64,9 +64,35 @@ def main():
         discovery = json.loads(request('/.well-known/vibestack')[1])
         assert 'identity' in discovery
         print('PASS service publication, nginx authentication, forged identity and Origin boundaries')
+        check_capability(token)
     finally:
         shutil.rmtree(FIXTURE)
         PRIVATE.unlink()
+
+
+def check_capability(token):
+    headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'}
+    project = Path('/projects/vst-registry-acceptance')
+    project.mkdir(mode=0o755)
+    try:
+        (project / 'sentinel').touch()
+        result = None
+        for path in ['/api/v1/project-summary', '/api/v1/capabilities/project_summary/invoke']:
+            status, body = request(path, 'POST', headers, b'{"project":"vst-registry-acceptance"}')
+            assert status == 200, 'Registered capability failed through nginx'
+            envelope = json.loads(body)
+            assert envelope['capability'] == 'project_summary'
+            assert envelope['result'] == {'project': project.name, 'exists': True, 'entry_count': 1, 'truncated': False}
+            if result is not None:
+                assert result == envelope['result'], 'Friendly/generic dispatch result differs'
+            result = envelope['result']
+        assert request('/api/v1/project-summary', 'POST', headers, b'{"project":"../data"}')[0] == 400
+        assert request('/api/v1/project-summary', 'POST', {}, b'{}')[0] == 401
+        schema = json.loads(request('/api/capabilities.openapi.json', headers=headers)[1])
+        assert schema['paths']['/api/v1/project-summary']['post']['operationId'] == 'project_summary'
+        print('PASS compiled extension, filtered schema, generic/friendly dispatch and denial through nginx')
+    finally:
+        shutil.rmtree(project)
 
 
 if __name__ == '__main__':

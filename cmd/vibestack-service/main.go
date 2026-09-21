@@ -42,6 +42,7 @@ func run(args []string) error {
 	listen := fs.String("listen", "127.0.0.1:7996", "loopback service listener")
 	public := fs.String("public-url", os.Getenv("VIBESTACK_PUBLIC_URL"), "canonical HTTPS origin")
 	static := fs.String("static-root", "/usr/share/vibestack/public", "published files only")
+	projects := fs.String("projects-root", "/projects", "existing trusted project mount")
 	label := fs.String("label", "workspace client", "credential label")
 	owner := fs.Bool("owner", false, "grant local-owner administration")
 	caps := fs.String("capabilities", "", "comma-separated operation IDs; empty grants workspace operations")
@@ -118,7 +119,7 @@ func run(args []string) error {
 	if err != nil || (host != "localhost" && (net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback())) {
 		return errors.New("the service must listen on loopback")
 	}
-	server, err := service.NewServer(service.Config{Store: s, PublicURL: *public, StaticRoot: *static, AllowedHosts: strings.Split(os.Getenv("VIBESTACK_ALLOWED_HOSTS"), ","), AutomationURL: "http://127.0.0.1:7997", ControlURL: "http://127.0.0.1:7998", SetupURL: "http://127.0.0.1:7999"})
+	server, err := service.NewServer(service.Config{Store: s, PublicURL: *public, StaticRoot: *static, ProjectsRoot: *projects, Audit: func(event service.AuditEvent) { json.NewEncoder(os.Stderr).Encode(event) }, AllowedHosts: strings.Split(os.Getenv("VIBESTACK_ALLOWED_HOSTS"), ","), AutomationURL: "http://127.0.0.1:7997", ControlURL: "http://127.0.0.1:7998", SetupURL: "http://127.0.0.1:7999"})
 	if err != nil {
 		return err
 	}

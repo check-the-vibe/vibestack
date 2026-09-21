@@ -1,5 +1,8 @@
 # VibeStack
 
+Add trusted workspace endpoints through the [capability registry](docs/EXTENSIONS.md).
+The included `project_summary` example supports authenticated REST/browser calls.
+
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:
 

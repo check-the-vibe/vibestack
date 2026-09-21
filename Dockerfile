@@ -3,6 +3,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY api/ api/
+COPY contracts/ contracts/
 COPY service/ service/
 COPY cmd/vibestack-service/ cmd/vibestack-service/
 ARG TARGETARCH
@@ -101,6 +102,7 @@ COPY automation/ /usr/share/vibestack-automation/
 COPY --from=workspace-build --chmod=0555 /out/vibestack-service /usr/local/bin/vibestack-service
 COPY web/public/ /usr/share/vibestack/public/
 COPY docs/SERVICE.md /usr/share/vibestack/public/SERVICE.md
+COPY docs/EXTENSIONS.md /usr/share/vibestack/public/EXTENSIONS.md
 COPY --chmod=0555 cli.sh /usr/share/vibestack/cli.sh
 RUN install -d -m 0755 /usr/share/vibestack-proxy
 COPY --chown=root:root --chmod=0444 proxy/websockify_auth.py /usr/share/vibestack-proxy/websockify_auth.py

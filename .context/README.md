@@ -44,6 +44,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-004](tickets/VST-004.md) | Four feature specifications and development plan | [VST-004](branches/VST-004.md) |
 | [VST-008](tickets/VST-008.md) | Operation inventory and shared capability contract | [VST-008](branches/VST-008.md) |
 | [VST-005](tickets/VST-005.md) | Static host and authenticated workspace service | [VST-005](branches/VST-005.md) |
+| [VST-006](tickets/VST-006.md) | Capability registry and extension authoring | [VST-006](branches/VST-006.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

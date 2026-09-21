@@ -179,8 +179,8 @@ retry or shared job/lifecycle ID space is introduced.
 
 ## Harmless extension example and acceptance
 
-[project_summary.json](examples/project_summary.json) is a valid definition,
-not a deployed tool. Its handler will inspect only the immediate entries of a
+[project_summary.json](examples/project_summary.json) is the definition used by
+the compiled VST-006 module. Its handler inspects only the immediate entries of a
 named `/projects` child, rejecting traversal, absolute paths and symlinks; it
 does not run git, repository hooks or shell commands. Return a bounded count and
 whether it was truncated. An absent project returns `exists: false`; an
@@ -189,8 +189,9 @@ inaccessible/out-of-bound path returns the documented error.
 `go test ./contracts` validates the registration and input/output examples with
 the pinned JSON Schema engine. `tests/test_capability_inventory.py` verifies
 published operation/CLI inventory coverage, setup-only routes and surface exceptions.
-VST-006 must implement the handler and prove duplicate/invalid registrations
-fail before startup. VST-010/VST-013 must invoke it through real REST, CLI, MCP
+VST-006 implements the handler and verifies duplicate/invalid registrations
+fail before startup. Deployment is recorded separately in its ticket.
+VST-010/VST-013 must invoke it through real REST, CLI, MCP
 and browser HTTP, including denial, revocation, malformed input and failure.
 Passing a definition test alone is not runtime or four-surface acceptance.
 

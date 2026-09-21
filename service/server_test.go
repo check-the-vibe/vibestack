@@ -22,7 +22,7 @@ type fixture struct {
 	received      chan *http.Request
 }
 
-func serviceFixture(t *testing.T) *fixture {
+func serviceFixture(t *testing.T, options ...func(*Config)) *fixture {
 	t.Helper()
 	s, root := testStore(t)
 	if err := os.WriteFile(filepath.Join(root, "automation.token"), []byte(strings.Repeat("i", 43)+"\n"), 0600); err != nil {
@@ -36,7 +36,11 @@ func serviceFixture(t *testing.T) *fixture {
 		w.Write([]byte(`{"status":"ready"}`))
 	}))
 	t.Cleanup(backend.Close)
-	server, err := NewServer(Config{Store: s, StaticRoot: f.public, PublicURL: "https://workspace.example", AutomationURL: backend.URL, ControlURL: backend.URL, SetupURL: backend.URL})
+	cfg := Config{Store: s, StaticRoot: f.public, PublicURL: "https://workspace.example", AutomationURL: backend.URL, ControlURL: backend.URL, SetupURL: backend.URL, ProjectsRoot: t.TempDir()}
+	for _, option := range options {
+		option(&cfg)
+	}
+	server, err := NewServer(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

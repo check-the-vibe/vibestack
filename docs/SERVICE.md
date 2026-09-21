@@ -7,8 +7,8 @@ The application has workspace authority and no Docker socket. The separate
 host runner retains its own deployment, credentials and API.
 
 This foundation supplies authentication, compatibility adapters and static
-publication. The direct MCP adapter and user-authored capability registrations
-are subsequent tickets; `/mcp` authenticates and then reports unavailable until
+publication and compiled capability registration; see [EXTENSIONS.md](EXTENSIONS.md).
+The direct MCP adapter is a subsequent ticket; `/mcp` authenticates and then reports unavailable until
 that adapter is installed. Do not advertise it as a working remote MCP server yet.
 
 ## Credentials and browser access
@@ -92,6 +92,9 @@ migration, not a claim that every old friendly command still works.
 | `/healthz` | Process readiness only; no private inventory |
 | `/api/workspace.openapi.json` | Packaged compatibility schema |
 | `/api/v1/capabilities` | Authenticated, grant-filtered source operation catalog; MCP availability is explicit |
+| `/api/capabilities.openapi.json` | Authenticated generated schema for visible compiled capabilities |
+| `/api/v1/capabilities/{id}/invoke` | POST a registered input object through shared validation/dispatch |
+| `/api/v1/project-summary` | Harmless registered project metadata example |
 | `/auth/session` | POST exchanges a bearer credential for a browser session; GET inspects that session; DELETE signs out with CSRF protection |
 | `/api/v1/...`, `/setup/api/...` | Existing operation paths through shared authentication, grants and bounded local adapters |
 | `/mcp` | Authenticates, then reports unavailable until the MCP adapter lands |
@@ -105,7 +108,7 @@ before calling a backend; automation receives its protected internal token.
 JSON, raw files, ETags, range reads and existing response bodies retain their
 operation semantics. Limits remain 4 KiB control JSON, 64 KiB setup JSON,
 1 MiB + 4096 automation JSON, and 16 MiB raw files. New generic JSON capabilities
-will use the [shared contract](architecture/capability-contract.md).
+use the [shared contract](https://github.com/check-the-vibe/vibestack/blob/main/docs/architecture/capability-contract.md).
 
 The private desktop WebSocket, terminal and editor routes still use the outer
 private boundary during migration. Keep Codespaces ports Private and local Docker

@@ -6,6 +6,8 @@ custom noVNC shell and private desktop transports. One Go workspace service
 authenticates API/setup aliases before dispatching to the existing local Python
 services. Command capabilities have the full authority of the `vibe` account.
 Read [the service guide](docs/SERVICE.md) for credentials, sessions and migration.
+For capabilities follow [the extension guide](docs/EXTENSIONS.md): one compiled
+definition/handler, without new bypass routes or listeners.
 
 Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,

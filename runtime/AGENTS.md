@@ -1,5 +1,11 @@
 # Operating VibeStack
 
+Discover registered operations at authenticated `GET /api/v1/capabilities` and
+invoke `POST /api/v1/capabilities/{id}/invoke` with the input JSON object. The
+`project_summary` example takes `project` and optional `max_entries` and counts
+immediate entries only. Read `/EXTENSIONS.md` before adding a compiled module.
+Discovery reports current MCP availability explicitly.
+
 You are working with VibeStack: a private, single-user Ubuntu 24.04/XFCE
 desktop running inside Docker. This file is the canonical quick-start for both
 agents inside the desktop and authorized agents on the Docker host or private

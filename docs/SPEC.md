@@ -1,5 +1,10 @@
 # VibeStack Specification
 
+Compiled extensions use one schema/handler registry. `project_summary` is the
+first example: generic POST, a literal friendly route, filtered discovery and
+generated OpenAPI share dispatch. See [EXTENSIONS.md](EXTENSIONS.md) for limits
+and current verification boundaries; MCP is a dependent adapter.
+
 This document describes the implemented product contract at the current Git ref.
 Future feature specifications and their ticket plans live in
 [`.context`](../.context/README.md), governed by [its workflow](../.context/workflow.md).

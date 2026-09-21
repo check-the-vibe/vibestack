@@ -64,6 +64,12 @@ automation-token and SSH directories `0700`, including on resumed state.
 
 ## Fast edit loop
 
+Capabilities follow [EXTENSIONS.md](EXTENSIONS.md): one compiled registration and
+handler, generated `/api/capabilities.openapi.json`, generic
+`POST /api/v1/capabilities/{id}/invoke`, shared authorization and validation.
+Dispatch has 32 slots and declared time/body/result limits. The operator supplies
+`/projects`; requests cannot select another root.
+
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least
 one ticket, use the specification and plan as its scope, and update acceptance

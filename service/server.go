@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/check-the-vibe/vibestack/api"
+	"github.com/check-the-vibe/vibestack/service/capabilities"
 )
 
 type Config struct {
@@ -26,6 +27,9 @@ type Config struct {
 	AutomationURL string
 	ControlURL    string
 	SetupURL      string
+	ProjectsRoot  string
+	Capabilities  []capabilities.Registration
+	Audit         func(AuditEvent)
 }
 
 type session struct {
@@ -45,6 +49,8 @@ type Server struct {
 	mu         sync.Mutex
 	sessions   map[string]session
 	operations []legacyRoute
+	projects   *os.Root
+	registry   *capabilities.Registry
 }
 
 func NewServer(cfg Config) (*Server, error) {
@@ -85,6 +91,13 @@ func NewServer(cfg Config) (*Server, error) {
 		root.Close()
 		return nil, err
 	}
+	if err := s.registerCapabilities(); err != nil {
+		if s.projects != nil {
+			s.projects.Close()
+		}
+		root.Close()
+		return nil, err
+	}
 	s.mux.HandleFunc("GET /.well-known/vibestack", s.discovery)
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		s.json(w, 200, map[string]any{"service": "workspace", "ready": true})
@@ -94,16 +107,7 @@ func NewServer(cfg Config) (*Server, error) {
 		w.Write(api.WorkspaceOpenAPI)
 	})
 	s.mux.HandleFunc("/auth/session", s.authSession)
-	s.mux.HandleFunc("GET /api/v1/capabilities", s.authorized("", false, func(w http.ResponseWriter, r *http.Request) {
-		p := r.Context().Value(principalKey).(Principal)
-		list := []map[string]any{}
-		for _, route := range s.operations {
-			if p.Allows(route.ID, route.Owner) {
-				list = append(list, map[string]any{"id": route.ID, "method": route.Method, "path": route.Path, "rest": "implemented", "web": "implemented", "mcp": "unavailable", "next_action": "Use authenticated REST; the MCP adapter is not enabled in this service foundation."})
-			}
-		}
-		s.json(w, 200, map[string]any{"instance_id": s.cfg.Store.Identity, "capabilities": list})
-	}))
+	s.mux.HandleFunc("GET /api/v1/capabilities", s.authorized("", false, s.capabilityCatalog))
 	s.mux.HandleFunc("/mcp", s.authorized("", false, func(w http.ResponseWriter, r *http.Request) {
 		s.failure(w, 503, "unavailable", "The workspace MCP adapter is not enabled yet.", false)
 	}))
@@ -111,7 +115,13 @@ func NewServer(cfg Config) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Close() error { s.client.CloseIdleConnections(); return s.static.Close() }
+func (s *Server) Close() error {
+	s.client.CloseIdleConnections()
+	if s.projects != nil {
+		s.projects.Close()
+	}
+	return s.static.Close()
+}
 
 func loopbackHost(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
