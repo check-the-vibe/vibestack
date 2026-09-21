@@ -75,6 +75,10 @@ The guide must provide:
   connect/authenticate and status examples, target selection, and where to find
   the full command reference. A user with an existing compatible CLI can connect
   without reinstalling it.
+- Provider runtime setup: how an authenticated host/CLI requests a supported
+  provider's installation and activation inside VibeStack, observes readiness and
+  completes any human sign-in. Link the [provider/overlay contract](SPEC-004-chat-agent-interface.md);
+  do not imply that opening an app window proves its API is ready.
 - Authenticated MCP access: the advertised endpoint or supported local adapter,
   tested harness configuration examples, supported authentication flow, required
   permissions, credential storage guidance and a harmless tool call that proves

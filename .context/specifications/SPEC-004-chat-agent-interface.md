@@ -1,162 +1,208 @@
-# SPEC-004 — Chat agent interface replacing existing UI
+# SPEC-004 — Agent overlay and in-VibeStack provider runtimes
 
 - State: draft
 - Initiative: [Agent platform](../initiatives/agent-platform.md)
 - Owner: project owner for product decisions; Codex for this drafting pass
 - Updated: 2026-09-21
-- Decision authority: user's request to specify these four features; recommendations below are proposed, not approved implementation choices
-- Supersedes: the retired combined agent-access proposal; these four feature specifications now define the proposed work
+- Decision authority: user requires complete removal of the existing UI, a clickable agent-icon overlay, supported providers running inside VibeStack, and host-initiated API installation/launch; adapter details below remain proposed
+- Supersedes: the earlier full-page chat-shell draft of SPEC-004 and the retired combined agent-access proposal
 - Planning ticket: [VST-004](../tickets/VST-004.md)
 
-This is a target contract, not a claim of shipped behavior. Unresolved decisions
-keep the specification in draft; no runtime changes are part of this pass.
+This is a specification update, not an implemented UI or working provider integration.
 
-## Outcome and user journeys
+## Outcome: three requirements
 
-The VibeStack web experience becomes a conversation with an agent connected to
-its services. The chat is bound to its VibeStack workspace. A user asks for work, sees
-what the agent is doing, reviews results and can stop or correct it. The existing
-Desktop/Terminal/Editor/Apps/Settings navigation is removed from the final product
-UI. Source editing remains available through the outer Codespaces editor.
+1. **Replace the current UI with an agent overlay.** Remove the existing
+   Desktop/Terminal/Editor/Apps/Settings navigation, menus, panels and setup pages.
+   The default collapsed interface is one small agent icon. Clicking it opens a
+   chat panel; closing it returns to the icon without stopping ongoing work.
+2. **Offer supported agent/LLM providers from inside VibeStack.** Users choose a
+   supported provider and are guided through automatic installation, launch and
+   any human sign-in. Codex App Server and OpenCode server mode are the initial
+   integration targets. VibeStack knows how to connect to each runtime's API.
+3. **Control provider setup through the authenticated VibeStack API.** A call
+   from the host requests installation or activation. VibeStack executes the
+   registered installer, starts the local API or opens the appropriate application
+   when needed, verifies readiness and reports a usable result to the host.
 
-Example: “In this repository, run the tests and explain the failures.” The chat
-shows the connected workspace, submits an authorized job, displays progress and
-returns evidence-linked results. “Install a browser” uses the same app service
-as other clients, showing status and any human-only sign-in handoff. A fluent
-answer without execution evidence must not be presented as completed work.
+Here “host” means the authenticated caller outside the VibeStack runtime, such as
+its host web interface, outer Codespaces process or CLI. The installation and
+provider process run **inside VibeStack**, not on that caller's machine.
+
+The proposed overlay sits above the desktop canvas, preserving the desktop as
+working content while removing the old VibeStack chrome. This is the working
+interpretation of “overlay”; it does not introduce a replacement dashboard or
+full-page chat shell. The outer Codespaces source editor remains available.
 
 ## Current behavior and evidence
 
-`desktop/`, `setup/` and `nginx.conf` implement the current shell, onboarding,
-settings, apps, ttyd, noVNC and editor routes. Code-server is a required image
-service today; Dockerfile, Supervisor, health checks and browser tests depend on
-it. There is no implemented chat backend/provider integration in this scope.
-Removing the editor button alone would not remove the service or its costs.
-
-## Scope and exclusions
-
-Replace all existing product UI navigation and control panels with one chat
-experience. Provide only the controls needed for a usable conversation: input,
-conversation history, target identity, run state, stop, results and contextual
-authorization/secure-input handoffs. These are part of chat, not retained legacy
-panels. Preserve underlying desktop execution/screenshot/app capabilities where
-tools need them; decide removal of unused services separately in migration.
-Exclude a new IDE, a public unauthenticated shell, autonomous self-granting agents,
-and arbitrary multi-agent delegation from the first release.
+`desktop/`, `setup/` and `nginx.conf` provide the current UI and onboarding.
+The catalog already has installers/probes for `codex-cli` (0.153.4) and `opencode`
+(1.18.29); their configuration directories have existing persistence mappings.
+Installation alone does not establish a managed provider API or chat adapter.
+Code-server/ttyd and their health/image dependencies still exist. This pass
+neither removes those services nor claims the pinned binaries implement every
+method described in newer vendor documentation.
 
 ## Contract
 
-Recommend a server-side chat orchestrator using the same authorized operation
-layer as REST/MCP. Do not make the browser hold model-provider secrets or give the
-model direct Docker access. Internal invocation need not round-trip through MCP,
-but must use the same target/grant checks and operation semantics. A provider
-adapter is proposed; provider/model, key ownership and cost policy remain open.
+### 1. Agent icon and chat panel
 
-A conversation belongs to the authenticated instance owner and binds that
-instance. It uses registered service capabilities; it does not require machine
-enrollment or a multi-tenant broker. Persist message,
-run and tool-call IDs, sequence numbers, target, minimal result references and
-approval outcomes. If multiple service profiles are supported later, switching origins starts a
-clearly identified new context; running work retains its original origin. Untrusted file/tool text cannot
-change the principal, target or allowed tools. Agent instructions and service
-authorization are enforced separately.
+The icon is visible on first load, including when no provider is installed. It
+has an accessible label and a small readiness/activity indicator. The collapsed
+overlay does not intercept desktop pointer or keyboard input outside the icon.
+Clicking or keyboard activation opens chat; close/Escape restores focus sensibly.
+Use a side panel on desktop and an appropriate overlay sheet on small screens.
+Opening/closing never creates a duplicate provider process, turn or conversation.
 
-Proposed lifecycle: queued → running → awaiting_user (when needed) → completed,
-failed or cancelled. Each tool call records pending/running/confirmed outcome;
-unknown remote outcomes remain unknown while reconciliation runs. Stream events
-with stable IDs; reconnect reloads state without resubmitting a job. “Stop” stops
-future model/tool dispatch, asks cancellable jobs to stop, and reports any job
-still running. Per-run time, output, tool-call and cost budgets are configured
-and visible; do not invent a usage price for a provider not selected yet.
+The panel contains conversation, provider selection/status, input, streamed
+responses, tool/action results, stop, and contextual setup/approval controls.
+Provider setup uses a small deterministic flow inside the panel: select provider,
+activate, follow progress, complete sign-in if requested, then chat. It must work
+without an LLM already installed or available. Errors offer retry or another
+supported provider; they do not reopen the legacy Apps/Settings/setup interface.
 
-Default to existing user intent and configured grants for routine authorized
-work. Require explicit human action for irreversible changes, new external
-sharing/access and new credentials as appropriate to the operation policy. Bind
-an approval to exact operation, arguments, target and expiry; changed input needs
-a new approval. Reject a model's forged approval claim. Do not require repetitive
-confirmation for every harmless read or already-authorized action.
+Retain the current conversation when the panel closes. Bind each conversation
+to its provider, provider-native session and workspace. Switching providers starts
+a new conversation by default; do not silently replay prompts or copy history to
+a different provider. Render provider output as untrusted text/escaped Markdown.
 
-Secrets are never ordinary chat messages or model tool arguments. Login uses the
-identity provider; Linux passwords/provider credentials use a secure human-only
-input surface launched from the conversation, submitted directly to the proper
-credential handler. Its values bypass model context, history, traces and logs.
-If “no UI elements” is interpreted as text-only with no secure handoff, credential
-setup must happen externally; it must not fall back to asking for secrets in chat.
+### 2. Supported provider catalog and adapters
 
-Render output as untrusted text/escaped Markdown; artifact downloads and image
-previews must be owner-authorized. Show the connected workspace, action summary,
-progress, exit/result status and evidence links in conversation. Distinguish
-agent suggestions from executed actions. Provide keyboard navigation, labelled
-controls, accessible stream announcements and responsive desktop/tablet layout.
-When the model provider is unavailable, show a truthful error and access to
-existing conversation/job state; do not restore the legacy UI as a hidden fallback.
+A provider entry defines a stable ID, tested versions/platforms, existing catalog
+installer (where possible), probe, fixed launch recipe, API transport, readiness
+check, sign-in handoff, persisted paths and adapter capabilities. New providers
+are added as reviewed service capabilities under SPEC-001, with adapter tests;
+the UI consumes this catalog rather than containing vendor-specific launch logic.
 
-## Design decisions and alternatives
+“Inside VibeStack” refers to the agent runtime, adapter and managed process.
+It does not imply model weights or inference run locally: a selected runtime may
+use the user's authorized remote model service. Report its account/model and any
+known usage limits honestly; provider/account billing is not included by installing
+its executable. Never invent cost estimates for unavailable usage information.
 
-Recommend chat as the only product shell, with contextual result/approval cards
-and secure handoffs. This fulfills the interface replacement while retaining
-observability and human control. A plain text-only stream would make safe secret
-entry and structured action review difficult. Prefer backend tool dispatch for
-consistent policy and resumable runs; browser-direct provider calls would expose
-credentials and fragment authorization. Framework choice follows a small UI
-prototype and accessibility evaluation rather than introducing a library now.
+| Initial target | Integration to validate | Readiness evidence |
+| --- | --- | --- |
+| Codex | Use `codex app-server` behind an in-container adapter; prefer its local stdio protocol initially. This is a programmatic agent interface, distinct from launching the Codex desktop GUI. | Supported protocol handshake, authentication state and a confirmed test turn with streamed output; pin the CLI/protocol version |
+| OpenCode | Start `opencode serve` bound to loopback, using authentication supported by the tested release. Consume its HTTP API and events through an adapter. | Version/health check, configured model/provider authentication and a confirmed test session/response |
 
-## Failure, migration and operations
+The Codex interface has its own RPC protocol; it is not assumed to be REST or
+VibeStack's MCP endpoint. OpenCode v1/v2 server behavior differs, so record the
+chosen release and API contract rather than mixing their examples. Opening a
+GUI, seeing a PID or obtaining a healthy HTTP socket alone is not “ready to chat.”
+An app-only integration is supported only when a tested API/bridge is available.
 
-Inventory every current user action: onboarding, app selection/install, target
-selection, agent connection/revocation, logs, restart, password changes and work
-inspection. Map each to chat, a secure handoff or an explicitly retired behavior
-before removing routes. Preserve `/data`, `/projects`, existing files, saved
-applications and credential state across upgrades and rollback.
+The adapter maps a small common interface: inspect/install/activate, sign-in
+handoff, create/resume conversation, submit message, stream events, respond to
+approvals and interrupt. Report unsupported actions explicitly. The provider owns
+its agent loop and native execution; VibeStack owns lifecycle, routing and UI.
+Do not build a second competing model/tool loop around Codex or OpenCode.
 
-Stage the replacement behind a development rollout switch while verifying it.
-The final default has no legacy navigation, panels, or embedded editor/terminal
-frames. Retired browser pages should return a documented authenticated migration
-response (or safe redirect to chat); do not redirect API clients or accept legacy
-mutations anonymously. Remove code-server/ttyd assets, health dependencies and
-catalog/docs references only after the capability/retention decision; keep the
-outer Codespaces editor. Retain only desktop services needed by automation.
-A rollback image must reopen the same persistent data without destructive schema
-changes. Do not claim route removal while leaving old unauthenticated controls
-reachable. Keep canonical REST/docs/installer endpoints supported.
+Provider-native shell/file tools execute with the workspace account's authority
+and configured provider approvals; they are not automatically mediated by the
+VibeStack REST/MCP dispatcher. Preserve and expose that distinction. Registered
+VibeStack capabilities can be supplied through authenticated MCP when the provider
+supports it. Neither path receives a Docker socket or host provisioning authority.
 
-Conversation retention, deletion, model-provider data handling and log redaction
-need explicit policy before real content is sent. Persisted history must be
-owner-isolated. Do not automatically forward all repository files to a provider;
-only selected tool results needed for the authorized task enter model context.
+### 3. Host-to-VibeStack activation API
+
+Provider lifecycle actions use SPEC-001's authenticated operation layer and are
+included in SPEC-002 discovery, CLI and MCP coverage. Human secret entry remains
+a secure handoff. Proposed API names below are to be finalized in VST-008; they
+are not claims of existing endpoints.
+
+| API | Contract |
+| --- | --- |
+| `GET /api/v1/providers` | Supported providers, installed/tested versions, installation/process/auth/readiness status and non-secret next actions |
+| `POST /api/v1/providers/{id}/activate` | Ensure the selected supported provider is installed, start/reuse its managed runtime and verify its API; return an operation handle immediately |
+| `GET /api/v1/providers/{id}` | Current state, activation progress/reference and any required human action |
+| `POST /api/v1/providers/{id}/stop` | Stop the managed provider deliberately, with explicit handling of active conversations |
+| `POST /api/v1/providers/{id}/open-app` | When supported, launch the registered application in VibeStack's desktop session for setup/use; do not equate window launch with API readiness |
+
+The normal sequence is:
+
+```text
+Host requests activate(provider ID)
+  → VibeStack probes the supported installation
+  → installs through its registered installer if needed
+  → starts or reuses the provider inside VibeStack
+  → performs protocol, credential and model-readiness checks
+  → reports ready, needs user action, or a specific failure
+  → host chat connects through VibeStack's provider adapter
+```
+
+Callers select a known provider ID and supported options, never arbitrary shell
+scripts, installer URLs, binaries or backend addresses. Reuse the pinned catalog
+installers and their durable selection/restore mechanisms. A GUI launch uses the
+existing `vibe` desktop session environment; a headless runtime also runs as
+`vibe`. Only the established installer helper receives its existing elevated
+installation authority. Do not introduce a blanket privileged command endpoint.
+
+Activation is idempotent: concurrent/retried requests for the same provider reuse
+one operation and managed process. Installed, running, authenticated and ready are
+separate status fields. A missing login reports `needs_user_action`; the panel
+opens a supported browser/device/application sign-in handoff and rechecks status.
+Credentials go directly to the appropriate protected handler/store, never into
+chat, prompts, URLs, ordinary API logs or model tool arguments.
+
+The service owns provider process supervision/recovery and private endpoints.
+Use stdio or authenticated loopback HTTP as appropriate; do not publish each
+provider port through Codespaces. Browsers and external clients use VibeStack's
+existing authenticated origin, not provider-private tokens or sockets. Persist
+configured providers and supported session/auth data under the established
+`/data` mappings. A runtime restart must not resubmit the last chat message.
+
+## Conversations, errors and migration
+
+Map VibeStack conversation/run IDs to provider session/turn IDs and observed
+outcomes. Stream bounded events for text, actions, approvals, errors and completion.
+On reconnect, inspect/resume the existing session where supported; otherwise say
+that recovery is unavailable and offer a new turn. Do not infer success from text
+or repeat a mutation whose outcome is unknown. Closing chat keeps work running;
+Stop sends the adapter's supported interrupt and reports remaining work honestly.
+
+Forward genuine provider approval requests to the user, tied to the exact run and
+action. Tool output cannot approve itself. Provider-login and permission requests
+remain human handoffs where required; automatic installation is not automatic
+account creation, subscription purchase or credential consent.
+
+Remove the old UI routes/assets and unused embedded editor/terminal services in
+the final migration, together with their health checks and documentation. Preserve
+desktop rendering and execution services needed by the canvas or agents, and the
+outer Codespaces editor. Retire old pages with a documented safe transition to the
+overlay; do not leave old unauthenticated setup/control mutations reachable.
+API/docs/installer routes remain supported. Preserve repositories, app selection,
+provider credentials and data through upgrade and rollback.
 
 ## Acceptance criteria
 
-- AC-01: A first-time and returning user can connect to the instance workspace, run a command, inspect results and install a supported app entirely through chat/human handoffs. Verify browser-to-service-to-result journeys.
-- AC-02: The final default has no old navigation/panels/embedded editor or terminal; every prior required journey has a tested replacement or declared retirement. Verify legacy route inventory and desktop/tablet browsers.
-- AC-03: Refresh, network loss and double submission resume the same run without duplicate effects; stop accurately reports jobs it could and could not cancel. Verify reconnect and fault scenarios.
-- AC-04: Unauthenticated or wrong-instance access, forged approvals, prompt injection in tool output and credential capture attempts cannot enlarge authority or leak secrets. Verify service and browser adversarial tests, including history/log scans.
-- AC-05: Keyboard/screen-reader flows and responsive result/approval rendering work; provider failure, budget exhaustion and an unavailable workspace service have recoverable honest states. Record real accessibility/browser checks and provider failure simulation.
-- AC-06: Upgrade/removal and rollback preserve repo mounts, files, app state and credentials; image services/health/docs match the new UI while Codespaces source editing works. Verify disposable migration and real Codespaces behavior.
+- AC-01: With no provider installed, the page shows the agent icon and no legacy navigation. Clicking it opens a working deterministic setup/chat panel; closing/reopening preserves the conversation and desktop input. Verify desktop, keyboard/screen-reader and small-screen behavior.
+- AC-02: An authenticated caller outside VibeStack activates each initial supported provider from a clean instance. Installation/launch occur inside VibeStack; progress and human sign-in are visible; readiness requires a working provider protocol/account and a real streamed response. Retry/concurrent activation creates no duplicate process or install. Test Codex and OpenCode at recorded versions.
+- AC-03: Send a task from the overlay through each real provider, show streamed text/actions and an approval when required, then stop/reconnect. IDs/results remain tied to the correct provider/workspace; no duplicate turn is sent. Show honest unsupported/recovery states.
+- AC-04: Missing/invalid service credentials, arbitrary installer/launch inputs, forged approvals and untrusted provider output cannot bypass service policy. Private provider sockets/credentials are not exposed. Native provider execution authority is documented and tested; secrets stay outside chat/history/logs.
+- AC-05: Missing package, failed install, incompatible API, absent/expired login, port conflict, runtime crash and model/quota failure produce distinct next actions. Setup/recovery works without an LLM and does not restore old panels. Adding one test provider uses the catalog/adapter contract without vendor logic in the UI.
+- AC-06: Final image/routes have no legacy UI or unused embedded editor/terminal services. Fresh start, upgrade, stop/resume and rollback preserve repository mounts, provider selections/auth/session data and required desktop services; source editing remains available in Codespaces. Verify exact candidate images and hosted behavior.
 
 ## Open decisions
 
-- D1: Model/provider, where orchestration runs, whose key/account is used, and spending limits. Blocks live provider integration; a fake provider supports early contract/UI tests.
-- D2: Confirm contextual cards and human-only secure handoffs as part of the chat-only experience. Otherwise onboarding must use an external secure flow.
-- D3: Conversation retention/deletion policy and provider data handling. Blocks real-user persistence and transmission defaults.
-- D4: Remove embedded editor/ttyd services in the first migration or after chat parity? Recommended: remove only once replacement acceptance passes; retain graphical services needed for tools.
+- D1: Exact supported Codex/OpenCode versions, available protocol methods and sign-in modes. Validate against the pinned catalog versions; upgrade deliberately if needed. Blocks declaring an adapter supported.
+- D2: Icon placement, panel size/mobile behavior and whether the preserved desktop canvas is the desired background. The icon-to-chat interaction and removal of old chrome are user requirements.
+- D3: Conversation retention/deletion and account usage/budget defaults. Runtime execution inside VibeStack is settled; inference location depends on the selected provider. Resolve before storing/sending real user content.
 
 ## Project plan
 
 | Ticket | Bounded outcome | Depends on | Criteria covered | Verification |
 | --- | --- | --- | --- | --- |
-| [VST-014](../tickets/VST-014.md) | Conversation/run engine and authorized tools | VST-010, VST-005 | AC-03, AC-04 | State/replay, approval and provider-failure tests |
-| [VST-015](../tickets/VST-015.md) | Chat shell, results and secure handoffs | VST-014, VST-009 | AC-01, AC-04, AC-05 | Browser-to-service, accessibility and secret isolation |
-| [VST-016](../tickets/VST-016.md) | Legacy UI removal and migration | VST-015, VST-013 | AC-02, AC-06 | Route/service inventory and upgrade/rollback |
+| [VST-014](../tickets/VST-014.md) | Provider catalog, activation API and runtime adapters | VST-010, VST-005 | AC-02, AC-03, AC-04, AC-05 | Host-to-container install/start, real Codex/OpenCode turns and failure/retry cases |
+| [VST-015](../tickets/VST-015.md) | Agent icon, chat overlay and deterministic provider setup | VST-014, VST-009 | AC-01, AC-03, AC-04, AC-05 | First-run setup, real streaming/approvals, accessibility and recovery |
+| [VST-016](../tickets/VST-016.md) | Complete old-UI removal and migration | VST-015, VST-013 | AC-06 | Route/service inventory, source/provider persistence and rollback |
 
-Chat designs and fake-provider prototypes can be evaluated while service work
-continues. Do not remove the current interface until replacement acceptance
-covers onboarding, agent connectivity and recovery.
+Provider fakes support early UI/contract work; they do not satisfy real-provider
+acceptance. These tickets remain planned. No provider is installed or started by
+this specification-writing pass.
 
-## Decision history
+## Decision history and references
 
-- 2026-09-21: Replacing the current UI with a service-connected chat agent is user-requested. Secure handoffs, provider choice and service retirement sequencing above remain proposed decisions.
-
-- 2026-09-21: User requested removal of the combined agent-access proposal. Review this feature in its own specification; no proposed architecture is approved by that removal.
-
-- 2026-09-21: Aligned with the user-requested SPEC-001 rewrite: one extensible workspace service, no required machine broker, shared authenticated REST/MCP capabilities. Other feature-specific decisions remain draft.
+- 2026-09-21: User clarified the three-part outcome: remove the old UI; expose chat through an agent-icon overlay; guide installation/launch of providers running inside VibeStack via host API calls. Replaced the prior generic chat-orchestrator design accordingly.
+- [Codex App Server](https://learn.chatgpt.com/docs/app-server): official integration interface and local transport documentation. Validate the installed version's schema and authentication flow before implementation; do not infer desktop-GUI API support.
+- [OpenCode server documentation](https://dev.opencode.ai/docs/server/) and [v2 server lifecycle](https://opencode.ai/v2/docs/cli/web): official server-mode references. Select the matching version contract and keep the managed listener private.

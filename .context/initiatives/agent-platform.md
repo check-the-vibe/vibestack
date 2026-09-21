@@ -2,7 +2,8 @@
 
 Outcome: each VibeStack instance hosts static files and authenticated API/MCP
 capabilities that users can extend while building. CLI and web clients use the
-same service contract, with chat becoming the primary product interface.
+same service contract, with an agent-icon/chat overlay becoming the product interface and supported
+agent runtimes installed and launched inside VibeStack.
 
 ## Feature specifications
 
@@ -15,7 +16,7 @@ define future work, not completed implementation.
 | [SPEC-001](../specifications/SPEC-001-service-host.md) | Extensible service host: static files and authenticated API/MCP | One service process; shared authentication; capability registration; static publish boundary; startup, compatibility and deployment |
 | [SPEC-002](../specifications/SPEC-002-rest-api-agent-distribution.md) | REST API, agent guidance and CLI installer URLs | Workspace versus host resources; discovery; versions and errors; stable `/AGENTS.md` and installer contracts; release integrity; client bootstrap and compatibility |
 | [SPEC-003](../specifications/SPEC-003-authenticated-mcp.md) | MCP with authentication | Tool/resource coverage; transport; client identity; authorization, revocation and credential lifecycle; relationship to REST; harness compatibility |
-| [SPEC-004](../specifications/SPEC-004-chat-agent-interface.md) | Replace existing user interface elements with a service-connected chat agent | User journeys; agent actions and approvals; streaming/results; model/provider decision; recovery and accessibility; onboarding without old controls; transition/removal plan |
+| [SPEC-004](../specifications/SPEC-004-chat-agent-interface.md) | Replace existing UI with an agent icon/chat overlay and managed provider runtimes | Icon/panel behavior; host API installation/activation; Codex/OpenCode adapters running inside VibeStack; sign-in/readiness; results, recovery and complete UI migration |
 
 See [the specification index](../specifications/README.md) for editing guidance
 and integration order. [VST-004](../tickets/VST-004.md) owns the drafting pass.

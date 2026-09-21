@@ -75,7 +75,9 @@ recommended as `cmd/vibestack-service` in Go, using the existing Go toolchain an
 MCP SDK. REST and MCP are handlers in that process, not independent deployments.
 Keep existing Python execution/file/job services behind explicit local adapters;
 this proposal does not rewrite the desktop stack or route through the host runner.
-The application does not receive the Docker socket.
+The application does not receive the Docker socket. Provider runtimes in
+SPEC-004 are optional processes managed inside VibeStack by this service; they
+do not add another public API gateway or change the minimum static/API/MCP host.
 
 | Surface | Responsibility | Access |
 | --- | --- | --- |
