@@ -2,7 +2,7 @@
 # Install the versioned VibeStack client without sudo or profile edits.
 set -eu
 
-version="0.3.0"
+version="0.3.1"
 install_dir="${VIBESTACK_INSTALL_DIR:-${HOME}/.local/bin}"
 release_base="${VIBESTACK_RELEASE_BASE:-https://github.com/check-the-vibe/vibestack/releases/download}"
 server=""

@@ -1,6 +1,6 @@
 # Operating VibeStack
 
-Service and CLI release: **0.3.0**. This guide is the starting point for a
+Service and CLI release: **0.3.1**. This guide is the starting point for a
 single-user Linux desktop and its authenticated workspace service.
 
 ## Start from the URL you were given
@@ -10,7 +10,7 @@ service origin ends in `-8080.app.github.dev`; the `github.dev` editor URL is a
 different application. Resolve every `/path` below against that origin. Do not
 ask for a second URL, infer another workspace, or follow a login page as Markdown.
 
-1. Fetch `/.well-known/vibestack`. Expect `kind: "workspace"`, version `0.3.0`, a
+1. Fetch `/.well-known/vibestack`. Expect `kind: "workspace"`, version `0.3.1`, a
    32-character `identity`, `canonical_origin`, authentication metadata and
    document/endpoint URLs. `/healthz` returns HTTP 200 for service readiness;
    this alone does not mean applications or provider APIs are ready.
@@ -43,10 +43,10 @@ running it; this public release URL does not require workspace credentials:
 
 ```sh
 curl -q -fLsS --proto '=https' --proto-redir '=https' \
-  'https://github.com/check-the-vibe/vibestack/releases/download/v0.3.0/cli.sh' \
+  'https://github.com/check-the-vibe/vibestack/releases/download/v0.3.1/cli.sh' \
   -o /tmp/vibestack-cli.sh
 # Inspect /tmp/vibestack-cli.sh, then install the selected version:
-sh /tmp/vibestack-cli.sh --version 0.3.0 --server "$SERVICE_ORIGIN"
+sh /tmp/vibestack-cli.sh --version 0.3.1 --server "$SERVICE_ORIGIN"
 vibestack version
 ```
 

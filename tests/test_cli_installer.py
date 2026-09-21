@@ -110,7 +110,7 @@ class ClientInstallerTests(unittest.TestCase):
             env["PATH"] = f"{env['PATH']}:{install}"
             result = self.run_installer(env)
             self.assertEqual(0, result.returncode, result.stderr)
-            self.assertIn("/v0.3.0/vibestack_0.3.0_darwin_arm64", log.read_text(encoding="utf-8"))
+            self.assertIn("/v0.3.1/vibestack_0.3.1_darwin_arm64", log.read_text(encoding="utf-8"))
             self.assertNotIn("shell profile", result.stdout)
 
     def test_download_and_checksum_failures_preserve_an_existing_installation(self):

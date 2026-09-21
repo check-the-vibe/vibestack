@@ -220,7 +220,7 @@ func parseGlobal(args []string) (globalOptions, string, []string, error) {
 }
 
 func usage(w io.Writer) {
-	fmt.Fprintln(w, `VibeStack client 0.3.0
+	fmt.Fprintln(w, "VibeStack client "+api.Version+`
 
 Usage: vibestack [--profile NAME] [--instance ID] [--json] COMMAND [OPTIONS]
 

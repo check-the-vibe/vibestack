@@ -28,11 +28,11 @@ async function main() {
   const guideResponse = await get(guideURL.pathname);
   if (!guideResponse.ok || !guideResponse.headers.get('content-type')?.includes('text/markdown')) throw new Error();
   const guide = await guideResponse.text();
-  for (const term of ['/.well-known/vibestack', 'capability call workspaceStatus', '--token-stdin', 'github-gateway.token', '/mcp', '/vnc/?view=desktop', '0.3.0']) if (!guide.includes(term)) throw new Error();
+  for (const term of ['/.well-known/vibestack', 'capability call workspaceStatus', '--token-stdin', 'github-gateway.token', '/mcp', '/vnc/?view=desktop', '0.3.1']) if (!guide.includes(term)) throw new Error();
   stage = 'sanitized discovery and version manifest';
   const discovery = await (await get('/.well-known/vibestack')).json();
   const manifest = await (await get('/release-manifest.json')).json();
-  if (discovery.kind !== 'workspace' || !/^[a-f0-9]{32}$/.test(discovery.identity) || manifest.version !== discovery.version || manifest.version !== '0.3.0') throw new Error();
+  if (discovery.kind !== 'workspace' || !/^[a-f0-9]{32}$/.test(discovery.identity) || manifest.version !== discovery.version || manifest.version !== '0.3.1') throw new Error();
   for (const name of ['capabilities', 'projects', 'credentials', 'clients', 'jobs']) if (Object.hasOwn(discovery, name)) throw new Error();
   if ((await get('/api/v1/capabilities')).status !== 401) throw new Error();
   directory = await mkdtemp(join(tmpdir(), 'vibestack-guide-check-'));

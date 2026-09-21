@@ -234,7 +234,7 @@ func printJSON(value any) error {
 	return encoder.Encode(value)
 }
 func usage() {
-	fmt.Fprintln(os.Stdout, `vibestack-runner 0.3.0
+	fmt.Fprintln(os.Stdout, "vibestack-runner "+api.Version+`
 
 Usage: vibestack-runner COMMAND [--config FILE]
 

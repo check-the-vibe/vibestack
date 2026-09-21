@@ -1,7 +1,8 @@
 # VibeStack CLI reference
 
-Release 0.3.0 adds generic registered-capability calls and the thin workspace MCP
-stdio bridge. [The agent guide](https://github.com/check-the-vibe/vibestack/blob/main/runtime/AGENTS.md)
+Release 0.3.1 bounds MCP request identifiers before local forwarding. Generic
+registered-capability calls and the workspace MCP stdio bridge are available
+since 0.3.0. [The agent guide](https://github.com/check-the-vibe/vibestack/blob/main/runtime/AGENTS.md)
 is the one-URL entry point; use the deployed service's `/AGENTS.md` for its version.
 The CLI runs beside an agent on Linux/macOS, amd64/arm64. It needs no Docker, Go,
 Python, Node or sudo after installation. JSON goes to stdout; diagnostics go to
@@ -13,9 +14,9 @@ Download and inspect the release installer before running it:
 
 ```sh
 curl -q -fLsS --proto '=https' --proto-redir '=https' \
-  https://github.com/check-the-vibe/vibestack/releases/download/v0.3.0/cli.sh \
+  https://github.com/check-the-vibe/vibestack/releases/download/v0.3.1/cli.sh \
   -o /tmp/vibestack-cli.sh
-sh /tmp/vibestack-cli.sh --version 0.3.0 --server "$SERVICE_ORIGIN"
+sh /tmp/vibestack-cli.sh --version 0.3.1 --server "$SERVICE_ORIGIN"
 vibestack version
 vibestack connect --name studio --url "$SERVICE_ORIGIN" \
   --token-stdin < /path/to/protected/workspace.token
@@ -33,7 +34,7 @@ rejected. Native CI runs the real HTTPS installer and native executable for all
 four release platforms; cross-compilation alone is not installation evidence.
 
 The release owner is `check-the-vibe/vibestack`; assets and checksums are tied to
-`v0.3.0`. The workflow refuses to overwrite an existing release and attaches
+`v0.3.1`. The workflow refuses to overwrite an existing release and attaches
 GitHub Actions build provenance to the exact tested binaries. The default
 installer trusts GitHub HTTPS and checksums; it does not independently verify a
 compromised publisher. For the stronger provenance check, download the binary
@@ -42,7 +43,7 @@ and use GitHub CLI's
 before installing it:
 
 ```sh
-gh attestation verify ./vibestack_0.3.0_linux_amd64 \
+gh attestation verify ./vibestack_0.3.1_linux_amd64 \
   --repo check-the-vibe/vibestack \
   --signer-workflow check-the-vibe/vibestack/.github/workflows/publish-client.yml
 ```
