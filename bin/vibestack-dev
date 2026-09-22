@@ -359,7 +359,7 @@ import os, stat
 p="/tmp/.X0-lock"
 s=os.lstat(p)
 assert stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == 1000
-# Do not use O_CREAT on another UID's file in a sticky directory: Linux
+# Do not use O_CREAT on a different UID-owned file in a sticky directory: Linux
 # protected_regular correctly rejects that even for this root-owned fixture.
 fd=os.open(p, os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
 try:
