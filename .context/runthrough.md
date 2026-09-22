@@ -163,6 +163,9 @@ replaying a prompt. Actual signed-in account continuity still needs a human test
 - Fresh Codespace directly from integrated main `00f4925`: passed automatic startup/live checks.
 - Final-candidate hosted stop/resume and outer rebuild: passed live/persistence checks.
 - Exact rebuilt image's full disposable acceptance: passed.
+- Exact published image's historical 0.2/current 0.3.1 CLI matrix, private-runner
+  fixture and full acceptance with rollback/return: passed; see
+  [the compatibility record](tickets/VST-007.md#published-image-compatibility).
 - Remote REST/MCP through the private GitHub gateway: pending scoped authorization.
 - Codex signed-in stream, approval and interrupt: pending human verification.
 - OpenCode signed-in stream, approval and interrupt: pending human verification.
