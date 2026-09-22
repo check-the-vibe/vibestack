@@ -359,7 +359,16 @@ import os, stat
 p="/tmp/.X0-lock"
 s=os.lstat(p)
 assert stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == 1000
-with open(p, "w") as f: f.write("         1\n")
+# Do not use O_CREAT on another UID's file in a sticky directory: Linux
+# protected_regular correctly rejects that even for this root-owned fixture.
+fd=os.open(p, os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+try:
+    opened=os.fstat(fd)
+    assert (opened.st_dev, opened.st_ino) == (s.st_dev, s.st_ino)
+    os.ftruncate(fd, 0)
+    os.write(fd, b"         1\n")
+finally:
+    os.close(fd)
 '
   docker kill --signal KILL "$acceptance_container" >/dev/null
   docker start "$acceptance_container" >/dev/null
