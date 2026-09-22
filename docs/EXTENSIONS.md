@@ -35,7 +35,9 @@ Authenticate using [SERVICE.md](SERVICE.md), then inspect
 by grant. Invoke `POST /api/v1/capabilities/project_summary/invoke` or
 `POST /api/v1/project-summary` with `{"project":"vibestack"}`. They return the
 same envelope/errors. Browser mutations also need the session CSRF header. The
-existing CLI `api` command works until dedicated capability commands land.
+CLI supports `vibestack capability list`, `vibestack capability schema` and
+`vibestack capability call project_summary --input -` (JSON on stdin). A new
+registered capability works through these generic commands without a CLI release.
 
 GET/HEAD registrations must declare a read effect and scalar query fields.
 Every object schema, including nested output objects, declares its unknown-field
@@ -57,4 +59,15 @@ cancellation; this is not a sandbox for third-party code.
 
 Audit records contain request/instance ID, capability, outcome and duration;
 never arguments, credentials, file contents or command/provider output. Real
-CLI/MCP parity and hosted authoring acceptance remain VST-010/VST-012/VST-007.
+CLI/MCP parity is covered by VST-010/VST-012; final hosted acceptance is VST-007.
+
+The disposable `bin/vibestack-dev accept` workflow includes an executable
+authoring demonstration in `tests/extension-authoring-check.py`. It copies only
+build inputs, adds one bounded echo definition/handler and registration, compiles
+it, and checks duplicate IDs and invalid schemas reject startup. In the named
+acceptance container it replaces the workspace binary temporarily, invokes the
+new capability through REST, MCP, generic CLI and authenticated Chromium, then
+restores the original binary and verifies every discovery/dispatch surface drops
+the removed capability. It also checks narrower grants and input errors. This
+does not install an extension in a live workspace or introduce runtime loading.
+Production extensions still follow the complete image build/accept/deploy path.

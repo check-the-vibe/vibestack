@@ -12,6 +12,9 @@ MCP discovery lists only callable tools. See the [parity checks](docs/DEVELOPMEN
 for the real-client acceptance workflow and pinned historical CLI checks.
 The same workflow provides disposable MCP fault injection and optional rollback
 checks; their execution state is recorded in [VST-013](.context/tickets/VST-013.md).
+It also compiles, adds and removes a harmless extension in its disposable
+container to check REST/MCP/CLI/browser parity without nginx or auth edits;
+[VST-007](.context/tickets/VST-007.md) records final integration evidence.
 The launcher-declared source checkout supports project file and command APIs
 even when its bind mount uses a different filesystem from other projects.
 

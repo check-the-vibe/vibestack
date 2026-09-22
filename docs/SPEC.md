@@ -44,6 +44,11 @@ calls to MCP tools omitted from filtered discovery. Unknown valid IDs use
 errors remain protocol errors. The disposable parity gate uses real REST, MCP,
 CLI and Chromium-session clients; compatibility and transport-fault evidence are
 tracked separately in VST-010/VST-013.
+The extension-authoring acceptance probe compiles a temporary definition and
+handler, checks invalid registrations reject startup, and verifies discovery,
+invocation and grant/input denial before and after removal through all four
+client surfaces. It runs only in the verified disposable acceptance container;
+the shipped image has no dynamic loader or demonstration capability.
 Workspace MCP admits at most 24 MiB per outer frame and a 256-byte encoded RPC
 identifier, including re-encoding expansion. Serialized tool results reserve
 512 bytes for the wrapper. The source stdio bridge applies the same identifier

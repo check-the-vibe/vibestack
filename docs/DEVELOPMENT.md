@@ -303,6 +303,15 @@ bin/vibestack-dev build vibestack:automation-YYYYMMDD
 bin/vibestack-dev accept vibestack:automation-YYYYMMDD
 ```
 
+Acceptance also runs `tests/extension-authoring-check.py` against its own
+disposable container. The probe compiles an added echo module, verifies invalid
+registrations fail before listening, and checks addition/removal through real
+nginx REST, MCP, generic CLI and Chromium sessions. It restores the original
+service binary in a `finally` block and rejects live or unexpected mounts.
+It changes no authentication source, nginx configuration or listener. This
+test-only binary replacement demonstrates authoring; live deployment still uses
+a fully accepted image, and the fixture capability is never packaged in it.
+
 `accept` starts an isolated, disposable container on loopback port 18080 with
 temporary `/data` and `/projects` directories. It waits for Docker health and
 runs `vibestack-check --display --restart --automation`. It then creates a

@@ -31,9 +31,9 @@ in a browser if automatic opening is blocked. Wait for the lifecycle log's
 `VibeStack ready` message. The authenticated service additionally needs a browser
 credential handoff: follow [the service guide](../docs/SERVICE.md) to create an
 owner credential from the Codespace terminal and connect using the agent icon at `/vnc/` (`/connect.html` also remains available).
-Then set your Linux password in Setup. Workspace credentials, the Linux password
-and provider sign-in are separate. Desktop, Terminal, Editor, Apps and Settings
-remain available during the UI migration.
+Then set your Linux password in the agent panel. Workspace credentials, the Linux
+password and provider sign-in are separate. The desktop uses one agent icon and
+chat panel; source editing stays in the outer Codespaces editor.
 
 The Codespaces repository is bind-mounted read/write at
 `/projects/<repository-directory>` inside VibeStack (`/projects/vibestack` for
