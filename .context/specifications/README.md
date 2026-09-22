@@ -19,23 +19,25 @@ account-dependent decisions; it is not a runtime status. The
 [runthrough](../runthrough.md) distinguishes main, candidate branches and deployed
 images, including the checks still requiring a human account.
 
-## Review together
+## Review history
 
 All four drafts are checked into main, authored under VST-004. PR #10 was
 closed after direct integration at the user's request on 2026-09-21. There is
 no separate branch for each specification. Implementation branches are registered
 per ticket in the [context index](../README.md).
 
-Review one specification at a time in this order:
+The specifications were reviewed in this order:
 
 1. [SPEC-002: REST API and distribution](SPEC-002-rest-api-agent-distribution.md): agree on service boundaries, shared operations and agent bootstrap first.
 2. [SPEC-001: Extensible service host](SPEC-001-service-host.md): review the simple static/API/MCP topology and capability authoring workflow. The draft has been rewritten around the simpler service requirement.
 3. [SPEC-003: Authenticated MCP](SPEC-003-authenticated-mcp.md): expose the agreed operations with the correct authorization.
-4. [SPEC-004: Agent overlay and providers](SPEC-004-chat-agent-interface.md): review the icon/chat interaction, in-VibeStack provider installation/activation and old-UI removal. This is the current review file.
+4. [SPEC-004: Agent overlay and providers](SPEC-004-chat-agent-interface.md): icon/chat interaction, in-VibeStack provider installation/activation and old-UI removal.
 
-SPEC-002 establishes the one-URL guide and shared capability contract. The review
-is now on SPEC-004. SPEC-003's direction was accepted by the user; its exact
-client/authentication compatibility choices remain to be verified. Keep each
+SPEC-002 establishes the one-URL guide and shared capability contract. The
+implementation pass has reached main and deployed acceptance; follow the
+[runthrough](../runthrough.md) for the current review. SPEC-003's direction was
+accepted by the user; remaining client/authentication compatibility choices
+must be verified explicitly. Keep each
 specification draft until its required decisions are resolved. The retired
 combined agent-access proposal is no longer a separate design authority.
 

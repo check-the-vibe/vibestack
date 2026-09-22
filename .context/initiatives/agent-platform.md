@@ -7,9 +7,11 @@ agent runtimes installed and launched inside VibeStack.
 
 ## Feature specifications
 
-These are the user's four requested feature drafts. Edit the linked files;
-proposed choices and open decisions are recorded in each. The linked ticket plans
-define future work, not completed implementation.
+These are the user's four feature specifications. Edit the linked files to
+change intended behavior. Implementation is integrated on main; the tickets and
+[runthrough](../runthrough.md) record deployed versions and remaining acceptance.
+Draft labels preserve unresolved compatibility and account-dependent decisions,
+not an assertion that the whole feature is unbuilt.
 
 | Specification | Feature | Decisions the specification must resolve |
 | --- | --- | --- |
@@ -20,9 +22,10 @@ define future work, not completed implementation.
 
 See [the specification index](../specifications/README.md) for editing guidance
 and integration order. [VST-004](../tickets/VST-004.md) owns the drafting pass.
-The service authentication migration and chat replacement change current product/security
-boundaries; the existing private desktop and UI remain supported until the
-corresponding feature contracts and migration work are implemented.
+The service authentication migration and chat replacement are implemented.
+The private desktop remains, with an agent icon and panel; the old standalone
+setup, editor and web-terminal services have been removed. Human provider
+sign-in and outside-gateway acceptance remain explicit checks.
 
 ## Existing foundations
 

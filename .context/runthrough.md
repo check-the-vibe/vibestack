@@ -1,15 +1,16 @@
 # VibeStack verification runthrough
 
-The implementation is merged to main at `00f4925` and deployed in the new
-Codespace below. This includes the provider adapters, agent overlay, removal of
+The implementation is merged to main and deployed in the new Codespace below.
+The integrated stack landed at `00f4925`; current accepted runtime source is
+`b8405f1`, including the Codespaces restart repair. This includes provider
+adapters, the agent overlay, removal of
 the old web UI/editor/terminal services, and extension-authoring acceptance.
 Automated gates pass locally and in the Codespace. Human provider sign-in, real
 model turns and remote private-gateway verification remain open; their tickets
 stay `in_review` until those checks have evidence.
-The later `f5ea1bc` change repairs the extension test's temporary binary build
-and documents it; it does not change runtime service behavior. Its GitHub
-source/build/acceptance/publication run passed. A real platform restart then
-exposed stale X11 boot state; that repair is being accepted before deployment.
+Local, hosted and [GitHub acceptance/publication](https://github.com/check-the-vibe/vibestack/actions/runs/35680860772)
+passed for the repair, including the forced-stop regression. A real Codespaces
+stop/resume also passed. The final outer rebuild result is recorded below.
 
 ## Current workspace
 
@@ -18,12 +19,13 @@ exposed stale X11 boot state; that repair is being accepted before deployment.
 - [Agent bootstrap guide](https://congenial-space-telegram-qv7995r69wc4pg9-8080.app.github.dev/AGENTS.md)
 - [This runthrough on GitHub](https://github.com/check-the-vibe/vibestack/blob/main/.context/runthrough.md)
 
-The desktop runs accepted integration source `f5ea1bc`, deployed on
-2026-09-22 after its independent hosted source/build/full acceptance gate passed.
-Running image:
-`sha256:7890acabbe508fb613b14aa2c9cf1197b590d5268a52f254a4615d979bce7b27`.
+The desktop runs accepted integration source `b8405f1`, deployed on
+2026-09-22 using the exact image published after GitHub's full acceptance gate.
+Published and running digest:
+`sha256:179fa73c98ee69e551d8eda2e93d6d15c8f7aab8adc4800f140cec357d36e077`.
 The live check passed **88/0**, Docker reports healthy, and Chrome shows the
-agent icon and workspace-credential form. The editor is on
+agent icon and workspace-credential form. The preserved service identity,
+mounts, runtime volume and witness match the pre-upgrade baseline. The editor is on
 `codex/vst-007-codespaces-integration`. Port 8080 was checked as Private in the
 Ports table. The machine has four CPUs and 16,377,436 kB RAM.
 
@@ -126,9 +128,19 @@ the Ports table confirms Private 8080, and it reports four CPUs/16,377,436 kB RA
 Fresh image: `sha256:8711bfe058f5eccda339222eb2423e3948cec4970e7b35f9bf55e9997336edc8`.
 The shared source hashes match. Its first platform stop/resume retained storage,
 identity, keys and source, but failed desktop startup because stale X11 lock/socket
-state survived the stop. That validation container is paused pending the accepted
-repair; the Congenial workspace above remains available. Repeat stop/resume and
-outer rebuild after the repair; account continuity also needs signed-in data.
+state survived the stop. The accepted repair was deployed after a full independent
+hosted gate, then the same Codespace was stopped and restarted through Chrome.
+VibeStack started automatically and passed 88/0 live checks; the original volume,
+witness, mounts, service identity and root-private key hashes/ownership/modes
+matched. Source was clean at `b8405f1`; only that reviewed source change was
+allowed in the baseline comparison. Accepted validation image:
+`sha256:5bea7999868134ecc9c28811941e7daaa5059d0cc227e468023a948738bf3789`.
+The normal outer development-container rebuild also passed automatic startup,
+88/0 live checks and the same original persistence comparison. Port 8080 is
+still Private and the shell loads in Chrome. Rebuild produced image
+`sha256:5d8330e73b810fc5c0db42d9f797d128497c0dd66e2cbe3966644bb848b268df`;
+its separate full disposable acceptance passed, including all 30 browser tests
+and forced-stop recovery. Account continuity still needs signed-in data.
 New workspaces can be created from [the GitHub launch page](https://codespaces.new/check-the-vibe/vibestack).
 
 To continue on a new ticket in that same Codespace, inspect Git state, fetch the
@@ -143,13 +155,14 @@ replaying a prompt. Actual signed-in account continuity still needs a human test
 
 ## Final verification record
 
-- Main integration: `00f4925`; deployed source/image and URLs recorded above.
+- Main integration: `00f4925`; accepted restart repair: `b8405f1`; deployed image and URLs above.
 - Local and hosted source/build/full acceptance: passed.
 - Extension addition/removal across REST, MCP, CLI and browser: passed.
 - Fresh baseline creation, private port and same-Codespace branch upgrade: passed.
 - Live check: 88 passed, 0 failed; source-mount MCP probe: passed.
 - Fresh Codespace directly from integrated main `00f4925`: passed automatic startup/live checks.
-- Final-candidate hosted stop/resume/outer rebuild: pending.
+- Final-candidate hosted stop/resume and outer rebuild: passed live/persistence checks.
+- Exact rebuilt image's full disposable acceptance: passed.
 - Remote REST/MCP through the private GitHub gateway: pending scoped authorization.
 - Codex signed-in stream, approval and interrupt: pending human verification.
 - OpenCode signed-in stream, approval and interrupt: pending human verification.

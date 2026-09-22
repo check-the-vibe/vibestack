@@ -59,8 +59,9 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft
-specifications reached main on 2026-09-21. The feature queue links planned
-implementation work; checking in a specification does not implement it.
+specifications reached main on 2026-09-21. The implementation stack reached main
+on 2026-09-22; the runthrough records its deployment and remaining human and
+remote-client verification. Checking in a specification alone never implements it.
 
 Tickets VST-005 through VST-016 are indexed in their
 [specification plans](specifications/README.md). The table above links their
