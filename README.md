@@ -91,6 +91,9 @@ full Python installs before the editor opens, and the desktop build continues
 in the background. See
 [the Codespaces guide](.context/github-codespaces.md) for persistence, prebuilds,
 rebuilding, private credential-directory permissions and troubleshooting.
+On restart, boot clears only the stale display-0 X11 lock/socket before starting
+the desktop, so an abrupt Codespaces shutdown cannot leave a false active display.
+Persistent workspace and provider state are retained.
 
 ### Local Docker
 

@@ -352,6 +352,22 @@ run_acceptance() (
   wait_for_health "$acceptance_container"
   restored_providers
   provider_persistence verify
+  # A platform stop can kill Docker before Xvfb removes its lock. Reproduce a
+  # stale PID that is already live again on the next boot, in this fixture only.
+  docker exec "$acceptance_container" python3 -c '
+import os, stat
+p="/tmp/.X0-lock"
+s=os.lstat(p)
+assert stat.S_ISREG(s.st_mode) and s.st_nlink == 1 and s.st_uid == 1000
+with open(p, "w") as f: f.write("         1\n")
+'
+  docker kill --signal KILL "$acceptance_container" >/dev/null
+  docker start "$acceptance_container" >/dev/null
+  wait_for_health "$acceptance_container"
+  restored_providers
+  provider_persistence verify
+  docker exec -u vibe "$acceptance_container" vibestack-check --live
+  echo "PASS abrupt container restart clears stale display lock and preserves provider state"
   if [[ -n "${VIBESTACK_ROLLBACK_IMAGE:-}" ]]; then
     # Both images use only this invocation's disposable data/projects. The live
     # desktop is never inspected, retagged, stopped or mounted by this probe.

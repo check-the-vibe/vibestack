@@ -25,7 +25,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 
 ## Start points
 
-- [Staged deployment and user verification runthrough](runthrough.md)
+- [Deployed Codespace and user verification runthrough](runthrough.md)
 - [Agent platform initiative and feature drafts](initiatives/agent-platform.md)
 - [Specification directory](specifications/README.md)
 - [Specification-writing prompt](prompts/specify.md)

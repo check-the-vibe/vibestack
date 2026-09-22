@@ -76,12 +76,13 @@ native request to its exact conversation/operation, are consumed once, and are
 excluded from MCP. An incomplete action preview can only be declined. Native
 tools run with the full `vibe` account's authority; workspace API path restrictions
 do not sandbox their executions. No new public provider port is exposed. The
-chat overlay and removal of existing UI/services remain VST-015/VST-016 work.
+chat overlay and removal of existing UI/services are implemented in VST-015/VST-016;
+real signed-in provider acceptance remains recorded separately in their tickets.
 
 The image ships **slim**. Only the desktop, browser interfaces, automation
-primitives, and operational services are built in. On first boot a setup
-wizard asks which optional components to install. This keeps the base small,
-keeps the choice with the user, and gives us one place to grow onboarding.
+primitives, and operational services are built in. The agent panel guides first
+connection, Linux password setup and optional provider activation. Other catalog
+components remain available through the authenticated setup API/CLI.
 
 After the upstream base's signature-verified package bootstrap installs its CA
 trust store, official Ubuntu archive, security, and ARM ports URLs use HTTPS.
@@ -293,10 +294,11 @@ replace the private-network authorization boundary.
 ### 3.5 Automation API
 
 A second Python standard-library service runs as `vibe` on
-`127.0.0.1:7997`; nginx proxies `/api/v1/automation`. Pairing request/poll are
-the only unauthenticated bootstrap routes. All other routes accept either the
-compatible persistent 256-bit token in `~/.vibestack/automation.token` or a
-separately revocable paired-client credential, including capability discovery.
+`127.0.0.1:7997`; nginx sends public `/api/v1/automation` routes through the
+workspace service's authentication and authorization before fixed internal calls.
+There is no anonymous public pairing route. Compatible persistent automation
+tokens and separately revocable workspace credentials remain supported, subject
+to the shared grants, including capability discovery.
 Responses are non-cacheable and carry a request ID that correlates nginx access
 and redacted automation audit events.
 
@@ -591,6 +593,12 @@ system Flatpak export directories in `XDG_DATA_DIRS` for menu discovery.
 The empty keyring unlock is not the Linux password used by PAM or sudo.
 Startup opens the desktop without an interactive terminal or automatic banner.
 Its generated background identifies the workspace and its published ports.
+Before Supervisor starts, bootstrap clears the previous boot's display-0 lock
+and Unix socket using checked directory descriptors. A stale PID may now belong
+to another process, so PID liveness is not a safe stale-lock test. Cleanup is
+limited to `/tmp/.X0-lock` and `/tmp/.X11-unix/X0`; unsafe types, links, owners
+and filesystem crossings fail closed. Persistent account/project state and other
+display entries are untouched. This covers abrupt container/Codespaces stops.
 
 ### 3.12 Client, SSH, editor, and native VNC
 
@@ -701,8 +709,8 @@ marked physical are release checks performed on an iPadOS 17+ device.
   optional logical services while
   degrading an individual failed probe to unknown rather than failing the
   complete response.
-- AC-13 Only `desktop`, `vnc`, `terminal`, `setup`, `ssh`, `native-vnc`, and
-  `editor` are accepted. Status, start/stop/restart and log calls map to fixed
+- AC-13 Only `desktop`, `vnc`, `setup`, `ssh`, and `native-vnc` are accepted.
+  Retired `terminal`/`editor` IDs are rejected. Status, start/stop/restart and log calls map to fixed
   supervisor programs and paths; unknown IDs run no command.
 - AC-14 Mutations require bounded, exact JSON and matching Host/Origin, reject
   cross-origin and CORS requests, serialize concurrent work and return stable

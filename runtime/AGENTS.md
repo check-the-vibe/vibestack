@@ -245,6 +245,11 @@ directly inside VibeStack, run it as `vibe` and source the session file first:
 source /run/vibestack/session.env
 ```
 
+Boot clears stale display-0 lock/socket state before starting Supervisor,
+including after an abrupt Codespaces stop. Do not delete X11 locks or run the
+boot helper against a live desktop. Persistent account and project state remain
+separate from this temporary display state.
+
 Prefer the automation API when an action should be auditable or may also be
 driven from outside the container. Do not patch a running container as the
 final fix: change the VibeStack source, build a tagged image, run disposable
@@ -283,8 +288,9 @@ next menu refresh; if needed, reopen the menu or restart the XFCE panel.
 
 ## Automation REST API
 
-The pairing request/poll routes are the only unauthenticated automation
-bootstrap. Every other request to the exact API root and its descendants needs:
+The workspace service authenticates every public automation route before its
+fixed internal backend call. Anonymous pairing is unavailable. Bearer callers
+to the exact API root and its descendants need:
 
 ```text
 Authorization: Bearer <automation-token>

@@ -124,6 +124,11 @@ is retired; use the outer source editor, Remote SSH or native desktop tools.
 - Reattaching the editor alone does not recreate the desktop. Local Dev
   Containers still install test tools but skip Codespaces-specific startup.
 
+An abrupt platform stop can retain X11 lock/socket files in the nested
+container's writable layer. Boot removes only display `:0`'s checked temporary
+lock/socket before Supervisor starts, including when the old PID has been reused.
+It does not remove persistent credentials, keys, projects or provider state.
+
 The helper only runs automatically when `CODESPACES=true` and the repository is
 directly under `/workspaces`. The dedicated container is `vibestack-codespaces`.
 Source changes copied into the desktop image require an explicit rebuild:

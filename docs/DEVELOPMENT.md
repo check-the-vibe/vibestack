@@ -135,6 +135,13 @@ With the historical CLI path set, acceptance also exercises the old/current
 CLI against a private runner fixture in paired and explicit trusted-tailnet
 modes, including store reopen and a real SDK client. It has no Docker manager.
 
+Acceptance also force-kills its own container after planting a stale display-0
+lock with a PID that will be live on the next boot. It starts the same container,
+checks desktop health and verifies provider persistence/automatic activation.
+The boot-only no-follow helper removes only `/tmp/.X0-lock` and the
+`/tmp/.X11-unix/X0` socket before Supervisor starts. Do not run that cleanup on
+a live desktop; source fixes still require the complete candidate workflow.
+
 For image rollback acceptance, set `VIBESTACK_ROLLBACK_IMAGE` to a locally
 available previously accepted image when running `accept`. After normal checks,
 the helper moves only its disposable mounts from the candidate to that image

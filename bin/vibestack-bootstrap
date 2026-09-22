@@ -11,6 +11,7 @@ import sys
 
 DATA_ROOT = "/data"
 RUN_ROOT = "/run"
+TMP_ROOT = "/tmp"
 STATE_MARKER = ".vibestack-state-v1"
 PASSWORD_STATE_DIR = ".vibestack-auth-v1"
 
@@ -282,6 +283,57 @@ def _create_xauthority(runtime_fd: int, *, root_uid: int, vibe_gid: int) -> None
         os.close(fd)
 
 
+def prepare_x11_display(
+    *, tmp_root: str, root_uid: int, root_gid: int, vibe_uid: int
+) -> None:
+    """Clear only display :0's stale boot state, before Supervisor starts.
+
+    An abrupt container stop leaves the X lock/socket in its writable layer.
+    The recorded PID can belong to an unrelated process on the next boot, so
+    PID liveness cannot distinguish that stale lock. This is a boot-only helper,
+    never an operation on a running desktop or its persistent account state.
+    """
+
+    def remove_leaf(parent_fd: int, name: str, kind) -> None:
+        try:
+            fd = os.open(name, os.O_PATH | os.O_CLOEXEC | os.O_NOFOLLOW,
+                         dir_fd=parent_fd)
+        except FileNotFoundError:
+            return
+        try:
+            info = _require_same_filesystem(fd, parent_fd, "X11 boot entry")
+            if (not kind(info.st_mode) or info.st_nlink != 1
+                    or info.st_uid not in (root_uid, vibe_uid)):
+                raise BootstrapError("X11 boot entry failed its safety check")
+            current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if (current.st_dev, current.st_ino) != (info.st_dev, info.st_ino):
+                raise BootstrapError("X11 boot entry changed during cleanup")
+            os.unlink(name, dir_fd=parent_fd)
+        finally:
+            os.close(fd)
+
+    temporary_fd = _open_absolute_directory(tmp_root)
+    try:
+        try:
+            os.mkdir(".X11-unix", 0o1777, dir_fd=temporary_fd)
+        except FileExistsError:
+            pass
+        sockets_fd = os.open(".X11-unix", _directory_flags(), dir_fd=temporary_fd)
+        try:
+            info = _require_same_filesystem(sockets_fd, temporary_fd, "X11 socket directory")
+            if info.st_uid not in (root_uid, vibe_uid):
+                raise BootstrapError("X11 socket directory failed its ownership check")
+            _require_entry_matches(temporary_fd, ".X11-unix", info,
+                                   label="X11 socket directory", directory=True)
+            _set_metadata(sockets_fd, info, uid=root_uid, gid=root_gid, mode=0o1777)
+            remove_leaf(sockets_fd, "X0", stat.S_ISSOCK)
+            remove_leaf(temporary_fd, ".X0-lock", stat.S_ISREG)
+        finally:
+            os.close(sockets_fd)
+    finally:
+        os.close(temporary_fd)
+
+
 def bootstrap(
     *,
     data_root: str,
@@ -454,6 +506,8 @@ def main() -> int:
             vibe_uid=account.pw_uid,
             vibe_gid=account.pw_gid,
         )
+        prepare_x11_display(tmp_root=TMP_ROOT, root_uid=0, root_gid=0,
+                            vibe_uid=account.pw_uid)
     except (BootstrapError, OSError) as exc:
         message = os.strerror(exc.errno) if isinstance(exc, OSError) and exc.errno else str(exc)
         print(f"[bootstrap] refusing unsafe filesystem state: {message}", file=sys.stderr)

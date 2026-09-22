@@ -6,6 +6,7 @@ import importlib.machinery
 import importlib.util
 import os
 from pathlib import Path
+import socket
 import stat
 import tempfile
 import unittest
@@ -251,6 +252,75 @@ class BootstrapSecurityTests(unittest.TestCase):
         self.assertEqual(before, snapshot(sentinel))
         self.assertFalse((self.run / "vibestack").is_symlink())
         self.assertTrue((self.run / "vibestack").is_dir())
+
+    def clean_x11(self, temporary: Path) -> None:
+        bootstrap_lib.prepare_x11_display(
+            tmp_root=str(temporary), root_uid=self.uid,
+            root_gid=self.gid, vibe_uid=self.uid,
+        )
+
+    def test_new_boot_removes_stale_display_zero_even_when_pid_was_reused(self) -> None:
+        temporary = self.root / "tmp"
+        temporary.mkdir()
+        lock = temporary / ".X0-lock"
+        # A previous boot's PID can now identify an unrelated live process.
+        lock.write_text(f"{os.getpid():10d}\n")
+        lock.chmod(0o444)
+        sockets = temporary / ".X11-unix"
+        sockets.mkdir()
+        other = sockets / "X1"
+        other.write_bytes(b"another display must be preserved")
+        with socket.socket(socket.AF_UNIX) as endpoint:
+            endpoint.bind(str(sockets / "X0"))
+        self.clean_x11(temporary)
+        self.assertFalse(lock.exists())
+        self.assertFalse((sockets / "X0").exists())
+        self.assertEqual(b"another display must be preserved", other.read_bytes())
+        self.assert_mode(sockets, 0o1777)
+        self.clean_x11(temporary)  # First boot and repeated boot are harmless.
+
+    def test_display_cleanup_refuses_symlinks_and_preserves_targets(self) -> None:
+        sentinel = self.make_sentinel()
+        before = snapshot(sentinel)
+        for target in ("tmp", "directory", "lock", "socket"):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
+                temporary = Path(directory) / "tmp"
+                if target == "tmp":
+                    temporary.symlink_to(sentinel.parent, target_is_directory=True)
+                else:
+                    temporary.mkdir()
+                    sockets = temporary / ".X11-unix"
+                    if target == "directory":
+                        sockets.symlink_to(sentinel.parent, target_is_directory=True)
+                    else:
+                        sockets.mkdir()
+                        leaf = temporary / ".X0-lock" if target == "lock" else sockets / "X0"
+                        leaf.symlink_to(sentinel)
+                with self.assertRaises((bootstrap_lib.BootstrapError, OSError)):
+                    self.clean_x11(temporary)
+                self.assertEqual(before, snapshot(sentinel))
+
+    def test_display_cleanup_refuses_unexpected_files_and_hard_links(self) -> None:
+        sentinel = self.make_sentinel()
+        for target in ("lock-directory", "lock-hardlink", "socket-file", "socket-fifo"):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
+                temporary = Path(directory)
+                sockets = temporary / ".X11-unix"
+                sockets.mkdir()
+                if target == "lock-directory":
+                    (temporary / ".X0-lock").mkdir()
+                elif target == "lock-hardlink":
+                    os.link(sentinel, temporary / ".X0-lock")
+                elif target == "socket-file":
+                    (sockets / "X0").write_bytes(b"preserve unexpected file")
+                else:
+                    os.mkfifo(sockets / "X0")
+                before = snapshot(sentinel)
+                with self.assertRaises(bootstrap_lib.BootstrapError):
+                    self.clean_x11(temporary)
+                self.assertEqual(before, snapshot(sentinel))
+                if target == "socket-file":
+                    self.assertEqual(b"preserve unexpected file", (sockets / "X0").read_bytes())
 
 
 if __name__ == "__main__":
