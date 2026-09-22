@@ -64,6 +64,14 @@ async function main() {
   check(denied.status === 400);
   const names = new Set((await client.listTools()).tools.map(tool => tool.name));
   check(!names.has('answerProviderApproval') && !names.has('openProviderApp') && names.has('activateProvider'));
+  stage = 'create disposable provider project';
+  const project = `vst-provider-${randomBytes(8).toString('hex')}`;
+  let { job } = await call('rest', 'submitArgvCommand', { argv: ['/usr/bin/mkdir', '--', `/projects/${project}`], root: 'projects', timeout_seconds: 15 });
+  for (let count = 0; count < 60 && ['queued', 'running'].includes(job.status); count++) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    ({ job } = await call('rest', 'getWorkspaceJob', { id: job.id }));
+  }
+  check(job.status === 'succeeded' && job.exit_code === 0);
   for (const provider of ['codex', 'opencode']) {
     stage = `${provider} real installation and concurrent activation`;
     const initial = await Promise.all(['rest', 'cli', 'mcp'].map(surface => call(surface, 'activateProvider', { provider })));
@@ -83,7 +91,7 @@ async function main() {
       check(state.models.length > 0);
       stage = 'native OpenCode conversation without a model call';
       const id = randomBytes(16).toString('hex');
-      const input = { id, provider, project: 'vst-mcp-client-probe', model: state.models[0].id };
+      const input = { id, provider, project, model: state.models[0].id };
       await call('rest', 'createProviderConversation', input);
       let page;
       for (let count = 0; count < 30; count++) {
