@@ -52,6 +52,9 @@ do not change durable-job cancellation or retry semantics.
 
 The workspace service manages Codex 0.153.4 over private stdio and OpenCode
 1.18.29 over authenticated loopback HTTP. Registered provider operations use the
+same bounded activation deadline when waiting for setup-service startup: only
+read-only state connection failures are retried; an uncertain install submission
+is never replayed. Provider capabilities preserve the
 same external grants, identity checks and browser CSRF policy as other
 capabilities. They select fixed catalog IDs; no caller-supplied installer,
 executable, environment or backend URL is accepted. Installation, process,

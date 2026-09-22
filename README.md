@@ -22,6 +22,8 @@ stop them; conversation operations use their native agent loops. See the
 [API reference](docs/AUTOMATION.md#provider-runtimes). A running process or model
 listing does not prove that sign-in, quota or a model turn works. Current evidence
 is recorded in [VST-014](.context/tickets/VST-014.md); the chat overlay is separate work.
+Automatic provider restoration tolerates setup-service startup by polling safe
+catalog reads; it never replays an uncertain installation submission or prompt.
 
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:

@@ -58,6 +58,10 @@ public references may differ from these pins:
 
 One process is managed per provider. Concurrent activate calls share an operation
 while it installs/starts/runs. Caller disconnect does not stop activation.
+On image replacement, automatic activation waits for the private setup listener
+by retrying only read-only catalog state requests within its 30-minute activation
+deadline. Invalid durable state fails closed. An uncertain install submission is
+not automatically replayed; cancellation ends the wait.
 Installation, process, authentication and readiness are separate fields.
 `installed: null` means not probed, false means absent, and true means the supported
 version was found. A successful handshake means active/running, not verified.

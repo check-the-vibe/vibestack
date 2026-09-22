@@ -63,13 +63,21 @@ async function main() {
   if (mode === 'verify-restored') {
     stage = 'automatically restored native runtimes without a new activation';
     for (const provider of ['codex','opencode']) {
+      stage = `automatically restored ${provider} runtime without a new activation`;
       let state;
       for (let count=0;count<90;count++) {
         state = (await call('rest','getProviderStatus',{provider})).provider;
         if (state.phase === 'active' || state.phase === 'failed') break;
         await new Promise(resolve=>setTimeout(resolve,1000));
       }
-      check(state?.phase === 'active' && state.process === 'running' && state.readiness !== 'verified');
+      if (!(state?.phase === 'active' && state.process === 'running' && state.readiness !== 'verified')) {
+        const safe = {};
+        for (const key of ['phase','process','readiness','failure','next_action']) {
+          if (/^[a-z_]{0,40}$/.test(state?.[key] ?? '')) safe[key] = state?.[key];
+        }
+        console.error('Provider restore status: ' + JSON.stringify(safe));
+        check(false);
+      }
     }
     const {conversations} = await call('mcp','listProviderConversations',{});
     check(conversations.length === 1 && conversations[0].provider === 'opencode' && conversations[0].operations.length === 0);

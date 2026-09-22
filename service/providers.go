@@ -85,9 +85,29 @@ func (s *Server) installProviderComponent(ctx context.Context, component string)
 		}
 		return data, response.StatusCode, nil
 	}
+	wait := func() error {
+		timer := time.NewTimer(time.Second)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			return nil
+		}
+	}
 	submitted := false
 	for {
 		data, status, err := request("GET", "/api/state", nil)
+		// After image replacement, setup can still be opening its private
+		// listener while the workspace manager restores selected providers.
+		// Retry only this safe state read within the activation deadline. An
+		// uncertain POST below still returns immediately and is never replayed.
+		if errors.Is(err, providers.ErrDisconnected) {
+			if err = wait(); err != nil {
+				return err
+			}
+			continue
+		}
 		if err != nil {
 			return err
 		}
@@ -124,12 +144,8 @@ func (s *Server) installProviderComponent(ctx context.Context, component string)
 				return providers.ErrRejected
 			}
 		}
-		timer := time.NewTimer(time.Second)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return ctx.Err()
-		case <-timer.C:
+		if err = wait(); err != nil {
+			return err
 		}
 	}
 }
