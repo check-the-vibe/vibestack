@@ -515,33 +515,12 @@ contents, terminal data or exception messages to this trace. Host operators can
 use `bin/vibestack-walkthrough` from the source checkout to collect a sanitized
 trace and apply/roll back explicit development patches; see `docs/DEVELOPMENT.md`.
 
-Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
-Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
-sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
-onboarding was completed earlier. The same parameters work on `/vnc/`.
-After a successful password submission, Setup opens `/vnc/?panel=apps`.
-
-Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
-Packs reuse the existing catalog presets; choosing a pack selects its supported
-components, and Install submits the existing durable install operation. Search
-never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
-without installing it. Password changes remain available from Settings at
-`/setup/?force=1&screen=password`.
-
-Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
-workspace beneath its navigation. Their Back control and browser Back return to
-Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
-services remain separate same-origin frames. If Editor is unavailable, its view
-offers service recovery instead of loading a broken frame. No new API authority or
-storage migration is introduced. Patches and later image updates must preserve
-existing `/data`, `/projects`, attached drives, passwords and saved selections.
-
-The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
-amd64/arm64 package checksums and identities are verified during image build;
-Supervisor starts it automatically, and container health includes it. Apps and
-packs exclude the former `browser-editor` component. Legacy saved selections
-ignore that retired ID without resetting other selections; editor configuration
-and extensions retain their existing persistent mounts.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
 Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
 Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only

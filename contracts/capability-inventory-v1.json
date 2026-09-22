@@ -4109,20 +4109,20 @@
     },
     {
       "route": "/terminal/",
-      "current": "private ttyd UI/WebSocket",
-      "target": "remove in VST-016; commands remain available through the shared command capability",
+      "current": "retired: read-only bookmark redirects to /vnc/; assets/WebSockets absent",
+      "target": "commands use the shared command capability or native desktop terminal",
       "source": "nginx.conf"
     },
     {
       "route": "/editor/",
-      "current": "private code-server UI/WebSocket",
-      "target": "remove in VST-016; source editing uses the outer Codespace editor",
+      "current": "retired: read-only bookmark redirects to /vnc/; embedded editor removed",
+      "target": "source editing uses the outer Codespace editor",
       "source": "nginx.conf"
     },
     {
       "route": "/setup/",
-      "current": "private setup UI",
-      "target": "remove legacy UI in VST-016; supported setup operations become authenticated capability/human handoff flows in the overlay",
+      "current": "retired: read-only bookmark redirects to /vnc/; no setup assets",
+      "target": "setup APIs remain authenticated; provider and password handoffs use the overlay",
       "source": "nginx.conf"
     }
   ],

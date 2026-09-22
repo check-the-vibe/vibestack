@@ -12,7 +12,7 @@ loopback-plus-Tailscale deployment boundary and the existing persistent
 mounts. Read `docs/AUTOMATION.md` before changing or using the privileged
 automation surface.
 
-There is no default `vibe` password. Users create it through `/setup/`; never
+There is no default `vibe` password. Users create it through the agent panel at `/vnc/`; never
 place a password in source, environment variables, commands, logs, or prompts.
 Normal sudo is password-authenticated, while the fixed VibeStack setup helpers
 remain non-interactive for catalog installation and recovery.

@@ -293,17 +293,17 @@ func scanInstance(row scanner) (api.Instance, error) {
 		value.URLs = map[string]string{}
 	}
 	value.LinuxUsername = "vibe"
-	value.Reachability = map[string]string{"browser": "host-local", "terminal": "host-local", "editor": "host-local", "ssh": "host-local", "native_vnc": "host-local"}
+	value.Reachability = map[string]string{"browser": "host-local", "ssh": "host-local", "native_vnc": "host-local"}
 	if strings.HasPrefix(value.URLs["browser"], "https://") {
-		for _, key := range []string{"browser", "terminal", "editor"} {
+		for _, key := range []string{"browser"} {
 			value.Reachability[key] = "tailnet"
 		}
 	}
 	base := strings.TrimSuffix(value.URLs["browser"], "/")
-	value.URLs["password_setup"] = base + "/setup/?force=1&screen=password"
-	value.URLs["desktop"] = base + "/vnc/?panel=apps"
-	value.URLs["terminal"] = base + "/vnc/?view=terminal"
-	value.URLs["editor"] = base + "/vnc/?view=editor"
+	value.URLs["password_setup"] = base + "/vnc/"
+	value.URLs["desktop"] = base + "/vnc/"
+	delete(value.URLs, "terminal")
+	delete(value.URLs, "editor")
 	delete(value.URLs, "ssh")
 	delete(value.URLs, "vnc")
 	value.Connections = map[string]string{"browser": "unavailable", "ssh": "unavailable", "native_vnc": "unavailable"}

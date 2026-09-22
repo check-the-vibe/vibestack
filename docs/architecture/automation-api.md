@@ -27,13 +27,12 @@ tailnet client ── HTTPS/Tailscale Serve ── host 127.0.0.1:8080
                          fixed session env ── X11 :0 / XFCE / Desktop
 ```
 
-Raw X11, VNC, websockify, ttyd, setup, control, and automation listeners are
+Raw X11, VNC, websockify, setup, control, and automation listeners are
 container-loopback-only. Xvfb uses MIT-MAGIC-COOKIE authorization and
 `-nolisten tcp`; all graphical subprocesses receive the protected
 `XAUTHORITY`. Docker uses its default seccomp profile and a process limit.
 The browser-stream backends additionally reject direct WebSockets: nginx
-overwrites `X-VibeStack-Proxy` with a fixed marker, ttyd requires it while
-checking Origin against the port-preserving Host, and a root-owned websockify
+overwrites `X-VibeStack-Proxy` with a fixed marker. A root-owned websockify
 plugin requires exactly one constant-time exact match. The fixed marker is a
 browser-direct-access guard, not a user credential.
 
@@ -80,7 +79,7 @@ edge also permits an absent Origin for CLI clients, but otherwise requires one
 HTTP(S) Origin whose authority exactly matches the request Host
 case-insensitively. The scheme may differ across Tailscale TLS termination.
 Malformed, null, multiple, or credential/path-bearing values fail before
-static, API, ttyd, or noVNC/WebSocket routing. Safe top-level `GET`/`HEAD`
+static, API or noVNC/WebSocket routing. Safe top-level `GET`/`HEAD`
 navigations may carry `cross-site` or `same-site` with destination `document`
 or extension-generated `empty`; all other such fetch metadata fails at the
 edge.

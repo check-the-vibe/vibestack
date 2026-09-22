@@ -162,7 +162,7 @@ commands documented below; no password is accepted in argv or an environment var
 ```text
 status
 display get | set WIDTHxHEIGHT
-services start|stop|restart desktop|vnc|terminal|setup|ssh|native-vnc|editor
+services start|stop|restart desktop|vnc|setup|ssh|native-vnc
 logs SERVICE [CURSOR]
 setup
 account

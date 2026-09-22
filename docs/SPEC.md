@@ -104,7 +104,7 @@ See [Codespaces operation and verification](../.context/github-codespaces.md).
 
 1. Give VibeStack full ownership of the visible browser desktop while retaining
    noVNC's maintained RFB engine as an upstream dependency.
-2. Expose a browser terminal and first-boot setup wizard beside that desktop.
+2. Expose a small agent-icon overlay with deterministic setup and provider chat.
 3. Make the desktop installable and usable as an iPadOS 17+ Home Screen web app
    over a private HTTPS connection.
 4. Put connection settings, clipboard/keyboard controls, service health,
@@ -168,9 +168,7 @@ Ubuntu 24.04 LTS with only what the desktop and interfaces need:
 - gnome-keyring with libsecret, D-Bus, xdg-utils.
 - scrot, xclip, xdotool, wmctrl, xprop, Xauthority, and GTK/X11 utilities so
   agents can see and drive the desktop out of the box.
-- ttyd.
-- Required preinstalled code-server, plus Python Pillow for the generated
-  desktop information wallpaper.
+- Python Pillow for the generated desktop information wallpaper.
 
 Everything else is a catalog component.
 
@@ -178,10 +176,10 @@ Everything else is a catalog component.
 
 | Path | What |
 |---|---|
-| `/setup/` | Linux password and component onboarding; redirects to `/` once both are complete. |
-| `/terminal/` | ttyd attached to tmux session `main`. |
-| `/editor/` | Optional same-origin code-server browser editor. |
-| `/vnc/` | VibeStack-owned shell with Desktop and embedded Terminal views. |
+| `/setup/` | Retired bookmark; GET/HEAD redirects to `/vnc/`; no old assets. |
+| `/terminal/` | Retired bookmark; GET/HEAD redirects to `/vnc/`; no WebSocket. |
+| `/editor/` | Retired bookmark; source editing uses the outer Codespace. |
+| `/vnc/` | Desktop canvas with the agent-icon setup/chat overlay. |
 | `/vnc/websockify` | Same-origin RFB WebSocket endpoint. |
 | `/novnc/core/`, `/novnc/vendor/` | Pinned upstream runtime modules, not UI. |
 | `/api/v1/` | Same-origin, loopback-backed desktop control API. |
@@ -266,8 +264,8 @@ proxies `/api/v1/`. Responses are JSON and `Cache-Control: no-store`.
 | `GET /api/v1/logs/{service}?cursor=&limit=` | Read bounded, sanitized service logs. |
 | `POST /api/v1/services/{service}/{operation}` | Start, stop, or restart one allowlisted logical service. |
 
-The core logical IDs are `desktop`, `vnc`, `terminal` and `setup`; optional IDs
-are `ssh`, `native-vnc`, and `editor`. Fixed code maps them to supervisor
+The core logical IDs are `desktop`, `vnc` and `setup`; optional IDs
+are `ssh` and `native-vnc`. Retired `terminal`/`editor` service actions are rejected. Fixed code maps them to supervisor
 programs and log paths. A narrow helper performs only those supervisor
 operations. XRandR changes run as `vibe`, use a validated connected
 output name, and accept dimensions from 640x480 through 1920x1200 with widths
@@ -315,9 +313,8 @@ asynchronous window close requests. Full routes and schemas are in
 
 All raw services bind container loopback. Xvfb disables TCP and requires a
 per-boot MIT-MAGIC-COOKIE. Docker uses its default seccomp profile and a process
-limit. Nginx overwrites a fixed `X-VibeStack-Proxy` marker on terminal and RFB
-WebSocket proxying. ttyd requires the header and matching Origin/Host authority;
-websockify rejects missing, wrong, or duplicate markers before connecting to
+limit. Nginx overwrites a fixed `X-VibeStack-Proxy` marker on RFB
+WebSocket proxying. websockify rejects missing, wrong, or duplicate markers before connecting to
 VNC. The marker prevents direct browser use of the container-loopback ports
 but is not a user credential. An automation or workspace-client credential is
 full `vibe` authority, not a sandbox; private Tailscale Serve remains a required
@@ -419,46 +416,25 @@ Chrome installs an enterprise policy that force-installs two extensions:
 | Claude in Chrome | `fcoeoabgfenejglbffodgkkbkcdhcgfn` |
 | Codex | `hehggadaopoacecdllhhajmbjkdcmajg` |
 
-### 3.7 The setup application
+### 3.7 The private setup API
 
-A Python standard-library HTTP server (`setup/server.py`) on `127.0.0.1:7999`,
-proxied by nginx at `/setup/`, started by supervisor at boot. It runs as `vibe`
-and installs through `sudo vibestack-install`. A separate root-only
-`vibestack-password` helper hashes, persists, applies, and restores only the
-fixed `vibe` account's password.
+The Python standard-library server at `127.0.0.1:7999` runs as `vibe` under
+Supervisor. It serves catalog/state/install/password and legacy pairing API
+operations only; no HTML/CSS/JavaScript wizard remains. nginx sends all public
+`/setup/api/*` calls through the Go workspace service for credential/grant checks,
+owner authorization and browser CSRF before private backend dispatch.
 
-The UI is three plain files, kept separate so they can be restyled freely:
-`index.html`, `style.css`, `app.js`.
+The overlay provides deterministic first-password and provider setup without a
+model. Package installation also remains available through the shared capability
+registry, CLI and `vibestack-setup`. `GET /api/state` and `/api/log` on the private
+backend expose bounded status/install progress. Public aliases retain their
+existing paths; removing pages does not remove authorized API compatibility.
 
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /` | Wizard, or 302 to `/` when component state and password are complete. `?force=1` always shows the wizard. |
-| `GET /api/state` | Catalog, installed/saved state, running job, bounded password status |
-| `GET /api/log?offset=N` | Incremental install log |
-| `POST /api/password` | Set or replace `vibe`'s Linux password from exact `{password, confirmation}` JSON |
-| `POST /api/install` | Start an install for the given component ids |
-| `POST /api/skip` | Mark setup complete, install nothing |
-| `POST /api/complete` | Mark setup complete with what is already installed |
-| `POST /api/reset` | Clear state so the wizard returns |
-| `GET /api/clients` | Pending pairings and revocable client metadata; never credentials |
-| `POST /api/pairings/{code}/approve|deny` | Resolve one expiring verification code |
-| `POST /api/clients/{id}/revoke` | Revoke one paired client credential |
-
-The wizard has no application login and is therefore tailnet-private. Its first
-step requires a 12–256 UTF-8-byte Linux password before presenting component
-selection; `/setup/?force=1` exposes a later replacement action. Replacement
-does not require the old value because possession of this private setup surface
-is the administrative trust boundary. The server passes plaintext only in the
-request body and fixed helper stdin, never argv, responses, shared logs, setup
-state, or browser storage.
-
-Setup can invoke only the fixed `vibestack-install` and `vibestack-password`
-helpers through restricted passwordless sudo rules. Normal terminal sudo uses
-the user-created password. The arbitrary automation surface is separate and
-always requires its bearer token. Setup, control, and automation enforce the
-same loopback, multi-label `*.ts.net`, or operator-configured exact Host
-allowlist on their direct listeners as nginx does,
-so a DNS-rebound browser origin cannot bypass the edge Host boundary.
+The fixed `vibestack-install` and `vibestack-password` helpers retain narrowly
+scoped passwordless sudo. The user chooses a 12–256 UTF-8-byte Linux password;
+only an authenticated owner can set or replace it via direct request body and
+helper stdin. It never passes through chat, argv, logs or browser storage. Normal
+sudo uses that password. The private loopback and Host/Origin protections remain.
 
 The image contains no default Linux password and builds `vibe` in a locked
 state. Bootstrap creates `/data/.vibestack-auth-v1` as root-owned mode `0700`;
@@ -506,10 +482,8 @@ Ways to bypass component selection (never password creation):
 
 - `vibestack-setup skip` marks setup complete without installing anything.
 - `VIBESTACK_SKIP_SETUP=1` does the same at boot, unattended.
-- Any valid version-1 state file with `completed: true` sends `/setup/` on to
-  `/` only after a Linux password is configured. Skipping components never
-  invents or persists a default password.
-- `vibestack-setup reset` clears it and the wizard returns.
+- Skipping component selection never invents or persists a default password.
+- `vibestack-setup reset` clears the saved selection; the overlay remains the UI.
 
 `vibestack-setup` also offers `status`, `list`, and `install <id>...`.
 
@@ -635,9 +609,9 @@ never enter VibeStack. Native VNC listens separately on container port 5901 and
 uses PAM/full Linux-password remote login. Its root process disables MIT-SHM
 capture because the X server belongs to `vibe`; password authentication becomes
 usable once onboarding unlocks that account. The browser VNC service remains
-independent. code-server is included in the base image, starts automatically, and is proxied at `/editor/`;
-desktop VS Code is expected to use Remote SSH rather than a second in-container
-desktop editor install.
+independent. Embedded code-server is removed; source editing uses the outer
+Codespaces editor, desktop tools or Remote SSH. Previous editor data is preserved
+for rollback without keeping an unused service running.
 
 ### 3.13 Docker host runner
 
@@ -680,7 +654,8 @@ marked physical are release checks performed on an iPadOS 17+ device.
 
 **Routes and transport**
 
-- AC-1 `/terminal/` serves ttyd and `/terminal/ws` upgrades to a WebSocket.
+- AC-1 Retired UI bookmarks redirect only safe GET/HEAD methods to `/vnc/`,
+  discard query strings and reject mutations. Old assets/WebSockets return 404.
 - AC-2 `/vnc/` serves the VibeStack shell, contains no stock noVNC controls,
   imports the pinned RFB module, and reaches ServerInit through
   `/vnc/websockify`.
@@ -704,7 +679,7 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-7 Fit scaling and balanced rendering remain defaults; `resizeSession` stays
   false. The panel offers connection recovery without old display/settings menus.
 - AC-8 No legacy toolbar, tabs, Apps/Settings drawer or embedded terminal/editor
-  is present in the canvas. Standalone route/service retirement is VST-016.
+  is present in the canvas. Legacy standalone routes/assets and unused editor/terminal services are removed.
 - AC-9 The icon and panel are keyboard/screen-reader accessible, restore focus,
   close on Escape, fit narrow screens and render provider content as inert text.
 - AC-10 Setup, streaming, scoped human approvals, lost replies, interruption and
@@ -756,7 +731,7 @@ marked physical are release checks performed on an iPadOS 17+ device.
 
 - AC-22 No catalog component or npm is present in a fresh image; scrot, xclip,
   xdotool, wmctrl, xprop, Xauthority, and XRandR utilities are present.
-- AC-23 The setup service runs under supervisor and serves its wizard/assets;
+- AC-23 The private setup API runs under supervisor without wizard/assets;
   its state API returns a valid catalog, installed list, state, job, and only
   bounded password configuration booleans.
 - AC-24 Every catalog ID has an installer branch, every preset and dependency
@@ -764,9 +739,9 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-25 Setup CLI `status` and `list` work; unknown component IDs are rejected;
   web and CLI install failures do not mark setup complete or discard the
   selected components.
-- AC-26 `skip` writes completed component state; a locked account remains in
-  password onboarding, configured-and-complete state redirects `/setup/` to
-  `/`, `?force=1` still shows settings, and `reset` restores component setup.
+- AC-26 `skip` writes completed component state without creating a Linux
+  password. `reset` clears the selection; the deterministic overlay guides first
+  password and provider setup. No setting resurrects the old wizard.
 
 **Persistence and session**
 
@@ -827,7 +802,7 @@ marked physical are release checks performed on an iPadOS 17+ device.
   clipboard/file bodies, screenshots, and stdout/stderr never enter shared
   logs.
 - AC-39 Xvfb requires its per-boot cookie and disables TCP; raw X11, VNC,
-  websockify, ttyd, setup, control and automation listeners are loopback-only;
+  websockify, setup, control and automation listeners are loopback-only;
   Docker uses default seccomp plus a PID cap. Explicit `--flatpak` alone
   relaxes seccomp, AppArmor, and protected system paths without privileged mode
   or added capabilities, and publishes a fresh root-owned capability marker.
@@ -853,13 +828,11 @@ marked physical are release checks performed on an iPadOS 17+ device.
   overwritten.
 - AC-43 The accepted image remains healthy after rollback-safe live rollout on
   the original mounts and passes both loopback and private Tailscale Serve
-  checks, including RFB/terminal WebSockets and an authenticated automation
+  checks, including the RFB WebSocket and an authenticated automation
   audit event.
-- AC-44 Direct WebSocket handshakes to websockify without the nginx marker, or
-  with a wrong marker, receive 403. Direct ttyd handshakes without the marker
-  are denied before upgrade (an explicit 403 or libwebsockets' empty transport
-  close); the acceptance check distinguishes those exact outcomes from an
-  unavailable service. The nginx-proxied RFB and terminal handshakes succeed.
+- AC-44 Direct WebSocket handshakes to websockify without the nginx marker,
+  or with a wrong marker, receive 403. The nginx-proxied RFB handshake succeeds.
+  Removed terminal WebSocket routes return 404.
 - AC-45 When Chrome is installed, XFCE plus the HTTP, HTTPS, and HTML MIME
   defaults resolve to `google-chrome.desktop`, whose XFCE helper runs the
   container-safe `vibestack-app` wrapper; ChatGPT retains its app-specific
@@ -940,7 +913,7 @@ acceptance gates. See [RUNNER.md](RUNNER.md) and [DEVELOPMENT.md](DEVELOPMENT.md
 
 ### Opt-in manual walkthrough diagnostics
 
-`/vnc/walkthrough.js` is loaded by setup, Home and the desktop shell. The
+`/vnc/walkthrough.js` is loaded by the desktop shell. The
 `walkthrough=1` tab setting enables bounded metadata events posted to
 `POST /api/v1/diagnostics/events`; `walkthrough=0` disables it. This narrow control
 route uses the existing private-network/same-origin boundary, bounded JSON input,
@@ -957,16 +930,16 @@ keeps provider work running and restores focus to the icon. Old `view`/`panel`
 query parameters do not reopen retired navigation. No chat text, provider output
 or credentials are stored in browser local/session storage. API authorization,
 browser CSRF, persistent mounts and provider execution authority remain unchanged.
-Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
-VST-016 owns their complete removal after replacement acceptance. Source editing
-remains available in the outer Codespaces editor.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
-The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
-amd64/arm64 package checksums and identities are verified during image build;
-Supervisor starts it automatically, and container health includes it. Apps and
-packs exclude the former `browser-editor` component. Legacy saved selections
-ignore that retired ID without resetting other selections; editor configuration
-and extensions retain their existing persistent mounts.
+The retired `browser-editor` catalog ID is ignored on state read without
+resetting other saved selections. Preserved editor data is not automatically
+started or published by the new image.
 
 Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
 Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only

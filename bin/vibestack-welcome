@@ -35,9 +35,9 @@ cat <<BANNER
 
   VibeStack
 
-  Finish onboarding, set your Linux password, and choose what to install at:
+  Open the agent icon to set your Linux password and activate a provider:
 
-      http://<this-host>${suffix}/setup/
+      http://<this-host>${suffix}/vnc/
 
   Or from here:  vibestack-setup status
                  vibestack-setup install node claude-code
@@ -45,6 +45,6 @@ cat <<BANNER
 
 BANNER
 if [[ "$pending" == "false" ]]; then
-  echo "  Setup is already complete. Reopen /setup/?force=1 to add components."
+  echo "  Setup is complete. Open the agent icon at /vnc/ to manage providers."
   echo
 fi

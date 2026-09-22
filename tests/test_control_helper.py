@@ -241,7 +241,7 @@ class DisplayTests(unittest.TestCase):
 class HelperBoundaryTests(unittest.TestCase):
     def test_service_names_have_fixed_program_and_log_mappings(self):
         self.assertEqual(
-            {"desktop", "vnc", "terminal", "setup"}, set(lib.SERVICE_PROGRAMS)
+            {"desktop", "vnc", "setup"}, set(lib.SERVICE_PROGRAMS)
         )
         self.assertEqual(set(lib.SERVICE_PROGRAMS), set(lib.SERVICE_LOGS))
         for path in lib.SERVICE_LOGS.values():
@@ -339,12 +339,12 @@ class HelperBoundaryTests(unittest.TestCase):
     def test_helper_restart_requires_running_postcondition(self):
         runner = ScriptedRunner(
             [
-                completed([], stdout="ttyd: stopped\nttyd: started\n"),
-                completed([], stdout="ttyd BACKOFF Exited too quickly\n"),
+                completed([], stdout="x11vnc: stopped\nx11vnc: started\n"),
+                completed([], stdout="x11vnc BACKOFF Exited too quickly\n"),
             ]
         )
         with self.assertRaises(lib.ControlError) as caught:
-            lib.helper_restart("terminal", runner=runner)
+            lib.helper_restart("vnc", runner=runner)
         self.assertEqual("service_restart_failed", caught.exception.code)
 
     def test_unknown_service_never_runs_a_command(self):

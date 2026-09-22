@@ -12,6 +12,8 @@ let stage = 'configuration', directory, client;
 const check = value => { if (!value) throw new Error('provider fixture assertion'); };
 async function main() {
   check(process.env.VIBESTACK_ALLOW_PROVIDER_TESTS === '1');
+  const mode = process.argv[2] || 'exercise';
+  check(['exercise','verify-restored'].includes(mode));
   const origin = new URL(process.env.VIBESTACK_MCP_BASE_URL);
   check(origin.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(origin.hostname) && !origin.username && !origin.password && origin.pathname === '/' && !origin.search && !origin.hash);
   const binary = process.env.VIBESTACK_MCP_CLI;
@@ -58,6 +60,24 @@ async function main() {
     check(value?.instance_id === identity && value?.capability === id && value.result && !value.error);
     return value.result;
   };
+  if (mode === 'verify-restored') {
+    stage = 'automatically restored native runtimes without a new activation';
+    for (const provider of ['codex','opencode']) {
+      let state;
+      for (let count=0;count<90;count++) {
+        state = (await call('rest','getProviderStatus',{provider})).provider;
+        if (state.phase === 'active' || state.phase === 'failed') break;
+        await new Promise(resolve=>setTimeout(resolve,1000));
+      }
+      check(state?.phase === 'active' && state.process === 'running' && state.readiness !== 'verified');
+    }
+    const {conversations} = await call('mcp','listProviderConversations',{});
+    check(conversations.length === 1 && conversations[0].provider === 'opencode' && conversations[0].operations.length === 0);
+    const page = await call('cli','readProviderEvents',{conversation:conversations[0].id});
+    check(page.conversation.status === 'idle' && page.conversation.operations.length === 0 && page.events.length === 0 && page.approvals.length === 0 && page.gap);
+    console.log('PASS native provider selection automatically restored; conversation metadata retained with explicit history gap and no submitted turn');
+    return;
+  }
   stage = 'shared authentication and strict activation input';
   check((await fetchJSON('/api/v1/providers')).status === 401);
   const denied = await fetchJSON('/api/v1/providers/activate', { method: 'POST', headers, body: JSON.stringify({ provider: 'codex', installer: 'https://invalid.example/install' }) });
@@ -111,7 +131,8 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     check(state.phase === 'active' && state.installed === true);
-    await call('rest', 'stopProvider', { provider });
+    // Leave this explicitly selected process running for restart/rollback
+    // acceptance. The disposable container owns its complete lifetime.
   }
   console.log('PASS real pinned provider catalog installation and private adapters through REST, native CLI and MCP: duplicate activation, absent Codex login, safe OpenCode model/session metadata, explicit stop/reactivation; no model call or human sign-in claimed');
 }

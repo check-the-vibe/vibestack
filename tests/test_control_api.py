@@ -450,7 +450,7 @@ class HTTPServiceTests(unittest.TestCase):
         self.server.mutation_lock.acquire()
         try:
             status, _, payload = self.request(
-                "POST", "/api/v1/services/terminal/restart", {}
+                "POST", "/api/v1/services/vnc/restart", {}
             )
         finally:
             self.server.mutation_lock.release()

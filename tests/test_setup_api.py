@@ -114,41 +114,16 @@ class SetupAPITests(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_completed_state_redirects_unforced_and_force_serves_wizard(self):
-        completed = {"completed": True}
-        with (
-            mock.patch.object(server_module.lib, "load_state", return_value=completed),
-            mock.patch.object(server_module, "WEB_ROOT", str(SETUP)),
-            mock.patch.object(
-                server_module,
-                "password_status",
-                return_value={
-                    "password_configured": True,
-                    "sudo_password_required": True,
-                },
-            ),
-        ):
-            status, headers, raw = self.request("GET", "/")
-            self.assertEqual(302, status)
-            self.assertEqual("/", headers["Location"])
-            self.assertEqual(b"", raw)
-
-            status, headers, raw = self.request("GET", "/?force=1")
-            self.assertEqual(200, status)
-            self.assertEqual("text/html; charset=utf-8", headers["Content-Type"])
-            self.assertIn(b"VibeStack", raw)
-
-    def test_completed_component_state_does_not_bypass_missing_password(self):
-        with (
-            mock.patch.object(
-                server_module.lib, "load_state", return_value={"completed": True}
-            ),
-            mock.patch.object(server_module, "WEB_ROOT", str(SETUP)),
-        ):
-            status, headers, raw = self.request("GET", "/")
-        self.assertEqual(200, status)
-        self.assertEqual("text/html; charset=utf-8", headers["Content-Type"])
-        self.assertIn(b"Create your Linux password", raw)
+    def test_retired_ui_is_absent_even_when_setup_or_password_is_incomplete(self):
+        for route in ("/", "/?force=1", "/index.html", "/app.js", "/style.css"):
+            with self.subTest(route=route), mock.patch.object(
+                server_module, "password_status"
+            ) as password:
+                status, headers, raw = self.request("GET", route)
+                self.assertEqual(404, status)
+                self.assertNotIn("Location", headers)
+                self.assertNotIn(b"<html", raw)
+                password.assert_not_called()
 
     def test_same_origin_json_post_remains_supported(self):
         expected = {"completed": True, "selected": []}

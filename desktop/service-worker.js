@@ -69,7 +69,6 @@ const SHELL_ASSETS = [
   '/vnc/app.css',
   '/vnc/app.js',
   '/vnc/walkthrough.js',
-  '/vnc/navigation.js',
   '/launcher.css',
   '/launcher.js',
   '/launcher.js?v=desktop-default-1',

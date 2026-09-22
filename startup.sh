@@ -460,8 +460,7 @@ while true; do
   sleep 2
 done
 
-echo "[startup] Setup:    http://${BIND_ADDRESS}:${PORT}/setup/"
-echo "[startup] Terminal: http://${BIND_ADDRESS}:${PORT}/terminal/"
+echo "[startup] Agent:    http://${BIND_ADDRESS}:${PORT}/vnc/"
 echo "[startup] Desktop:  http://${BIND_ADDRESS}:${PORT}/vnc/"
 (( SSH_PORT == 0 )) || echo "[startup] SSH:      ssh -p ${SSH_PORT} vibe@${BIND_ADDRESS}"
 (( NATIVE_VNC_HOST_PORT == 0 )) || echo "[startup] VNC:      ${BIND_ADDRESS}:${NATIVE_VNC_HOST_PORT} (Linux login)"

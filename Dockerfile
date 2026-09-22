@@ -13,7 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -trimpath -ldflags="-
 FROM ubuntu:24.04
 
 LABEL maintainer="VibeStack Project"
-LABEL description="VibeStack - slim Linux desktop for AI coding tools, with a first-boot setup wizard"
+LABEL description="VibeStack - slim Linux desktop for AI coding tools, with an agent overlay"
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
@@ -21,14 +21,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     DISPLAY=:0 \
     VNC_PORT=5900 \
     NOVNC_PORT=6080 \
-    TTYD_PORT=7681 \
     SETUP_PORT=7999 \
     CONTROL_PORT=7998 \
     AUTOMATION_PORT=7997 \
     RESOLUTION=1920x1200
 
 # ---------------------------------------------------------------------------
-# Base system only. Everything optional is installed by the setup wizard, so
+# Base system only. Everything optional is installed through the authenticated catalog, so
 # individual XFCE parts are named rather than pulling the xfce4 metapackage.
 # ---------------------------------------------------------------------------
 RUN apt-get update && \
@@ -60,25 +59,9 @@ RUN curl -fsSL "https://github.com/novnc/noVNC/archive/refs/tags/v${NOVNC_VERSIO
     rm -f /tmp/novnc.tar.gz && \
     test -f /usr/share/novnc/vnc.html
 
-# ttyd for the browser terminal
-ARG TTYD_VERSION=1.7.7
-ARG TTYD_SHA256_AMD64=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55
-ARG TTYD_SHA256_ARM64=b38acadd89d1d396a0f5649aa52c539edbad07f4bc7348b27b4f4b7219dd4165
-ARG TARGETARCH
-RUN case "${TARGETARCH}" in \
-      amd64) ttyd_asset=x86_64; ttyd_sha256="${TTYD_SHA256_AMD64}" ;; \
-      arm64) ttyd_asset=aarch64; ttyd_sha256="${TTYD_SHA256_ARM64}" ;; \
-      *) echo "unsupported ttyd target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${ttyd_asset}" -o /tmp/ttyd && \
-    echo "${ttyd_sha256}  /tmp/ttyd" | sha256sum -c - && \
-    install -m 0755 /tmp/ttyd /usr/bin/ttyd && \
-    rm -f /tmp/ttyd
-
-# Editor is a core workspace service, installed and verified while building.
-COPY --chmod=755 bin/vibestack-install-editor /usr/local/bin/vibestack-install-editor
+# Pillow renders the desktop wallpaper.
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pil && \
-    /usr/local/bin/vibestack-install-editor && apt-get clean && rm -rf /var/lib/apt/lists/*
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Ubuntu 24.04 ships an "ubuntu" user on UID 1000; replace it.
 RUN userdel -r ubuntu 2>/dev/null || true && \
@@ -96,7 +79,6 @@ COPY --chown=root:root --chmod=0444 sshd_config /etc/ssh/sshd_config_vibestack
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY setup/catalog.json /usr/share/vibestack/catalog.json
 COPY setup/setuplib.py setup/server.py /usr/share/vibestack/
-COPY setup/index.html setup/style.css setup/app.js /usr/share/vibestack/web/
 COPY common/ /usr/share/vibestack-common/
 COPY control/ /usr/share/vibestack-control/
 COPY automation/ /usr/share/vibestack-automation/

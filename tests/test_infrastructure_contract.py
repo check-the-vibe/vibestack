@@ -57,17 +57,9 @@ class InfrastructureContractTests(unittest.TestCase):
         ):
             self.assertRegex(dockerfile, rf"\b{re.escape(package)}\b")
         self.assertIn("ARG TARGETARCH", dockerfile)
-        self.assertIn("amd64) ttyd_asset=x86_64", dockerfile)
-        self.assertIn("arm64) ttyd_asset=aarch64", dockerfile)
-        self.assertIn(
-            "8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55",
-            dockerfile,
-        )
-        self.assertIn(
-            "b38acadd89d1d396a0f5649aa52c539edbad07f4bc7348b27b4f4b7219dd4165",
-            dockerfile,
-        )
-        self.assertIn('echo "${ttyd_sha256}  /tmp/ttyd" | sha256sum -c -', dockerfile)
+        self.assertNotIn("TTYD_VERSION", dockerfile)
+        self.assertNotIn("vibestack-install-editor", dockerfile)
+        self.assertIn("python3-pil", dockerfile)
 
     def test_external_oauth_uses_chrome_instead_of_looping_into_chatgpt(self) -> None:
         dockerfile = read("Dockerfile")
@@ -199,13 +191,8 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn("127.0.0.1:%(ENV_VNC_PORT)s", novnc)
         self.assertIn('PYTHONPATH="/usr/share/vibestack-proxy"', novnc)
 
-        ttyd = supervisor_section(supervisor, "program:ttyd")
-        self.assertIn("-i 127.0.0.1", ttyd)
-        self.assertIn("-O -H X-VibeStack-Proxy", ttyd)
-
-        acceptance = read("bin/vibestack-check")
-        self.assertIn('"403:0"', acceptance)
-        self.assertIn('"000:52"', acceptance)
+        self.assertNotIn("[program:ttyd]", supervisor)
+        self.assertNotIn("[program:code-server]", supervisor)
 
         dockerfile = read("Dockerfile")
         proxy_dir = "RUN install -d -m 0755 /usr/share/vibestack-proxy"
@@ -222,13 +209,10 @@ class InfrastructureContractTests(unittest.TestCase):
 
     def test_browser_stream_backends_require_nginx_proxy_marker(self) -> None:
         nginx = read("nginx.conf")
-        terminal = nginx[
-            nginx.index("location /terminal/") : nginx.index("location = /vnc")
-        ]
         websocket = nginx[
             nginx.index("location = /vnc/websockify") : nginx.index("location /vnc/")
         ]
-        for location in (terminal, websocket):
+        for location in (websocket,):
             self.assertIn("proxy_set_header Host $http_host;", location)
             self.assertIn(
                 "proxy_set_header X-VibeStack-Proxy vibestack-nginx-proxy-v1;",
@@ -244,12 +228,8 @@ class InfrastructureContractTests(unittest.TestCase):
         acceptance = read("bin/vibestack-check")
         self.assertIn("direct websockify missing proxy marker rejected", acceptance)
         self.assertIn("direct websockify wrong proxy marker rejected", acceptance)
-        self.assertIn("direct ttyd missing proxy marker rejected", acceptance)
-        self.assertIn(
-            'direct_ws_forbidden http://127.0.0.1:7681/ws tty', acceptance
-        )
 
-    def test_root_launcher_and_embedded_terminal_keep_same_origin_routes(self) -> None:
+    def test_root_launcher_and_retired_bookmarks_keep_same_origin_routes(self) -> None:
         nginx = read("nginx.conf")
         root_location = nginx[
             nginx.index("location = /") : nginx.index("location = /setup")
@@ -258,9 +238,10 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn("try_files /launcher.html =404;", root_location)
         self.assertIn('Content-Security-Policy "default-src \'self\'', root_location)
         terminal_location = nginx[
-            nginx.index("location /terminal/") : nginx.index("location = /vnc")
+            nginx.index("location /terminal/") : nginx.index("}", nginx.index("location /terminal/"))
         ]
-        self.assertIn("proxy_pass http://127.0.0.1:7681/;", terminal_location)
+        self.assertIn("return 404;", terminal_location)
+        self.assertNotIn("proxy_pass", terminal_location)
 
         for route, document in (
             ("/AGENTS.md", "/usr/share/doc/vibestack/AGENTS.md"),
@@ -276,8 +257,8 @@ class InfrastructureContractTests(unittest.TestCase):
 
         acceptance = read("bin/vibestack-check")
         self.assertIn('AC-3 / serves Desktop landing', acceptance)
-        self.assertIn('AC-26 configured setup redirects to launcher', acceptance)
-        self.assertIn('AC-26 locked account stays in onboarding', acceptance)
+        self.assertIn('retired UI bookmark $route redirects to overlay', acceptance)
+        self.assertIn('retired UI mutation $route rejected', acceptance)
 
     def test_optional_acceptance_install_records_setup_state(self) -> None:
         acceptance = read("bin/vibestack-check")
@@ -340,16 +321,15 @@ class InfrastructureContractTests(unittest.TestCase):
         self.assertIn("passwd --status vibe", acceptance)
         self.assertNotIn("vibestack-password set", acceptance)
 
-    def test_acceptance_forces_wizard_when_setup_is_complete(self) -> None:
-        acceptance = read("bin/vibestack-check")
-        wizard_check = next(
-            line for line in acceptance.splitlines() if '"AC-23 wizard served"' in line
-        )
-        self.assertIn(
-            'curl -fs "http://localhost/setup/?force=1" | grep -q "VibeStack"',
-            wizard_check,
-        )
-        self.assertNotIn("curl -fs http://localhost/setup/ | grep", wizard_check)
+    def test_retired_ui_assets_and_services_are_removed(self) -> None:
+        for path in ("setup/index.html", "setup/style.css", "setup/app.js",
+                     "desktop/navigation.js", "bin/vibestack-install-editor"):
+            self.assertFalse((ROOT / path).exists(), path)
+        self.assertNotIn("def _static(", read("setup/server.py"))
+        self.assertNotIn("WEB_ROOT", read("setup/server.py"))
+        self.assertNotIn("[program:code-server]", read("supervisord.conf"))
+        self.assertNotIn("[program:ttyd]", read("supervisord.conf"))
+        self.assertIn("retired services absent", read("bin/vibestack-check"))
 
     def test_automation_acceptance_cancels_only_after_observing_running(self) -> None:
         acceptance = read("bin/vibestack-automation-check")
@@ -379,7 +359,6 @@ class InfrastructureContractTests(unittest.TestCase):
             "program:x11vnc",
             "program:novnc",
             "program:xfce4",
-            "program:ttyd",
             "program:vibestack-setup",
             "program:vibestack-control",
             "program:vibestack-automation",
@@ -578,10 +557,9 @@ class InfrastructureContractTests(unittest.TestCase):
 
         acceptance = read("bin/vibestack-check")
         self.assertIn(
-            '{\\"desktop\\",\\"vnc\\",\\"terminal\\",\\"setup\\",\\"ssh\\",\\"native-vnc\\",\\"editor\\"}',
+            '{\\"desktop\\",\\"vnc\\",\\"setup\\",\\"ssh\\",\\"native-vnc\\"}',
             acceptance,
         )
-        self.assertIn("terminal cross-origin WS rejected", acceptance)
         self.assertIn("VNC cross-origin WS rejected", acceptance)
         self.assertIn("cross-origin static rejected", acceptance)
         self.assertIn("cross-site setup rejected", acceptance)
@@ -738,7 +716,6 @@ class InfrastructureContractTests(unittest.TestCase):
             "x11vnc",
             "novnc",
             "xfce4",
-            "ttyd",
             "vibestack-setup",
             "vibestack-control",
             "vibestack-automation",

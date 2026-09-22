@@ -51,6 +51,6 @@
       "VIBESTACK_NATIVE_VNC_PORT"
     ],
     "wallpaper": "/run/vibestack/runtime/wallpaper.png",
-    "core_editor": "code-server, preinstalled, autostart, loopback port 8443"
+    "source_editor": "outer Codespaces editor or desktop/SSH tools; no embedded web editor"
   }
 }

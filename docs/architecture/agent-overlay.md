@@ -53,8 +53,9 @@ remains available. Service-worker caches exclude live API/auth/MCP data.
 ## Migration and evidence
 
 `desktop/index.html`, `app.js` and `app.css` own the new surface. Old root navigation
-parameters no longer reopen terminal/editor/settings/apps views. VST-016 removes
-remaining standalone old routes, services and assets after replacement acceptance.
+parameters no longer reopen terminal/editor/settings/apps views. The VST-016 migration removes
+standalone old routes, services and assets; safe bookmarks redirect to the overlay
+while authenticated setup APIs and existing data remain.
 The outer Codespaces editor and shared `/projects/vibestack` source remain.
 
 Browser fixtures use an additional simulated provider to verify catalog-driven

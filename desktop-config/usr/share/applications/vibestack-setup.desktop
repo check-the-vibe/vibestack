@@ -1,8 +1,8 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Setup & Onboarding
-Comment=Choose VibeStack tools and review first-run guidance
+Name=VibeStack Agent
+Comment=Open the agent overlay for provider setup
 Exec=/usr/local/bin/vibestack-desktop-action setup
 Icon=vibestack
 Terminal=false

@@ -22,11 +22,9 @@ SERVICE_LOGS = (
     "native-vnc.log",
     "ssh.log",
     "xfce4.log",
-    "ttyd.log",
     "vibestack-setup.log",
     "vibestack-control.log",
     "vibestack-automation.log",
-    "code-server.log",
 )
 
 

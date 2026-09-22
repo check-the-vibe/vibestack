@@ -44,7 +44,6 @@ SUPERVISOR_ENV: Mapping[str, str] = {
     "RESOLUTION": "1920x1200",
     "VNC_PORT": "5900",
     "NOVNC_PORT": "6080",
-    "TTYD_PORT": "7681",
     "SETUP_PORT": "7999",
     "CONTROL_PORT": "7998",
     "AUTOMATION_PORT": "7997",
@@ -70,24 +69,20 @@ DISPLAY_HEIGHT_STEP = 2
 SERVICE_PROGRAMS: Mapping[str, str] = {
     "desktop": "xfce4",
     "vnc": "x11vnc",
-    "terminal": "ttyd",
     "setup": "vibestack-setup",
 }
 SERVICE_LOGS: Mapping[str, str] = {
     "desktop": "/data/logs/vibestack/services/xfce4.log",
     "vnc": "/data/logs/vibestack/services/x11vnc.log",
-    "terminal": "/data/logs/vibestack/services/ttyd.log",
     "setup": "/data/logs/vibestack/services/vibestack-setup.log",
 }
 OPTIONAL_SERVICE_PROGRAMS: Mapping[str, str] = {
     "ssh": "ssh",
     "native-vnc": "native-vnc",
-    "editor": "code-server",
 }
 OPTIONAL_SERVICE_LOGS: Mapping[str, str] = {
     "ssh": "/data/logs/vibestack/services/ssh.log",
     "native-vnc": "/data/logs/vibestack/services/native-vnc.log",
-    "editor": "/data/logs/vibestack/services/code-server.log",
 }
 MANAGED_SERVICE_PROGRAMS: Mapping[str, str] = {
     **SERVICE_PROGRAMS,

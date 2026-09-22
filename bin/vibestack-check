@@ -2,7 +2,7 @@
 # Acceptance checks for docs/SPEC.md. Run inside the container as vibe.
 #   vibestack-check             checks that do not change what is installed
 #   vibestack-check --display   also exercise and restore every display preset
-#   vibestack-check --restart   also exercise all four allowlisted restarts
+#   vibestack-check --restart   also exercise all allowlisted restarts
 #   vibestack-check --install   also install a component to prove the flow works
 #   vibestack-check --automation run reversible full automation API checks
 #   vibestack-check --live      allow optional components in an existing instance
@@ -61,16 +61,20 @@ direct_ws_result() {
 direct_ws_forbidden() {
   local protocol="$2" result
   result="$(direct_ws_result "$@")"
-  # websockify returns an explicit 403. ttyd/libwebsockets 4.3 denies the
-  # header check by closing before an HTTP response, which curl reports as
-  # exactly 000/52. Both are positive rejection signals, not broad failures.
-  [[ "$result" == "403:0" || ( "$protocol" == "tty" && "$result" == "000:52" ) ]]
+  # Only an explicit backend rejection establishes this boundary.
+  [[ "$result" == "403:0" ]]
 }
 STATE=~/.vibestack/setup.json
 
 echo "== Interfaces"
-check "AC-1 terminal page"      bash -c 'curl -fs http://localhost/terminal/ | grep -qi ttyd'
-check "AC-1 terminal websocket" ws http://localhost/terminal/ws tty
+for route in /setup /setup/ /setup/index.html /terminal /terminal/ /editor /editor/; do
+  check "retired UI bookmark $route redirects to overlay" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" "http://localhost$1?force=1") == 302 && $(curl -s -o /dev/null -w "%{redirect_url}" "http://localhost$1?force=1") == http://localhost/vnc/ ]]' _ "$route"
+  check "retired UI mutation $route rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost$1") == 405 ]]' _ "$route"
+done
+for route in /setup/app.js /setup/style.css /terminal/ws /editor/workbench /vnc/navigation.js; do
+  check "retired UI asset $route absent" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" "http://localhost$1") == 404 ]]' _ "$route"
+done
+check "retired services absent" bash -c '! command -v ttyd && ! command -v code-server && ! supervisorctl -c /etc/supervisor/supervisord.conf status | grep -Eq "^(ttyd|code-server)[[:space:]]"'
 check "AC-2 VibeStack desktop shell" bash -c 'curl -fs http://localhost/vnc/ | grep -q "VibeStack"'
 check "AC-2 noVNC RFB module"        bash -c 'curl -fs http://localhost/novnc/core/rfb.js | grep -q "class RFB"'
 check "AC-2 vnc rfb banner"          bash -c 'curl -s -i --max-time 3 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Protocol: binary" -H "Origin: http://localhost" http://localhost/vnc/websockify | grep -aq "RFB 003"'
@@ -99,7 +103,6 @@ check "AC-48 canonical internal agent guide" bash -c '
 '
 check "AC-4 relative redirects"   bash -c 'curl -s -D - -o /dev/null -H "Host: vibe.tailnet.ts.net:9999" http://localhost/vnc | grep -qi "^location: /vnc/"'
 check "AC-41 unknown Host rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Host: attacker.example" http://127.0.0.1/) == 421 ]]'
-check "AC-41 terminal cross-origin WS rejected" ws_cross_origin_rejected http://localhost/terminal/ws tty
 check "AC-41 VNC cross-origin WS rejected" ws_cross_origin_rejected http://localhost/vnc/websockify binary
 check "AC-41 cross-origin static rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Origin: https://attacker.example" http://localhost/vnc/) == 403 ]]'
 check "AC-41 cross-site top-level navigation allowed" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -H "Sec-Fetch-Site: cross-site" -H "Sec-Fetch-Mode: navigate" -H "Sec-Fetch-Dest: document" http://localhost/) == 200 ]]'
@@ -107,7 +110,6 @@ check "AC-41 extension top-level navigation allowed" bash -c '[[ $(curl -s -o /d
 check "AC-41 cross-site setup rejected" bash -c '[[ $(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Origin: http://localhost" -H "Sec-Fetch-Site: same-site" --data "{}" http://localhost/setup/api/install) == 403 ]]'
 check "AC-44 direct websockify missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary
 check "AC-44 direct websockify wrong proxy marker rejected" direct_ws_forbidden http://127.0.0.1:6080/websockify binary wrong
-check "AC-44 direct ttyd missing proxy marker rejected" direct_ws_forbidden http://127.0.0.1:7681/ws tty
 for p in /ui/ /admin/; do
   check "AC-5 $p is 404" bash -c "[[ \$(curl -s -o /dev/null -w '%{http_code}' http://localhost$p) == 404 ]]"
 done
@@ -138,7 +140,7 @@ check "AC-11 status contract" bash -c 'auth_curl -fs http://localhost/api/v1/sta
 import json,sys
 d=json.load(sys.stdin)
 assert d[\"apiVersion\"] == \"1\"
-assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"terminal\",\"setup\",\"ssh\",\"native-vnc\",\"editor\"}
+assert set(d[\"services\"]) == {\"desktop\",\"vnc\",\"setup\",\"ssh\",\"native-vnc\"}
 assert {\"uptimeSeconds\",\"disk\",\"display\"} <= set(d)
 "'
 check "AC-11 API no-store" bash -c 'auth_curl -s -D - -o /dev/null http://localhost/api/v1/status | grep -qi "^cache-control: no-store"'
@@ -159,7 +161,7 @@ restart_service() {
 }
 
 if $DO_RESTART; then
-  for service in vnc terminal setup desktop; do
+  for service in vnc setup desktop; do
     check "AC-10 restart ${service}" restart_service "$service"
   done
 fi
@@ -198,8 +200,6 @@ fi
 
 echo "== Setup service"
 check "AC-23 supervisor program"  bash -c 'supervisorctl -c /etc/supervisor/supervisord.conf status vibestack-setup 2>/dev/null | grep -q RUNNING || pgrep -f "vibestack/server.py" >/dev/null'
-check "AC-23 wizard served"       bash -c 'curl -fs "http://localhost/setup/?force=1" | grep -q "VibeStack"'
-check "AC-23 assets served"       bash -c 'curl -fs http://localhost/setup/style.css >/dev/null && curl -fs http://localhost/setup/app.js >/dev/null'
 check "AC-23 state api"           bash -c 'auth_curl -fs http://localhost/setup/api/state | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
@@ -275,13 +275,8 @@ elif [[ -f "$STATE" ]]; then
 else
   check "AC-26 skip writes state" bash -c 'vibestack-setup skip >/dev/null && grep -q "\"completed\": true" '"$STATE"
   check "AC-26 state in user root" bash -c '[[ -f "$HOME/.vibestack/setup.json" ]]'
-  if [[ "$(sudo -n /usr/local/bin/vibestack-password status | python3 -c 'import json,sys; print(str(json.load(sys.stdin)["password_configured"]).lower())')" == true ]]; then
-    check "AC-26 configured setup redirects to launcher" bash -c 'curl -s -D - -o /dev/null http://localhost/setup/ | grep -qiE "^location: /\r?$"'
-  else
-    check "AC-26 locked account stays in onboarding" bash -c 'curl -fs http://localhost/setup/ | grep -q "Create your Linux password"'
-  fi
-  check "AC-26 force shows wizard" bash -c 'curl -fs "http://localhost/setup/?force=1" | grep -q VibeStack'
-  check "AC-26 reset restores wizard" bash -c 'vibestack-setup reset >/dev/null && [[ ! -f '"$STATE"' ]] && curl -fs http://localhost/setup/ | grep -q VibeStack'
+  check "AC-26 reset clears saved component state" bash -c 'vibestack-setup reset >/dev/null && [[ ! -f '"$STATE"' ]]'
+
 fi
 
 echo "== Persistence"
@@ -345,7 +340,7 @@ else
 fi
 check "AC-29 window manager"   pgrep -x xfwm4
 check "AC-29 desktop running"  pgrep -x xfdesktop
-check "AC-29 welcome banner"   bash -c 'vibestack-welcome | grep -q "/setup/"'
+check "AC-29 welcome banner"   bash -c 'vibestack-welcome | grep -q "/vnc/"'
 
 if $DO_INSTALL; then
   echo "== Install flow (mutates the container)"

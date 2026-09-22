@@ -30,14 +30,14 @@ readiness. The **Ports** panel lists **VibeStack (private)** on **8080**. Open i
 in a browser if automatic opening is blocked. Wait for the lifecycle log's
 `VibeStack ready` message. The authenticated service additionally needs a browser
 credential handoff: follow [the service guide](../docs/SERVICE.md) to create an
-owner credential from the Codespace terminal and connect at `/connect.html`.
+owner credential from the Codespace terminal and connect using the agent icon at `/vnc/` (`/connect.html` also remains available).
 Then set your Linux password in Setup. Workspace credentials, the Linux password
 and provider sign-in are separate. Desktop, Terminal, Editor, Apps and Settings
 remain available during the UI migration.
 
 The Codespaces repository is bind-mounted read/write at
 `/projects/<repository-directory>` inside VibeStack (`/projects/vibestack` for
-this repository). Both editors see the same source files and Git metadata;
+this repository). The outer editor and native desktop tools see the same source files and Git metadata;
 changes are immediate in both directions. Other projects remain in the separate
 persistent projects directory. This shares the checkout, including any files
 you put in it; it does not forward Codespaces environment credentials, the
@@ -99,8 +99,8 @@ Graphical commands also need the desktop session environment from
 `/run/vibestack/session.env`, as described in `runtime/AGENTS.md`. The authenticated
 automation API supplies commands, jobs and screenshots when an agent needs to
 inspect the desktop. Copilot does not automatically see the graphical screen.
-Keep its commands scoped to this container. The embedded VibeStack editor is
-still supported; removing it would be a separate product change.
+Keep its commands scoped to this container. The embedded VibeStack browser editor
+is retired; use the outer source editor, Remote SSH or native desktop tools.
 
 ## Configuration and lifecycle
 
@@ -234,8 +234,8 @@ See [GitHub prebuilds](https://docs.github.com/en/codespaces/prebuilding-your-co
 2. Validate the devcontainer JSON and lifecycle tests. Build a tagged image and
    run the repository's disposable acceptance; never target personal desktops.
 3. On a real Codespace, verify the selected 4-core/16-GB machine, repository editor,
-   automatic desktop startup, private port 8080, setup, noVNC WebSocket, ttyd and
-   embedded editor. Confirm an unsigned-in browser cannot access the desktop.
+   automatic desktop startup, private port 8080, agent setup/chat and the noVNC
+   WebSocket. Verify retired UI bookmarks redirect without old assets/services. Confirm an unsigned-in browser cannot access the desktop.
 4. Create a harmless project file, stop/reopen, then rebuild the Dev Container;
    verify it persists. Check source edits reach the desktop after explicit rebuild.
 5. Record local simulation, real Codespaces and prebuild checks separately. A local

@@ -47,9 +47,7 @@ run_fast_tests() {
     node --check desktop/app.js
     node --check desktop/launcher.js
     node --check desktop/service-worker.js
-    node --check desktop/navigation.js
     node --check desktop/walkthrough.js
-    node --check setup/app.js
     node --check web/public/auth.js
     node --check web/public/connect.js
     node --check tests/capability-parity-check.mjs
@@ -64,10 +62,10 @@ run_fast_tests() {
       bin/vibestack-control bin/vibestack-password bin/vibestack-setup \
       control/server.py control/walkthrough.py proxy/websockify_auth.py setup/server.py setup/setuplib.py \
       bin/vibestack-wallpaper bin/vibestack-walkthrough \
-      tests/runtime_onboarding_check.py
+      tests/runtime_onboarding_check.py tests/provider-persistence-check.py
     bash -n bin/vibestack-app bin/vibestack-check bin/vibestack-desktop-action bin/vibestack-dev \
       bin/vibestack-flatpak \
-      bin/vibestack-healthcheck bin/vibestack-install bin/vibestack-install-editor bin/vibestack-persist \
+      bin/vibestack-healthcheck bin/vibestack-install bin/vibestack-persist \
       bin/vibestack-volume-init bin/vibestack-welcome cli.sh \
       packaging/install-runner.sh startup.sh xfce-startup entrypoint.sh
     python3 -m json.tool desktop/manifest.webmanifest >/dev/null
@@ -131,7 +129,7 @@ run_acceptance() (
         supervisorctl -c /etc/supervisor/supervisord.conf status >&2 || true
       docker logs --tail 300 "$acceptance_container" >&2 || true
       local service
-      for service in code-server ssh native-vnc; do
+      for service in ssh native-vnc; do
         echo "acceptance service log: $service (last 80 lines, at most 64 KiB)" >&2
         docker exec "$acceptance_container" \
           tail -c 65536 "/data/logs/vibestack/services/$service.log" 2>&1 |
@@ -184,8 +182,8 @@ run_acceptance() (
   openssl rand -out "$acceptance_password_file" -hex 24
   chmod 0600 "$acceptance_password_file"
   mkdir -p "$acceptance_data/.vibestack-state-v1" "$acceptance_data/projects"
-  # Supervisor starts the core editor as vibe, which must traverse /projects
-  # even when the host UID differs. Preserve the fixture's host ownership.
+  # Desktop tools need to traverse /projects even when the host UID differs.
+  # Preserve the fixture's nested host ownership.
   chmod 0755 "$acceptance_data/.vibestack-state-v1" "$acceptance_data/projects"
   touch "$acceptance_data/projects/ownership-sentinel"
   project_owner="$(stat -c '%u:%g' "$acceptance_data/projects/ownership-sentinel")"
@@ -242,7 +240,7 @@ run_acceptance() (
     < "$acceptance_password_file"
 
   # Exercise all durable acceptance routes. Their saved selection, exact
-  # probes, browser editor, Flatpak sandbox, and Godot's real X11 editor must
+  # probes, retired UI routes, Flatpak sandbox, and Godot's real X11 editor must
   # all work before the container is replaced.
   docker exec -u vibe "$acceptance_container" \
     vibestack-setup install godot build-essential flatpak
@@ -327,6 +325,24 @@ run_acceptance() (
     VIBESTACK_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
     VIBESTACK_BROWSER_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
     VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1 npm run test:browser)
+  provider_persistence() {
+    docker cp "$REPO_ROOT/tests/provider-persistence-check.py" \
+      "$acceptance_container:/tmp/vibestack-provider-persistence-check.py"
+    docker exec -e VIBESTACK_DISPOSABLE_PROVIDER_MIGRATION=1 "$acceptance_container" \
+      python3 /tmp/vibestack-provider-persistence-check.py "$1"
+  }
+  restored_providers() {
+    (cd "$REPO_ROOT" && \
+      VIBESTACK_MCP_BASE_URL="http://127.0.0.1:${ACCEPTANCE_PORT}" \
+      VIBESTACK_MCP_CREDENTIAL_FILE="$acceptance_password_dir/browser.token" \
+      VIBESTACK_MCP_CLI="$acceptance_password_dir/vibestack" \
+      VIBESTACK_ALLOW_PROVIDER_TESTS=1 node tests/provider-runtime-check.mjs verify-restored)
+  }
+  provider_persistence prepare
+  docker restart "$acceptance_container" >/dev/null
+  wait_for_health "$acceptance_container"
+  restored_providers
+  provider_persistence verify
   if [[ -n "${VIBESTACK_ROLLBACK_IMAGE:-}" ]]; then
     # Both images use only this invocation's disposable data/projects. The live
     # desktop is never inspected, retagged, stopped or mounted by this probe.
@@ -347,9 +363,10 @@ run_acceptance() (
     copy_onboarding_probe
     docker exec -i "$acceptance_container" \
       python3 /tmp/vibestack-runtime-onboarding-check.py \
-        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" with-providers \
+        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" with-providers with-legacy-ui \
       < "$acceptance_password_file"
     rollback_probe previous
+    provider_persistence verify
     docker exec -u vibe "$acceptance_container" vibestack-check --live
     docker rm -f "$acceptance_container" >/dev/null
     image="$candidate_image"
@@ -361,6 +378,8 @@ run_acceptance() (
         verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" with-providers \
       < "$acceptance_password_file"
     rollback_probe candidate
+    restored_providers
+    provider_persistence verify
     docker exec -u vibe "$acceptance_container" vibestack-check --live
   fi
 )
@@ -370,7 +389,6 @@ service_log_path() {
     desktop) echo /data/logs/vibestack/services/xfce4.log ;;
     vnc) echo /data/logs/vibestack/services/x11vnc.log ;;
     novnc) echo /data/logs/vibestack/services/novnc.log ;;
-    terminal) echo /data/logs/vibestack/services/ttyd.log ;;
     setup) echo /data/logs/vibestack/services/vibestack-setup.log ;;
     control) echo /data/logs/vibestack/services/vibestack-control.log ;;
     automation) echo /data/logs/vibestack/services/vibestack-automation.log ;;

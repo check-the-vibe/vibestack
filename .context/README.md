@@ -54,6 +54,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-013](tickets/VST-013.md) | MCP transport recovery and compatibility | [VST-013](branches/VST-013.md) |
 | [VST-014](tickets/VST-014.md) | Provider catalog, activation and runtime adapters | [VST-014](branches/VST-014.md) |
 | [VST-015](tickets/VST-015.md) | Agent icon, chat and guided provider setup | [VST-015](branches/VST-015.md) |
+| [VST-016](tickets/VST-016.md) | Legacy UI removal and provider-preserving migration | [VST-016](branches/VST-016.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

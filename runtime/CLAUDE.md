@@ -14,7 +14,7 @@ durable work below `/projects`; Desktop is for user-visible handoff files.
 Never print or disclose `~/.vibestack/automation.token` or any paired client
 credential.
 
-The Linux password is user-created in `/setup/`, is not retrievable by an
+The Linux password is user-created in the agent panel at `/vnc/`, is not retrievable by an
 agent, and must never be requested in a command or prompt. Use catalog installs
 where possible; leave an interactive sudo prompt for the user otherwise.
 For desktop applications outside the catalog, use `vibestack-flatpak` only

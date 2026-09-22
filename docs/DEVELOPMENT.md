@@ -143,6 +143,15 @@ credential access, file bytes/ETag, completed job metadata and live readiness.
 The live container and mounts are never used. Without this variable, rollback
 is not exercised and must not be claimed from an ordinary replacement check.
 
+The final UI migration also leaves both installed provider runtimes explicitly
+selected, restarts the disposable container, and verifies automatic activation
+without another activation call. `tests/provider-persistence-check.py` compares
+native metadata and the actual pinned OpenCode SQLite session with protected
+random sentinels in provider and legacy-editor data directories. It repeats those
+checks in the previous image and returned candidate. This proves storage and
+native session preservation without using any human account or model call; actual
+signed-in auth continuity and real turns remain a separate user verification.
+
 Before a development pass, read [the context index](../.context/README.md) and
 [ticket workflow](../.context/workflow.md). Associate the branch with at least
 one ticket, use the specification and plan as its scope, and update acceptance
@@ -182,9 +191,12 @@ keeps provider work running and restores focus to the icon. Old `view`/`panel`
 query parameters do not reopen retired navigation. No chat text, provider output
 or credentials are stored in browser local/session storage. API authorization,
 browser CSRF, persistent mounts and provider execution authority remain unchanged.
-Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
-VST-016 owns their complete removal after replacement acceptance. Source editing
-remains available in the outer Codespaces editor.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
 The same image's canonical operating instructions are available internally at
 `/usr/share/doc/vibestack/AGENTS.md` and externally at `/AGENTS.md`; the full
@@ -218,7 +230,7 @@ Install the optional native compiler toolchain with
 `vibestack-setup install build-essential`. Using the setup CLI records the
 selection for automatic restoration. Once onboarding has set the Linux
 password, `vibe` also has ordinary password-authenticated sudo, so interactive
-`sudo apt-get install build-essential` works in either terminal. That direct
+`sudo apt-get install build-essential` works in the native desktop or SSH terminal. That direct
 install is deliberately ephemeral; it disappears at container replacement.
 The catalog route is the durable choice.
 
@@ -299,13 +311,12 @@ sudo password, uses the good password for a real `apt-get update` and
 `build-essential` install, and checks that shared logs contain no plaintext.
 It recreates the container from the clean image against the same `/data`, proves
 that the password restores while the ad-hoc apt install does not, then installs
-Godot, `build-essential`, and Flatpak through the durable catalog route, with
-code-server already available as a core service. The
+Godot, `build-essential`, and Flatpak through the durable catalog route, while checking that the retired browser services are absent. The
 acceptance container alone receives all three explicit Flatpak security
 options. It verifies the nested bubblewrap preflight and exact stable Flathub
 remote, installs `org.gnome.Calculator` only in disposable state, and observes
 its real sandboxed XFCE window alongside Godot's editor and verifies the
-code-server process plus `/editor/` route before and after replacement. It also sends the
+retired UI routes before and after replacement. It also sends the
 actual Flathub `flatpak+https` link for VLC through the bounded handler, proves
 that remote permissions are displayed with the image's Flatpak version, answers
 `n`, and verifies that review remains a consent boundary rather than installing
@@ -328,9 +339,9 @@ one failed disposable run from completely fresh state to tolerate a transient
 hosted-runner or package-network failure; a release still requires one full
 end-to-end pass. A failed attempt prints bounded container, Supervisor, and
 service-log diagnostics before cleanup, including the last 80 lines (at most
-64 KiB per service) from code-server, SSH, and native VNC.
+64 KiB per service) from SSH and native VNC.
 The disposable project directory explicitly uses mode `0755` so the required
-core editor can start in `/projects` as `vibe` even when the CI host UID differs.
+desktop tools can traverse `/projects` as `vibe` even when the CI host UID differs.
 Its host ownership is preserved, and the sentinel ownership is rechecked from
 container root after bootstrap secures the bind root. The onboarding password
 directory remains private (`0700`).
@@ -475,9 +486,8 @@ output instead.
 `accept` and CI run the reversible command, shell, screenshot, Desktop-file,
 clipboard, application, and window automation checks, then set
 `VIBESTACK_ALLOW_MUTATING_BROWSER_TESTS=1` for the full restart/display browser
-suite safely away from the live desktop. That gated suite also loads the real
-same-origin ttyd iframe, verifies its CSP/resource/WebSocket path and focus,
-and executes one harmless arithmetic command through browser keyboard input.
+suite safely away from the live desktop. The suite checks the real desktop canvas and overlay, safe retired-bookmark
+redirects, absent old assets/WebSockets, preserved setup APIs and service discovery.
 
 Never put a real user password in `.env`, a Docker environment variable, an
 automation command, a command-line argument, or a test fixture. The runtime
@@ -580,12 +590,11 @@ is correct.
 - Every selected auto-restored application is present before rollback state is
   discarded.
 - The loopback HTTP URL and private Tailscale HTTPS URL both work, including
-  the RFB WebSocket, terminal WebSocket, control/automation APIs, setup flow,
+  the RFB WebSocket, control/automation APIs, agent setup flow,
   PWA assets, exact `/AGENTS.md` and `/AUTOMATION.md` documents, and request-ID
   audit records.
 - Direct handshakes to raw websockify without the fixed nginx marker (and with
-  a wrong marker) receive 403, direct ttyd without the marker receives 403,
-  and both nginx-proxied WebSocket paths still upgrade normally.
+  a wrong marker) receive 403, and the nginx-proxied RFB path upgrades normally.
 - Desktop/iPad Playwright projects pass. Any remaining physical iPad check is
   written down explicitly rather than implied by browser emulation.
 
@@ -615,7 +624,7 @@ user-selected application sign-in reuse acceptance or systemd installation.
 
 For an explicitly requested manual development session, use the host-only
 `bin/vibestack-walkthrough` helper. The current first-desktop is available at
-`https://server.tail14a7e5.ts.net:11080/setup/?walkthrough=1`.
+`https://server.tail14a7e5.ts.net:11080/vnc/?walkthrough=1`.
 The `walkthrough=1` query enables diagnostics for that browser tab across setup,
 Home and the desktop/terminal shell; `walkthrough=0` disables it. It records
 page/step transitions, fixed button IDs, request status/timing, connection
@@ -642,7 +651,7 @@ a debugging trace, not an audit guarantee. Same-origin callers can submit events
 treat them as untrusted observations, not evidence of user identity.
 
 Use the same flags with `mark password-page-issue`, `deploy`, or `rollback`.
-`deploy` syntax-checks and copies the allowlisted desktop/setup assets and Python
+`deploy` syntax-checks and copies the allowlisted desktop assets and Python
 modules, catalog, fixed XFCE workspace menu/actions, wallpaper/startup helpers,
 Supervisor configuration, health probe, and runtime guides into the explicitly
 named runner container. It backs up every destination, updates the service-worker
@@ -651,7 +660,7 @@ health. A failed patch restores the backup; `rollback` restores the most recent
 patch. Reload the browser after either operation. This leaves persistent user
 state and other desktops intact, but the patch is ephemeral: a container recreate
 returns to its image. It does not install dependencies or reload Supervisor:
-the core editor and Pillow must already be installed, and startup/configuration
+Pillow must already be installed, and startup/configuration
 changes take effect on the next container restart. Dependency, nginx, runner,
 or system service changes require the image/service workflow.
 
@@ -676,16 +685,16 @@ keeps provider work running and restores focus to the icon. Old `view`/`panel`
 query parameters do not reopen retired navigation. No chat text, provider output
 or credentials are stored in browser local/session storage. API authorization,
 browser CSRF, persistent mounts and provider execution authority remain unchanged.
-Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
-VST-016 owns their complete removal after replacement acceptance. Source editing
-remains available in the outer Codespaces editor.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
-The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
-amd64/arm64 package checksums and identities are verified during image build;
-Supervisor starts it automatically, and container health includes it. Apps and
-packs exclude the former `browser-editor` component. Legacy saved selections
-ignore that retired ID without resetting other selections; editor configuration
-and extensions retain their existing persistent mounts.
+The retired `browser-editor` catalog ID is ignored on state read without
+resetting other saved selections. Preserved editor data is not automatically
+started or published by the new image.
 
 Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
 Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only

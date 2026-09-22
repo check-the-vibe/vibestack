@@ -114,10 +114,11 @@ operation semantics. Limits remain 4 KiB control JSON, 64 KiB setup JSON,
 1 MiB + 4096 automation JSON, and 16 MiB raw files. New generic JSON capabilities
 use the [shared contract](https://github.com/check-the-vibe/vibestack/blob/main/docs/architecture/capability-contract.md).
 
-The private desktop WebSocket, terminal and editor routes still use the outer
-private boundary during migration. Keep Codespaces ports Private and local Docker
-loopback-bound. This foundation does not authorize public desktop access.
-Legacy UI removal is VST-016; provider/chat deployment is separate work.
+The desktop WebSocket still uses the outer private boundary. Keep Codespaces
+ports Private and local Docker loopback-bound. Legacy setup pages and browser
+terminal/editor services are removed. Safe old bookmarks redirect to the agent
+overlay; old assets/WebSockets are unavailable. All setup API aliases remain
+authenticated. Provider private APIs are never forwarded as separate ports.
 
 ## Publishing static files and operating the service
 

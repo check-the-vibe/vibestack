@@ -26,13 +26,10 @@ is recorded in [VST-014](.context/tickets/VST-014.md); the chat overlay is separ
 A slim Docker image that gives AI coding tools a full Linux desktop, reachable
 from any browser:
 
-- **Terminal** at `/terminal/` — a tmux-backed shell (ttyd).
 - **Desktop** at `/vnc/` — VibeStack's installable web shell around an XFCE desktop.
-- **Setup** at `/setup/` — first-boot Linux password and application wizard.
 - **Desktop** at `/` — the desktop canvas with an agent icon and chat/setup panel.
 - **Automation** at `/api/v1/automation` — bearer-authenticated desktop, command,
   application, window, project/file, SSH-key, screenshot, and clipboard operations for agents.
-- **Browser editor** at `/editor/` — required, preinstalled code-server rooted at `/projects`.
 - **Agent CLI** — a compiled Linux/macOS client with named profiles, device
   pairing, byte-safe project workflows, and stable JSON output.
 - **Host runner** — a separate Linux service for approved-image, multi-instance
@@ -43,7 +40,8 @@ from any browser:
   browser sessions and a static publish directory. Read [the service guide](docs/SERVICE.md).
 
 API calls now require credentials, including status/control and setup aliases.
-Browser access uses the human credential handoff at `/connect.html`. Upgrade the
+Browser access uses the direct credential form in the agent panel (the standalone
+`/connect.html` credential handoff also remains available). Upgrade the
 CLI for authenticated friendly control commands; existing automation credentials
 remain supported. Authenticated `/mcp` exposes enabled registered capabilities;
 read [the client matrix](docs/MCP.md) for tested protocols and gateway access.
@@ -56,7 +54,7 @@ bound to that conversation. Closing the panel keeps native work running. Read
 [the overlay guide](docs/architecture/agent-overlay.md) for limits and recovery.
 
 The base image includes the desktop, browser interfaces, automation runtime,
-and core code editor. Optional coding agents, browsers and other applications
+and agent overlay. Optional coding agents, browsers and other applications
 are installed by you from a catalog. The full specification is in
 [docs/SPEC.md](docs/SPEC.md). Read the checked-in
 [Linux desktop automation research](docs/research/linux-desktop-automation.md)
@@ -129,8 +127,7 @@ the workspace. Cross-site subresources, WebSockets, mutations, and duplicate
 or malformed metadata are rejected on every route. CLI requests may omit these
 browser-only headers.
 Nginx also overwrites a private proxy-marker header before forwarding the
-terminal and RFB WebSockets. ttyd requires that header and checks WebSocket
-Origin against the port-preserving Host; websockify requires exactly one
+RFB WebSockets. websockify requires exactly one
 constant-time exact marker match. Direct browser connections from inside the
 desktop to the raw loopback ports therefore fail. The fixed marker is defense
 in depth, not a user credential; container loopback and private Tailscale Serve
@@ -188,10 +185,10 @@ remote development user to edit.
 ## Linux password and sudo
 
 There is no default password. A new image keeps the `vibe` account locked until
-you set a password in the first setup step. The same password works at normal
-`sudo` prompts in the graphical XFCE terminal and the browser terminal. Change
-it later at `/setup/?force=1`; because setup is a trusted administrator surface,
-changing it does not ask for the prior password.
+you set a password through the agent panel. The same password works at normal
+`sudo` prompts in XFCE or SSH. An authenticated owner may replace it through
+`POST /setup/api/password` with a human secret handoff; the old password is not
+required. Never put that secret in chat or a shell command.
 
 Only a salted SHA-512 crypt hash is saved at
 `/data/.vibestack-auth-v1/vibe.shadow` (root-owned mode `0600`). Plaintext is
@@ -235,10 +232,9 @@ Native VNC is a separate PAM-backed x11vnc listener and therefore requires the
 full Linux password. Stopping it does not stop the passwordless browser desktop
 transport.
 
-Install the Browser editor catalog component to enable code-server at
-`/editor/`. Desktop VS Code is intentionally used through Remote SSH rather
-than a second browser editor protocol. Editor configuration and data persist
-under `/data`, and projects remain on the independent `/projects` mount.
+Use the outer Codespaces editor or desktop VS Code through Remote SSH. The
+embedded browser editor is retired. Its existing data remains under `/data` for
+rollback, and projects retain the independent `/projects` mount.
 
 ## Flatpak and Flathub
 
@@ -348,7 +344,6 @@ output are excluded from shared logs.
 | Claude Desktop | 560 MB | Chat and Claude Code tabs |
 | ChatGPT / Codex desktop | 1.3 GB | Large download; installs Chrome for external sign-in |
 | Godot Engine 4.7.2 | 200 MB | Pinned standard editor; amd64/arm64, Compatibility renderer |
-| Browser editor | 775 MB | Pinned code-server at `/editor/`, rooted at `/projects` |
 | Flatpak + stable Flathub | 25 MB plus selected app runtimes | Per-user apps; requires `--flatpak` |
 | Native build tools | 200 MB | Distro `build-essential`: GCC, G++, Make, and development headers |
 | Editors and diff | 82 MB | Mousepad, Geany, Vim, Meld as `git difftool` |
@@ -385,7 +380,7 @@ shell command or agent transcript.
 
 Setup state lives canonically at `/data/vibestack/setup.json` and is available
 through the persisted `~/.vibestack/setup.json` link. To add components later,
-open `/setup/?force=1`. Invalid or future-version state fails closed; reset it
+open the agent icon at `/vnc/`. Invalid or future-version state fails closed; reset it
 explicitly rather than expecting the service to normalize it. Web and CLI
 installs share one process-level lease. If the setup service restarts during a
 CLI install, `/api/state` reports the external job and the service defers its
@@ -415,7 +410,8 @@ by the next install or auto-restore attempt.
 
 Components are installed into the container, so `docker rm` removes them.
 Your choice is recorded in the persisted state file, and the setup service
-reinstalls anything missing on the next boot, showing progress at `/setup/`.
+reinstalls anything missing on the next boot. Inspect progress using
+`vibestack-setup status` or authenticated `GET /setup/api/state`.
 Set `"auto_restore": false` in the state file to turn that off.
 During replacement the launcher retains the stopped rollback container until
 this restoration converges, with a configurable one-hour default timeout.
@@ -448,7 +444,6 @@ replacing an existing user file or override.
 | `RESOLUTION` | `1920x1200` | Virtual display size |
 | `VNC_PORT` | `5900` | Internal x11vnc port |
 | `NOVNC_PORT` | `6080` | Internal noVNC/websockify port |
-| `TTYD_PORT` | `7681` | Internal ttyd port |
 | `SETUP_PORT` | `7999` | Internal setup service port |
 | `CONTROL_PORT` | `7998` | Internal desktop control API port |
 | `AUTOMATION_PORT` | `7997` | Internal token-authenticated automation API port |
@@ -472,7 +467,6 @@ replacing an existing user file or override.
 | `setup/catalog.json` | Component catalog: the source of truth |
 | `setup/server.py` | Setup service |
 | `setup/setuplib.py` | State, catalog and probe helpers |
-| `setup/index.html`, `style.css`, `app.js` | Wizard UI |
 | `desktop/` | Root launcher, custom noVNC/terminal shell, manifest, service worker and icons |
 | `control/` | Local allowlisted status, logs, restart and display API |
 | `automation/` | Privileged bearer-authenticated automation API and job runner |
@@ -517,8 +511,8 @@ VibeStack is available under the [MIT License](LICENSE).
 ## Known limitations
 
 - **Single-user private boundary.** The automation API has bearer
-  authentication; the terminal, setup wizard, desktop stream, and narrow
-  shell-control API still rely on host loopback plus private Tailscale Serve.
+  authentication. The desktop stream also relies on host loopback plus private
+  Tailscale Serve or GitHub private forwarding.
   Setup can replace the Linux password without the old password. Do not expose
   VibeStack to the public internet.
 - **Claude Desktop Cowork** needs KVM and cannot run in a container.
@@ -547,16 +541,16 @@ keeps provider work running and restores focus to the icon. Old `view`/`panel`
 query parameters do not reopen retired navigation. No chat text, provider output
 or credentials are stored in browser local/session storage. API authorization,
 browser CSRF, persistent mounts and provider execution authority remain unchanged.
-Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
-VST-016 owns their complete removal after replacement acceptance. Source editing
-remains available in the outer Codespaces editor.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
-The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
-amd64/arm64 package checksums and identities are verified during image build;
-Supervisor starts it automatically, and container health includes it. Apps and
-packs exclude the former `browser-editor` component. Legacy saved selections
-ignore that retired ID without resetting other selections; editor configuration
-and extensions retain their existing persistent mounts.
+The retired `browser-editor` catalog ID is ignored on state read without
+resetting other saved selections. Preserved editor data is not automatically
+started or published by the new image.
 
 Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
 Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only

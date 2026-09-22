@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""VibeStack first-boot setup wizard.
+"""Private catalog, installation, pairing and Linux-password API.
 
-Serves a small web UI that lets a person choose which components to install,
-runs the installer, and records the choice in a state file so later boots skip
-the wizard. Runs as the vibe user and installs through sudo.
+The public workspace service authenticates requests before this local backend.
+No legacy HTML, script or style assets are served here.
 """
 
 import json
@@ -30,7 +29,6 @@ if COMMON_ROOT not in sys.path:
 from vibestack_auth import ClientAuthError, WorkspaceClientStore  # noqa: E402
 from vibestack_hosts import host_is_configured  # noqa: E402
 
-WEB_ROOT = os.environ.get("VIBESTACK_WEB_ROOT", "/usr/share/vibestack/web")
 PORT = int(os.environ.get("SETUP_PORT", "7999"))
 INSTALLER = "/usr/local/bin/vibestack-install"
 PASSWORD_HELPER = "/usr/local/bin/vibestack-password"
@@ -46,11 +44,6 @@ MAX_PASSWORD_BYTES = 256
 MAX_PASSWORD_HELPER_RESPONSE_BYTES = 1024
 PASSWORD_HELPER_TIMEOUT_SECONDS = 30
 
-CONTENT_TYPES = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".js": "application/javascript; charset=utf-8",
-}
 HOST_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 
 _lock = threading.Lock()
@@ -620,16 +613,6 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         self._json(error.status, {"code": error.code, "error": error.message})
 
-    def _static(self, name):
-        path = os.path.join(WEB_ROOT, name)
-        if not os.path.isfile(path):
-            self._send(404, b"not found")
-            return
-        with open(path, "rb") as fh:
-            body = fh.read()
-        ext = os.path.splitext(name)[1]
-        self._send(200, body, CONTENT_TYPES.get(ext, "application/octet-stream"))
-
     def _state_payload(self):
         catalog = lib.catalog_for_runtime(lib.load_catalog())
         installed = lib.installed_ids(catalog)
@@ -696,22 +679,7 @@ class Handler(BaseHTTPRequestHandler):
             parsed.query, keep_blank_values=True, max_num_fields=8
         )
 
-        if path in ("/", "/index.html"):
-            try:
-                completed = lib.load_state().get("completed")
-            except lib.StateError:
-                completed = False
-            try:
-                password_configured = password_status()["password_configured"]
-            except PasswordBackendError:
-                password_configured = False
-            if completed and password_configured and not query.get("force"):
-                self._send(302, b"", headers={"Location": "/"})
-                return
-            self._static("index.html")
-        elif path in ("/style.css", "/app.js"):
-            self._static(path.lstrip("/"))
-        elif path == "/api/state":
+        if path == "/api/state":
             try:
                 payload = self._state_payload()
             except PasswordBackendError:
@@ -742,7 +710,7 @@ class Handler(BaseHTTPRequestHandler):
                     "api_versions": ["1"],
                     "api_roots": {"automation": "/api/v1/automation", "control": "/api/v1", "setup": "/setup/api"},
                     "documentation": {"agents": "/AGENTS.md", "cli": "/CLI.md", "automation": "/AUTOMATION.md", "runner": "/RUNNER.md"},
-                    "pairing": {"request": "/api/v1/automation/pairing/requests", "approval": "/setup/?force=1", "permissions": ["workspace"]},
+                    "pairing": {"request": "/api/v1/automation/pairing/requests", "approval": "/SERVICE.md", "permissions": ["workspace"]},
                     "cli": {"installer": "/cli.sh", "compatible": ">=0.2.0 <1.0.0"},
                 },
             )

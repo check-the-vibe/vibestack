@@ -101,7 +101,7 @@ def cmd_reset():
     except lib.StateError as exc:
         print("setup: %s" % exc.message, file=sys.stderr)
         return 1
-    print("state cleared; the wizard runs again at /setup/")
+    print("state cleared; open the agent at /vnc/ to set up providers")
     return 0
 
 

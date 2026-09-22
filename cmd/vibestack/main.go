@@ -170,7 +170,7 @@ func run(args []string) error {
 		if err := requireWorkspace(profile); err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, strings.TrimSuffix(profile.URL, "/")+"/setup/?force=1")
+		fmt.Fprintln(os.Stdout, strings.TrimSuffix(profile.URL, "/")+"/vnc/")
 		return nil
 	case "ssh-keys":
 		return sshKeys(ctx, client, rest, g)

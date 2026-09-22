@@ -302,7 +302,7 @@ def verify_catalog_components() -> None:
     _validate_catalog_state(setup_state(), allow_running=False)
 
 
-def verify_browser_editor() -> None:
+def verify_legacy_browser_editor() -> None:
     service = subprocess.run(
         [
             "/usr/bin/supervisorctl",
@@ -337,6 +337,25 @@ def verify_browser_editor() -> None:
     require(page.returncode == 0, "browser editor route is unavailable")
     require(len(page.stdout) <= MAX_HTTP_RESPONSE, "browser editor response exceeded its bound")
     require(b"code-server" in page.stdout.lower(), "browser editor returned unexpected content")
+
+
+# The previous VST-013 image legitimately contains the old editor during rollback.
+LEGACY_UI = False
+
+def verify_ui_migration() -> None:
+    if LEGACY_UI:
+        verify_legacy_browser_editor()
+        return
+    import shutil
+    require(shutil.which("code-server") is None and shutil.which("ttyd") is None,
+            "retired browser services are still installed")
+    for route in ("/setup/", "/terminal/", "/editor/"):
+        response = subprocess.run(
+            ["curl", "--silent", "--max-time", "10", "--output", "/dev/null",
+             "--write-out", "%{http_code} %{redirect_url}", "http://localhost" + route + "?force=1"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)
+        require(response.returncode == 0 and response.stdout == b"302 http://localhost/vnc/",
+                "retired UI bookmark does not redirect safely")
 
 
 def _persistent_directory_fd(directory: Path, home_link: Path) -> int:
@@ -824,7 +843,7 @@ def verify_flatpak() -> None:
 
 def verify_initial_catalog_install() -> None:
     verify_catalog_components()
-    verify_browser_editor()
+    verify_ui_migration()
     create_persistent_sentinels()
     verify_godot()
     verify_flatpak()
@@ -837,7 +856,7 @@ def verify_restored_catalog(secret: bytearray, timeout_seconds: int) -> None:
     identity = require_sudo(secret, ["/usr/bin/id", "-u"], timeout=30)
     require(identity.stdout.strip() == b"0", "restored password no longer authenticates sudo")
     verify_catalog_components()
-    verify_browser_editor()
+    verify_ui_migration()
     verify_persistent_sentinels()
     verify_godot()
     verify_flatpak()
@@ -855,27 +874,25 @@ def parse_restore_timeout(raw: str) -> int:
 
 
 def main() -> int:
-    global CATALOG_COMPONENTS
+    global CATALOG_COMPONENTS, LEGACY_UI
     require(os.geteuid() == 0, "runtime onboarding acceptance must run as root")
     require(len(sys.argv) >= 2, "invalid acceptance mode")
     mode = sys.argv[1]
     if mode == "catalog-installed":
         require(len(sys.argv) == 2, "invalid acceptance mode")
         verify_initial_catalog_install()
-        print("PASS  catalog probes, browser editor, and real Godot/Flatpak XFCE launches")
+        print("PASS  catalog probes, UI migration, and real Godot/Flatpak XFCE launches")
         return 0
     require(
         (mode in {"configure", "verify-restored"} and len(sys.argv) == 2)
-        or (mode == "verify-catalog-restored" and len(sys.argv) == 3)
-        or (mode == "verify-catalog-restored" and len(sys.argv) == 4 and sys.argv[3] == "with-providers"),
+        or (mode == "verify-catalog-restored" and 3 <= len(sys.argv) <= 5
+            and len(set(sys.argv[3:])) == len(sys.argv[3:])
+            and set(sys.argv[3:]) <= {"with-providers", "with-legacy-ui"}),
         "invalid acceptance mode",
     )
-
-    if mode == "verify-catalog-restored" and len(sys.argv) == 4:
-        # The native-provider smoke runs after the original catalog check.
-        # Preserve exact-set validation, now including its explicit additions
-        # and their shared catalog dependency, on both rollback transitions.
+    if "with-providers" in sys.argv[3:]:
         CATALOG_COMPONENTS += ("node", "codex-cli", "opencode")
+    LEGACY_UI = "with-legacy-ui" in sys.argv[3:]
 
     secret = read_secret()
     try:
@@ -887,7 +904,7 @@ def main() -> int:
             print("PASS  onboarding password restore and ephemeral apt boundary")
         else:
             verify_restored_catalog(secret, parse_restore_timeout(sys.argv[2]))
-            print("PASS  restored catalog, editor, Godot/Flatpak GUI state, and Linux password")
+            print("PASS  restored catalog, UI migration, Godot/Flatpak GUI state, and Linux password")
     finally:
         for index in range(len(secret)):
             secret[index] = 0

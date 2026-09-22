@@ -46,7 +46,7 @@ func patternInput(pattern string, max int) map[string]any {
 func (s *Server) workspaceOperations() []workspaceOperation {
 	empty := objectInput(map[string]any{})
 	jobID := patternInput(`^[0-9a-f]{32}$`, 32)
-	service := enumInput("desktop", "vnc", "terminal", "setup", "ssh", "native-vnc", "editor")
+	service := enumInput("desktop", "vnc", "setup", "ssh", "native-vnc")
 	filePath := patternInput(`^[^\x00\\]+$`, 4096)
 	etag := patternInput(`^[^\x00-\x1f\x7f]+$`, 1024)
 	operations := []workspaceOperation{

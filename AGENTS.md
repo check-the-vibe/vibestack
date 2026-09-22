@@ -14,8 +14,8 @@ separate private Codespaces gateway boundary.
 For managed Codex/OpenCode runtimes, read
 [the provider contract](docs/architecture/provider-runtimes.md). For browser
 work, read [the agent overlay contract](docs/architecture/agent-overlay.md).
-The canvas uses an agent icon and nonmodal chat/setup panel; standalone old
-UI/services remain a separate VST-016 migration. Keep actual signed-in provider
+The canvas uses an agent icon and nonmodal chat/setup panel. Legacy setup pages,
+ttyd and code-server are removed; retain setup APIs and persistent data for rollback. Keep actual signed-in provider
 acceptance separate from simulated events, protocol probes and image builds.
 Track the final user checks in [the runthrough](.context/runthrough.md).
 
@@ -53,7 +53,7 @@ with `.devcontainer/`; never infer private visibility from a port label.
 - `web/public/`: explicit publish root; never publish the repository or persistent data root.
 - `desktop-config/`: curated XFCE menu and fixed desktop actions.
 - `runtime/`: default global guidance seeded for in-container coding agents.
-- `setup/`: setup wizard and catalog state.
+- `setup/`: private setup API, catalog installation and durable state.
 - `bin/`: in-image helpers plus the host-only `vibestack-dev` workflow helper.
 - `xfce-startup`: X11, D-Bus, keyring, display-mode, and XFCE session setup.
 - `tests/`: Python contract/unit tests and Playwright browser tests.
@@ -75,8 +75,7 @@ with `.devcontainer/`; never infer private visibility from a port label.
 The live service normally binds to host loopback port 8080 and is shared
 privately with Tailscale Serve. Do not change it to `0.0.0.0`, use Funnel, or
 publish it to the public internet without explicit authorization. The
-terminal, legacy setup UI and desktop stream still rely on that private network
-boundary. API/setup operations additionally require workspace credentials or an
+desktop stream still relies on that private network boundary. API/setup operations additionally require workspace credentials or an
 authenticated browser session with CSRF protection. Password replacement requires
 owner authorization and a human secret handoff; ordinary sudo is password-authenticated, while only the three fixed
 VibeStack helpers are `NOPASSWD`.

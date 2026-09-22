@@ -11,13 +11,11 @@ readonly -a REQUIRED_PROGRAMS=(
   x11vnc
   novnc
   xfce4
-  ttyd
   vibestack-setup
   vibestack-control
   vibestack-automation
   vibestack-service
   nginx
-  code-server
 )
 
 if ! status="$(${SUPERVISORCTL} -c "${SUPERVISOR_CONFIG}" status "${REQUIRED_PROGRAMS[@]}" 2>&1)"; then

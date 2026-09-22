@@ -124,7 +124,6 @@ class XfceDesktopConfigTests(unittest.TestCase):
             {
                 "vibestack-workspace-desktop.desktop",
                 "vibestack-terminal.desktop",
-                "vibestack-editor.desktop",
                 "vibestack-settings.desktop",
                 "vibestack-projects.desktop",
                 "vibestack-desktop.desktop",
@@ -279,7 +278,7 @@ class XfceDesktopConfigTests(unittest.TestCase):
         self.assertIn("/usr/share/doc/vibestack/AGENTS.md", source)
         self.assertIn("https://flathub.org", source)
         self.assertIn("/usr/local/bin/vibestack-flatpak", source)
-        self.assertIn("http://127.0.0.1/setup/?force=1", source)
+        self.assertIn("http://127.0.0.1/vnc/", source)
         self.assertIn("http://127.0.0.1/api/v1/status", source)
         self.assertNotIn("http://127.0.0.1/api/v1/automation", source)
         self.assertIn('export DISPLAY="${DISPLAY:-:0}"', source)

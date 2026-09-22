@@ -10,7 +10,7 @@ readonly ACTION_LOG_MAX_BYTES=1048576
 readonly AGENT_GUIDE=/usr/share/doc/vibestack/AGENTS.md
 readonly AUTOMATION_GUIDE=/usr/share/doc/vibestack/AUTOMATION.md
 readonly FLATHUB_URL=https://flathub.org
-readonly SETUP_URL='http://127.0.0.1/setup/?force=1'
+readonly SETUP_URL='http://127.0.0.1/vnc/'
 readonly STATUS_URL=http://127.0.0.1/api/v1/status
 readonly SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 
@@ -21,10 +21,9 @@ usage: vibestack-desktop-action ACTION
 Actions:
   projects          open /projects
   workspace-desktop show the graphical desktop
-  editor            open the browser editor or its installer
   desktop           open the desktop folder
   logs              open persistent VibeStack logs
-  setup             open setup and onboarding
+  setup             open the agent overlay
   agent-guide       open the local VibeStack agent guide
   automation-guide  open the local automation guide
   flathub           browse the stable Flathub marketplace
@@ -250,7 +249,7 @@ case "$action" in
 esac
 
 case "$action" in
-  projects|desktop|workspace-desktop|editor|logs|setup|agent-guide|automation-guide|flathub|flatpak|service-status|settings|terminal|file-manager|screenshot)
+  projects|desktop|workspace-desktop|logs|setup|agent-guide|automation-guide|flathub|flatpak|service-status|settings|terminal|file-manager|screenshot)
     [[ $# -eq 0 ]] || { usage; exit 2; }
     LOG_ACTION="$action"
     ;;
@@ -286,9 +285,6 @@ case "$action" in
     ;;
   workspace-desktop)
     wmctrl -k on
-    ;;
-  editor)
-    open_url 'http://127.0.0.1/vnc/?view=editor'
     ;;
   desktop)
     mkdir -p "$HOME/Desktop"

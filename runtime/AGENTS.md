@@ -196,7 +196,7 @@ restrictions. Read `/AUTOMATION.md#provider-runtimes` for inputs and limits.
   Outer runtime storage is `/vibestack-runtime/<repository-directory>` in a
   dedicated volume. Missing storage or unsafe ownership requires operator
   investigation; do not reset state or recursively chown it to make startup pass.
-- The legacy `/setup/` UI, `/terminal/` and `/vnc/` rely on the private boundary.
+- The `/vnc/` desktop transport relies on the private boundary.
   Every API/setup operation also requires a workspace credential or browser
   session; browser mutations need CSRF protection. Existing paired credentials
   and legacy automation tokens retain workspace authority. Keep the port private.
@@ -260,9 +260,9 @@ URL:
 | `/` | Desktop canvas with agent-icon setup/chat overlay. |
 | `/vnc/?view=desktop` | Custom browser shell showing the XFCE desktop. |
 | `/vnc/?view=terminal` | Compatibility link; opens the desktop/agent overlay. |
-| `/terminal/` | Raw ttyd terminal, backed by the same persistent tmux session. |
-| `/setup/?force=1` | Linux-password onboarding and durable component catalog. |
-| `/editor/` | Optional code-server project editor. |
+| `/terminal/` | Retired bookmark; redirects to the agent overlay. |
+| `/setup/` | Retired bookmark; use the overlay or authenticated setup APIs. |
+| `/editor/` | Retired bookmark; edit source in Codespaces or through SSH. |
 | `/AGENTS.md` | This canonical operating guide. |
 | `/CLI.md`, `/RUNNER.md` | Client and Docker-host runner references. |
 | `/AUTOMATION.md` | Complete REST API reference and examples. |
@@ -272,12 +272,10 @@ setup and chat. Human secret forms submit directly to their handlers, not the
 model. The panel closes on Escape without stopping work. Provider output is inert
 text; only a human owner can answer its exact native approval. If the event stream
 reports a gap or unknown outcome, inspect provider history before more work.
-The old shell tabs/menus and embedded terminal/editor have been removed. Standalone
-legacy routes remain only during the VST-016 migration. Source editing stays in
-the outer Codespaces editor.
+The old shell tabs/menus, setup pages and embedded terminal/editor services have
+been removed. Source editing stays in the outer Codespaces editor.
 
-The XFCE **VibeStack** menu contains Projects, Desktop, persistent logs, Setup
-& Onboarding, the Agent and Automation guides, service status, the Flathub
+The XFCE **VibeStack** menu contains Projects, Desktop, persistent logs, Agent, the Agent and Automation guides, service status, the Flathub
 marketplace, Flatpak management, and screenshots. Other collections organize
 coding, creation/review, installed applications, and system settings. Flatpak
 desktop entries appear from the persistent per-user installation after the
@@ -407,7 +405,7 @@ vibestack-setup install <component-id>
 
 Catalog installs use a fixed passwordless helper and are recorded for
 automatic restoration after container replacement. The `vibe` account has no
-default password; the user creates one at `/setup/`. All other `sudo` commands
+default password; the user creates one in the agent panel at `/vnc/`. All other `sudo` commands
 prompt for that password in both terminals. An agent cannot retrieve it and
 must leave the prompt visibly waiting for the user rather than asking them to
 put the password in a prompt or command.
@@ -512,16 +510,16 @@ keeps provider work running and restores focus to the icon. Old `view`/`panel`
 query parameters do not reopen retired navigation. No chat text, provider output
 or credentials are stored in browser local/session storage. API authorization,
 browser CSRF, persistent mounts and provider execution authority remain unchanged.
-Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
-VST-016 owns their complete removal after replacement acceptance. Source editing
-remains available in the outer Codespaces editor.
+Legacy setup pages, ttyd and code-server are removed from the image. Read-only
+bookmarks at `/setup/`, `/terminal/` and `/editor/` redirect to `/vnc/` without
+query strings; mutation methods return 405 and old assets/WebSockets return 404.
+The authenticated `/setup/api/*` operations remain. Source editing uses the outer
+Codespaces editor, Remote SSH or native desktop tools. Existing editor data under
+`/data/code-server-config` and `/data/code-server-data` is retained for rollback.
 
-The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
-amd64/arm64 package checksums and identities are verified during image build;
-Supervisor starts it automatically, and container health includes it. Apps and
-packs exclude the former `browser-editor` component. Legacy saved selections
-ignore that retired ID without resetting other selections; editor configuration
-and extensions retain their existing persistent mounts.
+The retired `browser-editor` catalog ID is ignored on state read without
+resetting other saved selections. Preserved editor data is not automatically
+started or published by the new image.
 
 Desktop startup generates `/run/vibestack/runtime/wallpaper.png` with Python
 Pillow and the packaged DejaVu fonts, then applies it through XFCE. It shows only

@@ -256,8 +256,8 @@ Connection metadata includes `linux_username`, `password_status`,
 `infrastructure_ready`, `applications_restored`, `onboarding_required`, and
 `reachability`. Infrastructure readiness does not mean application onboarding is
 finished. `urls.password_setup` is the human password handoff; after password
-setup use `urls.desktop` for desktop/apps. Browser, terminal and editor remain
-at each instance's origin. Tailnet reachability grants browser access: the Linux
+setup use `urls.desktop` for the desktop and agent overlay. Retired terminal/editor
+URLs are no longer advertised. Tailnet reachability grants desktop access: the Linux
 password is not a web-login gate. SSH and native VNC are explicitly `host-local`
 and their loopback addresses are not advertised as remote links. Without managed
 Serve, browser URLs are also marked host-local.
@@ -286,5 +286,4 @@ mappings before resetting development state. Preserve host-folder contents and
 unrelated Docker workloads/mappings; never use global Docker prune or Serve reset.
 Use tmux for sudo authentication. Provision two clean desktops, validate shared
 access from two independent clients, MCP initialize/discovery/provision/poll/job
-flows, password persistence and Linux authentication, and real HTTPS desktop,
-terminal/editor and automation. Record physical-device checks separately.
+flows, password persistence and Linux authentication, and the real HTTPS desktop/agent overlay and authenticated automation. Record physical-device checks separately.

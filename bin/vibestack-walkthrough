@@ -20,8 +20,7 @@ import walkthrough
 
 FILES = {
     **{f'desktop/{p}': f'/usr/share/vibestack/desktop/{p}' for p in
-       ('index.html', 'launcher.html', 'app.js', 'app.css', 'launcher.js', 'launcher.css', 'service-worker.js', 'walkthrough.js', 'navigation.js')},
-    **{f'setup/{p}': f'/usr/share/vibestack/web/{p}' for p in ('index.html', 'app.js', 'style.css')},
+       ('index.html', 'launcher.html', 'app.js', 'app.css', 'launcher.js', 'launcher.css', 'service-worker.js', 'walkthrough.js')},
     **{f'control/{p}': f'/usr/share/vibestack-control/{p}' for p in ('server.py', 'controllib.py', 'walkthrough.py')},
     'setup/catalog.json': '/usr/share/vibestack/catalog.json',
     'setup/setuplib.py': '/usr/share/vibestack/setuplib.py',
@@ -31,7 +30,7 @@ FILES = {
     'bin/vibestack-healthcheck': '/usr/local/bin/vibestack-healthcheck',
     'bin/vibestack-desktop-action': '/usr/local/bin/vibestack-desktop-action',
     'desktop-config/etc/xdg/menus/vibestack-applications.menu': '/etc/xdg/menus/vibestack-applications.menu',
-    **{f'desktop-config/usr/share/applications/vibestack-{p}.desktop': f'/usr/share/applications/vibestack-{p}.desktop' for p in ('workspace-desktop', 'desktop', 'terminal', 'editor', 'settings')},
+    **{f'desktop-config/usr/share/applications/vibestack-{p}.desktop': f'/usr/share/applications/vibestack-{p}.desktop' for p in ('workspace-desktop', 'desktop', 'terminal', 'settings')},
     'runtime/AGENTS.md': '/usr/share/doc/vibestack/AGENTS.md',
     'docs/AUTOMATION.md': '/usr/share/doc/vibestack/AUTOMATION.md',
 }
@@ -132,6 +131,9 @@ def deploy(args, log):
             run('bash', '-n', str(path))
         elif path.suffix == '.py' or source == 'bin/vibestack-wallpaper':
             compile(path.read_text(), str(path), 'exec')
+    for binary in ('/usr/bin/ttyd', '/usr/bin/code-server'):
+        if run('docker', 'exec', args.container, 'test', '-e', binary, check=False).returncode != 1:
+            raise RuntimeError('Legacy service removal requires a tested image deployment, not a source patch.')
     state = request(args, '/setup/api/state')
     if state.get('job', {}).get('running'):
         raise RuntimeError('Wait for the active setup installation to finish before patching.')

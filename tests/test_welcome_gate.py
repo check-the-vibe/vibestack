@@ -76,17 +76,17 @@ esac
         result = self.run_welcome(setup_complete=True, password_configured=False)
         self.assertEqual(0, result.returncode)
         self.assertIn("set your Linux password", result.stdout)
-        self.assertIn("/setup/", result.stdout)
+        self.assertIn("/vnc/", result.stdout)
 
     def test_incomplete_setup_remains_pending_with_configured_password(self) -> None:
         result = self.run_welcome(setup_complete=False, password_configured=True)
         self.assertEqual(0, result.returncode)
-        self.assertIn("/setup/", result.stdout)
+        self.assertIn("/vnc/", result.stdout)
 
     def test_password_status_failure_fails_closed(self) -> None:
         result = self.run_welcome(setup_complete=True, password_configured=None)
         self.assertEqual(0, result.returncode)
-        self.assertIn("/setup/", result.stdout)
+        self.assertIn("/vnc/", result.stdout)
 
 
 if __name__ == "__main__":
