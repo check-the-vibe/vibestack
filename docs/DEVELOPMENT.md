@@ -289,6 +289,12 @@ source links, UI alternatives, and the agent workflow.
 
 ## Candidate image and disposable acceptance
 
+Provider migration acceptance checks a real native OpenCode session record and
+saved provider selections through restart, previous-image rollback and return.
+The provider manager retries read-only setup-state connection failures during
+startup within its activation deadline; it never retries an uncertain install
+POST. A passing UI test alone does not establish provider restoration.
+
 The upstream Ubuntu base has no CA trust store. Its existing signature-verified
 base-package bootstrap installs `ca-certificates`; immediately afterward the
 Dockerfile switches only the official Ubuntu archive, security, and ARM ports

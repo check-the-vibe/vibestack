@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +15,63 @@ import (
 	"github.com/check-the-vibe/vibestack/internal/providers"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+type providerInstallTransport func(*http.Request) (*http.Response, error)
+
+func (f providerInstallTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestProviderInstallWaitsForSetupStartupWithoutReplayingSubmission(t *testing.T) {
+	for _, mode := range []string{"late-setup", "uncertain-submission", "cancelled-wait", "invalid-state"} {
+		t.Run(mode, func(t *testing.T) {
+			f := serviceFixture(t)
+			var reads, submissions atomic.Int32
+			f.server.client.Transport = providerInstallTransport(func(r *http.Request) (*http.Response, error) {
+				if r.Method == "POST" {
+					submissions.Add(1)
+					return nil, errors.New("disposable lost submission response")
+				}
+				count := reads.Add(1)
+				if mode == "cancelled-wait" || (mode == "late-setup" && count == 1) {
+					return nil, errors.New("disposable setup listener not ready")
+				}
+				body := `{"state_valid":true,"installed":["codex-cli"],"job":{"running":false}}`
+				if mode == "uncertain-submission" {
+					body = `{"state_valid":true,"installed":[],"job":{"running":false}}`
+				} else if mode == "invalid-state" {
+					body = `{"state_valid":false,"installed":[],"job":{"running":false}}`
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+			})
+			timeout := 5 * time.Second
+			if mode == "cancelled-wait" {
+				timeout = 50 * time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			err := f.server.installProviderComponent(ctx, "codex-cli")
+			switch mode {
+			case "late-setup":
+				if err != nil || reads.Load() != 2 || submissions.Load() != 0 {
+					t.Fatalf("did not recover safe startup reads: %v reads=%d submissions=%d", err, reads.Load(), submissions.Load())
+				}
+			case "uncertain-submission":
+				if !errors.Is(err, providers.ErrDisconnected) || reads.Load() != 1 || submissions.Load() != 1 {
+					t.Fatal("uncertain install was replayed or hidden")
+				}
+			case "cancelled-wait":
+				if !errors.Is(err, context.DeadlineExceeded) || reads.Load() != 1 || submissions.Load() != 0 {
+					t.Fatal("startup wait ignored cancellation")
+				}
+			case "invalid-state":
+				if !errors.Is(err, providers.ErrUnavailable) || reads.Load() != 1 || submissions.Load() != 0 {
+					t.Fatal("invalid durable state was retried or treated as ready")
+				}
+			}
+		})
+	}
+}
 
 type fixtureProviders struct {
 	providerManager

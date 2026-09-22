@@ -12,13 +12,17 @@ VST-016 legacy-service removal and VST-007 fresh-Codespace acceptance remain ope
 - [VibeStack desktop](https://supreme-space-parakeet-p7jgg5v9jqh696v-8080.app.github.dev/vnc/)
 - [Stable agent bootstrap guide](https://supreme-space-parakeet-p7jgg5v9jqh696v-8080.app.github.dev/AGENTS.md)
 
-The existing desktop still runs accepted VST-013 until a later deployment is
-recorded. Its editor checkout and running image are separate state. A Git branch
+The existing desktop runs accepted VST-015 from source `09cfc30`, deployed on
+2026-09-22 after its hosted full gate passed. Image:
+`sha256:505ae7e7eeb56e83e7b01b309b771b23b9bd2fb7808c12e96bffdce86f97c74d`.
+The live check passed 74/0. Chrome shows the icon and workspace-credential form;
+human browser connection and native provider sign-in remain pending.
+Its editor checkout and running image are separate state. A Git branch
 switch shares source immediately at `/projects/vibestack`, but does not replace
 image services. Read [the Codespaces guide](github-codespaces.md) before rebuilding.
 Do not discard work to change branches: inspect `git status --short` first.
 
-## Once the replacement image is deployed
+## Verify the deployed overlay
 
 1. Open the desktop URL. Complete GitHub's private-port authentication if asked.
    The visible browser interface should be the desktop canvas and one agent icon.
@@ -87,7 +91,7 @@ providers and native histories. Record those outcomes in VST-007/VST-016.
 
 ## Final verification record
 
-- Deployed branch, commit and exact image: pending.
+- Deployed branch: `codex/vst-015-agent-overlay`; source and image recorded above.
 - Fresh Codespace/editor/desktop URLs and private port: pending.
 - Codex signed-in stream, approval and interrupt: pending human verification.
 - OpenCode signed-in stream, approval and interrupt: pending human verification.
