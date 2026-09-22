@@ -13,16 +13,18 @@ new specifications, not the file to edit for these four features.
 | SPEC-003 | [Authenticated MCP](SPEC-003-authenticated-mcp.md) | Remote authorization, local adapter and tool coverage |
 | SPEC-004 | [Chat agent interface](SPEC-004-chat-agent-interface.md) | Agent icon/chat overlay, host API activation of in-VibeStack providers and complete old-UI removal |
 
-Read state from each specification. These are initial drafts, with proposed
-choices and unresolved decisions. No feature implementation is implied.
+Read design decisions from each specification and implementation/verification
+state from its tickets. The draft label preserves unresolved compatibility and
+account-dependent decisions; it is not a runtime status. The
+[runthrough](../runthrough.md) distinguishes main, candidate branches and deployed
+images, including the checks still requiring a human account.
 
 ## Review together
 
 All four drafts are checked into main, authored under VST-004. PR #10 was
 closed after direct integration at the user's request on 2026-09-21. There is
-no separate branch for each specification. Implementation branches are created
-when their individual tickets begin; [VST-008](../tickets/VST-008.md) now has its
-[owning branch](../branches/VST-008.md).
+no separate branch for each specification. Implementation branches are registered
+per ticket in the [context index](../README.md).
 
 Review one specification at a time in this order:
 
@@ -43,8 +45,8 @@ combined agent-access proposal is no longer a separate design authority.
 2. Build the static host and authenticated service foundation in [VST-005](../tickets/VST-005.md).
 3. Add capability authoring in [VST-006](../tickets/VST-006.md), one-URL guidance/CLI distribution in [VST-009](../tickets/VST-009.md), and MCP authentication in [VST-011](../tickets/VST-011.md).
 4. Expose registered MCP tools in [VST-012](../tickets/VST-012.md), then verify four-surface parity in [VST-010](../tickets/VST-010.md) and transport compatibility in [VST-013](../tickets/VST-013.md).
-5. Complete fresh Codespaces and extension/deployment acceptance in [VST-007](../tickets/VST-007.md). No fleet infrastructure is required.
-6. Build provider activation/adapters and the chat overlay in [VST-014](../tickets/VST-014.md)–[VST-015](../tickets/VST-015.md), then retire the old interface in [VST-016](../tickets/VST-016.md) after its replacement journeys pass.
+5. Build provider activation/adapters and the chat overlay in [VST-014](../tickets/VST-014.md)–[VST-015](../tickets/VST-015.md), then retire the old interface in [VST-016](../tickets/VST-016.md) after its replacement journeys pass.
+6. Complete fresh Codespaces and combined extension/deployment acceptance in [VST-007](../tickets/VST-007.md), including the provider/overlay migration. No fleet infrastructure is required. This final integration scope was recorded on 2026-09-22; real sign-in and outside-gateway checks remain explicit requirements.
 
 This is dependency order, not an automatic launch of parallel agents or an
 estimate. Each implementation ticket gets an owning branch when it is started.
