@@ -64,7 +64,9 @@ CLI/MCP parity is covered by VST-010/VST-012; final hosted acceptance is VST-007
 The disposable `bin/vibestack-dev accept` workflow includes an executable
 authoring demonstration in `tests/extension-authoring-check.py`. It copies only
 build inputs, adds one bounded echo definition/handler and registration, compiles
-it, and checks duplicate IDs and invalid schemas reject startup. In the named
+it for the image's Linux architecture with the production static-Go build and
+executable permissions, and checks duplicate IDs and invalid schemas reject
+startup. In the named
 acceptance container it replaces the workspace binary temporarily, invokes the
 new capability through REST, MCP, generic CLI and authenticated Chromium, then
 restores the original binary and verifies every discovery/dispatch surface drops

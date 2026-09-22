@@ -33,6 +33,13 @@ def main():
     if not re.fullmatch(r'vibestack-acceptance-[0-9]+', container):
         raise RuntimeError('unexpected container name')
     details = json.loads(run('docker', 'inspect', container))[0]
+    image = json.loads(run('docker', 'image', 'inspect', details['Image']))[0]
+    architecture = image['Architecture']
+    if image['Os'] != 'linux' or architecture not in ('amd64', 'arm64'):
+        raise RuntimeError('unsupported acceptance image platform')
+    # Match the production Docker build, not the CI host's linker/platform.
+    build_env = {**os.environ, 'CGO_ENABLED': '0', 'GOOS': 'linux',
+                 'GOARCH': architecture, 'GOFLAGS': ''}
     mounts = {m['Destination']: m for m in details['Mounts']}
     data = mounts.get('/data', {})
     projects = mounts.get('/projects', {})
@@ -123,8 +130,10 @@ func acceptanceEcho(ctx context.Context, _ Principal, raw json.RawMessage) (any,
             schema.write_text(json.dumps(changed))
             entries = ', ' + entry + (', ' + entry if variant == 'duplicate' else '')
             registration.write_text(initial.replace(anchor, anchor[:-1] + entries + '}'))
-            run('go', 'build', '-buildvcs=false', '-o', str(candidate),
-                './cmd/vibestack-service', cwd=source)
+            run('go', 'build', '-buildvcs=false', '-trimpath', '-ldflags=-s -w',
+                '-o', str(candidate), './cmd/vibestack-service', cwd=source,
+                env=build_env)
+            candidate.chmod(0o555)
             if variant == 'valid':
                 break
             run('docker', 'cp', str(candidate), f'{container}:/tmp/vibestack-extension-invalid')
@@ -146,6 +155,10 @@ func acceptanceEcho(ctx context.Context, _ Principal, raw json.RawMessage) (any,
             docker(*SUPERVISOR, 'stop', 'vibestack-service')
             replaced = True
             run('docker', 'cp', str(candidate), f'{container}:{BINARY}')
+            # docker cp over an existing image file can retain its destination
+            # attributes. Normalize only this disposable executable explicitly.
+            docker('chown', 'root:root', BINARY)
+            docker('chmod', '0555', BINARY)
             docker(*SUPERVISOR, 'start', 'vibestack-service')
             ready()
             STAGE = 'installed extension parity'
