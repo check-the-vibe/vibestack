@@ -34,79 +34,27 @@ class DesktopShellContractTests(unittest.TestCase):
         self.assertIn('VIBESTACK_BIND_ADDRESS:-127.0.0.1', source)
         self.assertIn('-p "${BIND_ADDRESS}:${PORT}:80"', source)
 
-    def test_html_has_unique_ids_and_primary_surfaces(self) -> None:
+    def test_html_has_unique_ids_and_accessible_overlay(self) -> None:
         parser = IdCollector()
         parser.feed((ROOT / "index.html").read_text(encoding="utf-8"))
         self.assertEqual(len(parser.ids), len(set(parser.ids)))
-        self.assertTrue(
-            {
-                "screen",
-                "desktop-view-tab",
-                "terminal-view-tab",
-                "terminal-stage",
-                "terminal-frame",
-                "connection-panel",
-                "settings-dialog",
-                "tools-dialog",
-                "clipboard-dialog",
-                "virtual-keyboard",
-                "render-profile",
-            }.issubset(parser.ids)
-        )
+        self.assertTrue({"screen", "agent-toggle", "agent-panel", "credential-form",
+                         "password-form", "provider-select", "message-form", "approvals"}.issubset(parser.ids))
+        trigger = parser.attributes_by_id["agent-toggle"]
+        self.assertEqual(trigger.get("aria-controls"), "agent-panel")
+        self.assertEqual(trigger.get("aria-expanded"), "false")
+        panel = parser.attributes_by_id["agent-panel"]
+        self.assertEqual(panel.get("role"), "dialog")
+        self.assertEqual(panel.get("aria-modal"), "false")
+        self.assertIn("hidden", panel)
+        for old in ("terminal-stage", "editor-stage", "settings-dialog", "apps-dialog", "input-controls-panel"):
+            self.assertNotIn(old, parser.ids)
 
-    def test_root_lands_on_desktop_and_only_forwards_supported_navigation(self) -> None:
+    def test_old_root_navigation_does_not_restore_retired_panels(self) -> None:
         script = (ROOT / "launcher.js").read_text(encoding="utf-8")
         self.assertIn("new URL('/vnc/', source)", script)
-        self.assertIn("panel:['apps','settings']", script)
-        self.assertIn("window.location.replace", script)
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        for name in ("desktop-stage", "terminal-stage", "editor-stage", "apps-dialog", "settings-dialog"):
-            self.assertIn('id="' + name + '"', html)
-
-    def test_workspace_view_tabs_and_terminal_frame_are_accessible(self) -> None:
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        parser = IdCollector()
-        parser.feed(html)
-        desktop_tab = parser.attributes_by_id["desktop-view-tab"]
-        terminal_tab = parser.attributes_by_id["terminal-view-tab"]
-        terminal_frame = parser.attributes_by_id["terminal-frame"]
-        self.assertEqual("tab", desktop_tab.get("role"))
-        self.assertEqual("desktop-stage", desktop_tab.get("aria-controls"))
-        self.assertEqual("tab", terminal_tab.get("role"))
-        self.assertEqual("terminal-stage", terminal_tab.get("aria-controls"))
-        self.assertEqual("/terminal/", terminal_frame.get("data-src"))
-        self.assertEqual("VibeStack browser terminal", terminal_frame.get("title"))
-
-    def test_all_desktop_controls_share_one_collapsed_topbar_menu(self) -> None:
-        html = (ROOT / "index.html").read_text(encoding="utf-8")
-        parser = IdCollector()
-        parser.feed(html)
-        self.assertNotIn("touch-dock", html)
-        self.assertTrue(
-            {
-                "input-controls-button",
-                "input-controls-panel",
-                "match-screen-button",
-                "auto-resize-toggle",
-                "settings-button",
-                "tools-button",
-            }.issubset(parser.ids)
-        )
-        trigger = parser.attributes_by_id["input-controls-button"]
-        self.assertEqual("input-controls-panel", trigger.get("aria-controls"))
-        self.assertEqual("false", trigger.get("aria-expanded"))
-        self.assertEqual("input-controls-toggle", trigger.get("data-testid"))
-        panel = parser.attributes_by_id["input-controls-panel"]
-        self.assertIn("hidden", panel)
-        self.assertEqual("input-controls-panel", panel.get("data-testid"))
-        panel_markup = html[
-            html.index('id="input-controls-panel"') : html.index("</header>")
-        ]
-        self.assertIn('id="settings-button"', panel_markup)
-        self.assertIn('id="tools-button"', panel_markup)
-        auto_resize = parser.attributes_by_id["auto-resize-toggle"]
-        self.assertEqual("checkbox", auto_resize.get("type"))
-        self.assertEqual("switch", auto_resize.get("role"))
+        self.assertNotIn("panel:", script)
+        self.assertNotIn("view:", script)
 
     def test_manifest_uses_root_scope_and_raster_install_icons(self) -> None:
         manifest = json.loads((ROOT / "manifest.webmanifest").read_text(encoding="utf-8"))
@@ -117,78 +65,20 @@ class DesktopShellContractTests(unittest.TestCase):
         sizes = {icon["sizes"] for icon in manifest["icons"] if icon["type"] == "image/png"}
         self.assertTrue({"192x192", "512x512"}.issubset(sizes))
 
-    def test_client_uses_public_rfb_and_exact_control_contract(self) -> None:
+    def test_client_preserves_public_rfb_and_secret_boundaries(self) -> None:
         source = (ROOT / "app.js").read_text(encoding="utf-8")
         self.assertIn("from '/novnc/core/rfb.js'", source)
         self.assertIn("new URL('/vnc/websockify'", source)
-        for endpoint in ("/status", "/display", "/services/", "/logs/"):
-            self.assertIn(endpoint, source)
-        for field in ("uptimeSeconds", "availableBytes", "availableResolutions"):
-            self.assertIn(field, source)
+        self.assertIn("resizeSession=false", source)
         self.assertIn("serververification", source)
         self.assertIn("RETRY_DELAYS", source)
-        self.assertIn("RENDER_PROFILES", source)
-        self.assertNotIn("localStorage.setItem('clipboard", source)
-        self.assertIn("navigator.clipboard?.writeText", source)
-        self.assertIn("elements.clipboardText.select()", source)
-        self.assertIn("workspaceViewFromLocation", source)
-        self.assertIn("window.history.pushState", source)
-
-    def test_expected_vnc_restart_recovers_even_after_a_clean_disconnect(self) -> None:
-        source = (ROOT / "app.js").read_text(encoding="utf-8")
-        self.assertIn("expectingVncRestart: false", source)
-        self.assertIn("recoveringVncRestart: false", source)
-        self.assertIn("scheduleReconnect('VNC is restarting.', { force: true })", source)
-        self.assertIn("{ force: state.recoveringVncRestart }", source)
-
-    def test_initial_connection_failure_requires_manual_retry(self) -> None:
-        source = (ROOT / "app.js").read_text(encoding="utf-8")
-        self.assertIn("hasConnected: false", source)
-        self.assertIn("state.hasConnected = true", source)
-        failure_handler = source[
-            source.index("function handleConnectionFailure") : source.index(
-                "function stopConnection"
-            )
-        ]
-        self.assertIn("if (!state.hasConnected)", failure_handler)
-        self.assertIn("stopConnection(", failure_handler)
-        self.assertIn("scheduleReconnect(", failure_handler)
-        disconnect_handler = source[
-            source.index("rfb.addEventListener('disconnect'") : source.index(
-                "rfb.addEventListener('securityfailure'"
-            )
-        ]
-        self.assertIn("handleConnectionFailure(", disconnect_handler)
-        self.assertEqual(disconnect_handler.count("scheduleReconnect("), 2)
-        self.assertIn("state.expectingVncRestart", disconnect_handler)
-        self.assertIn("state.expectingDisplayResize", disconnect_handler)
-        self.assertIn("The desktop display is resizing.", disconnect_handler)
-        manual_handler = source[
-            source.index("function manualConnect") : source.index(
-                "function scheduleReconnect"
-            )
-        ]
-        self.assertIn("state.hasConnected = false", manual_handler)
-
-    def test_virtual_keyboard_has_mobile_edit_and_composition_buffer(self) -> None:
-        source = (ROOT / "app.js").read_text(encoding="utf-8")
-        self.assertIn("const VIRTUAL_KEYBOARD_SENTINEL", source)
-        self.assertIn("virtualKeyboardValue: VIRTUAL_KEYBOARD_SENTINEL", source)
-        self.assertIn("function virtualKeyboardDelta", source)
-        self.assertIn("for (let index = 0; index < backspaces", source)
-        self.assertIn("sendKey(SPECIAL_KEYS.Backspace)", source)
-        self.assertIn("sendText(inserted)", source)
-        self.assertIn("event.isComposing || state.keyboardComposing", source)
-        self.assertIn("addEventListener('compositionstart'", source)
-        self.assertIn("addEventListener('compositionend'", source)
+        self.assertNotIn("innerHTML", source)
+        self.assertNotIn("localStorage", source)
+        self.assertNotIn("sessionStorage", source)
+        self.assertNotIn("console.", source)
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('autocorrect="off"', html)
-
-    def test_dialogs_explicitly_close_on_escape_and_restore_focus(self) -> None:
-        source = (ROOT / "app.js").read_text(encoding="utf-8")
-        self.assertIn("const dialogInvokers = new WeakMap()", source)
-        self.assertIn("event.key !== 'Escape'", source)
-        self.assertIn("dialogInvokers.get(dialog)", source)
+        self.assertNotIn('src="/terminal/', html)
+        self.assertNotIn('src="/editor/', html)
 
     def test_service_worker_excludes_live_routes_and_precaches_module_graph(self) -> None:
         source = (ROOT / "service-worker.js").read_text(encoding="utf-8")

@@ -41,6 +41,13 @@ The version-matched operating guide is available inside the desktop at
 
 ## Provider runtimes
 
+The browser consumes these same registered operations from the agent icon at
+`/vnc/`, with the normal session cookie, CSRF header and expected instance ID.
+There is no separate chat authorization path. Credential/password forms submit
+only to their existing protected handlers. No browser transcript is persisted;
+closing the panel retains it in memory and does not cancel work. Native histories
+remain provider-owned. Actual signed-in turn acceptance is separate from UI tests.
+
 Provider operations use the common capability envelope. Inspect
 `GET /api/v1/capabilities` and `/api/capabilities.openapi.json` for exact schemas,
 or use `vibestack --profile NAME capability schema`. Every operation also has

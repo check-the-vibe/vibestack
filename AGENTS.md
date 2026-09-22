@@ -11,6 +11,14 @@ definition/handler, without new bypass routes or listeners. For workspace MCP,
 read [the transport guide](docs/MCP.md); preserve shared authorization and the
 separate private Codespaces gateway boundary.
 
+For managed Codex/OpenCode runtimes, read
+[the provider contract](docs/architecture/provider-runtimes.md). For browser
+work, read [the agent overlay contract](docs/architecture/agent-overlay.md).
+The canvas uses an agent icon and nonmodal chat/setup panel; standalone old
+UI/services remain a separate VST-016 migration. Keep actual signed-in provider
+acceptance separate from simulated events, protocol probes and image builds.
+Track the final user checks in [the runthrough](.context/runthrough.md).
+
 Read `docs/DEVELOPMENT.md` before changing or deploying the project, and update
 that guide plus `README.md` and `docs/SPEC.md` whenever a command, route, port,
 runtime path, dependency, security boundary, or operator workflow changes.

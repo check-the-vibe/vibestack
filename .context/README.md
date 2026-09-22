@@ -25,6 +25,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 
 ## Start points
 
+- [Staged deployment and user verification runthrough](runthrough.md)
 - [Agent platform initiative and feature drafts](initiatives/agent-platform.md)
 - [Specification directory](specifications/README.md)
 - [Specification-writing prompt](prompts/specify.md)
@@ -52,6 +53,7 @@ exactly one primary ticket. Prefer one bounded ticket per branch.
 | [VST-010](tickets/VST-010.md) | Cross-client parity and compatibility | [VST-010](branches/VST-010.md) |
 | [VST-013](tickets/VST-013.md) | MCP transport recovery and compatibility | [VST-013](branches/VST-013.md) |
 | [VST-014](tickets/VST-014.md) | Provider catalog, activation and runtime adapters | [VST-014](branches/VST-014.md) |
+| [VST-015](tickets/VST-015.md) | Agent icon, chat and guided provider setup | [VST-015](branches/VST-015.md) |
 
 Read status from the ticket on the ref you are inspecting. This table deliberately
 contains no status column. The first two records are retrospective. The workflow and four draft

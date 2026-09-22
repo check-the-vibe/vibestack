@@ -5,283 +5,92 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#101319">
   <meta name="color-scheme" content="dark">
-  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="VibeStack">
-  <meta name="format-detection" content="telephone=no">
-  <meta name="description" content="A private, touch-friendly Linux desktop in your browser.">
-  <title>VibeStack Desktop</title>
+  <meta name="description" content="Your private desktop, with an agent at hand.">
+  <title>VibeStack</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png">
-  <link rel="stylesheet" href="app.css">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <link rel="stylesheet" href="/vnc/app.css">
   <script src="/vnc/walkthrough.js"></script>
-  <script src="/vnc/navigation.js" defer></script>
+  <script type="module" src="/vnc/app.js"></script>
 </head>
 <body>
-  <a class="skip-link" id="skip-link" href="#desktop-stage">Skip to workspace</a>
-
-  <svg class="svg-defs" aria-hidden="true">
-    <symbol id="i-desktop" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
-    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
-    <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><circle cx="12" cy="12" r="3"/></symbol>
-    <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.55v-.1a1.7 1.7 0 0 0-1.07-1.5 1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.08 15a1.7 1.7 0 0 0-1.58-1H2.4V10h.1a1.7 1.7 0 0 0 1.58-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.54 4.2l.06.06A1.7 1.7 0 0 0 8.48 4a1.7 1.7 0 0 0 1-1.5v-.1h4.04v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 18.92 9a1.7 1.7 0 0 0 1.58 1h.1v4h-.1a1.7 1.7 0 0 0-1.1 1Z"/></symbol>
-    <symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5L20 16.4a2.1 2.1 0 1 1-3 3l-7.7-7.7"/><path d="m5.4 13.6-3.2 3.2a2.8 2.8 0 0 0 4 4l3.2-3.2"/></symbol>
-    <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 9h6M9 13h6M9 17h4"/></symbol>
-    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M7 16h10"/></symbol>
-    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.6-2.6L20 8M4 16l2.3 2.6A7 7 0 0 0 17.9 16"/></symbol>
-    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 4h5v5M11 13l9-9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></symbol>
-    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-  </svg>
-
-  <div class="app-shell" id="app-shell">
-    <header class="topbar" data-testid="desktop-toolbar">
-      <a class="brand" href="/" aria-label="VibeStack Home">
-        <span class="brand-mark" aria-hidden="true"><span></span></span>
-        <span class="brand-copy">
-          <strong>VibeStack</strong>
-          <small id="desktop-name">Private desktop</small>
-        </span>
-      </a>
-
-      <nav class="view-switcher" aria-label="Workspace navigation" data-testid="view-switcher">
-        <div class="workspace-tabs" role="tablist" aria-label="Workspace view">
-        <a class="view-tab" id="desktop-view-tab" href="/vnc/?view=desktop" role="tab" aria-selected="true" aria-controls="desktop-stage" data-workspace-view="desktop" data-testid="desktop-view-tab">
-          <svg aria-hidden="true"><use href="#i-desktop"></use></svg><span>Desktop</span>
-        </a>
-        <a class="view-tab" id="terminal-view-tab" href="/vnc/?view=terminal" role="tab" aria-selected="false" aria-controls="terminal-stage" data-workspace-view="terminal" data-testid="terminal-view-tab">
-          <svg aria-hidden="true"><use href="#i-terminal"></use></svg><span>Terminal</span>
-        </a>
-        <a class="view-tab" id="editor-view-tab" href="/vnc/?view=editor" data-workspace-view="editor" data-workspace-editor role="tab" aria-selected="false" aria-controls="editor-stage"><svg aria-hidden="true"><use href="#i-tools"></use></svg><span>Editor</span></a>
-        </div>
-        <button class="view-tab" type="button" data-open-settings aria-haspopup="dialog" aria-controls="settings-dialog"><svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></button>
-      </nav>
-
-      <div class="connection-pill" id="connection-pill" role="status" aria-live="polite" data-testid="connection-status">
-        <span class="connection-dot" aria-hidden="true"></span>
-        <span id="connection-label">Connecting</span>
-      </div>
-
-      <nav class="top-actions" aria-label="Workspace controls">
-        <a class="tool-button workspace-back" id="workspace-back" href="/vnc/?view=desktop" hidden>← Desktop</a>
-        <button class="tool-button" id="apps-button" type="button" data-open-apps aria-haspopup="dialog" aria-controls="apps-dialog">Apps</button>
-        <button class="tool-button input-controls-toggle" id="input-controls-button" type="button" aria-label="Show desktop menu" aria-controls="input-controls-panel" aria-expanded="false" data-testid="input-controls-toggle">
-          <svg><use href="#i-keyboard"></use></svg><span>Menu</span>
-        </button>
-        <button class="icon-button" id="focus-button" type="button" aria-label="Focus remote desktop" title="Focus remote desktop">
-          <svg><use href="#i-focus"></use></svg>
-        </button>
-        <button class="icon-button" id="fullscreen-button" type="button" aria-label="Enter full screen" title="Full screen" aria-pressed="false">
-          <svg><use href="#i-fullscreen"></use></svg>
-        </button>
-      </nav>
-
-      <div class="input-controls-panel" id="input-controls-panel" role="group" aria-label="Desktop menu" data-testid="input-controls-panel" hidden>
-        <nav class="menu-workspace-navigation" aria-label="Workspace destinations">
-          <a class="input-control-button menu-destination-button" href="/vnc/?view=desktop" data-menu-view="desktop">Desktop</a>
-          <a class="input-control-button menu-destination-button" href="/vnc/?view=terminal" data-menu-view="terminal">Terminal</a>
-          <a class="input-control-button menu-destination-button" href="/vnc/?view=editor" data-workspace-editor data-menu-view="editor">Editor</a>
-          <button class="input-control-button menu-destination-button" id="settings-button" type="button" data-open-settings aria-haspopup="dialog" aria-controls="settings-dialog" data-testid="open-settings">
-            <svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span>
-          </button>
-        </nav>
-        <button class="input-control-button desktop-only-control" id="keyboard-button" type="button" aria-pressed="false">
-          <svg><use href="#i-keyboard"></use></svg><span>Keyboard</span>
-        </button>
-        <button class="input-control-button desktop-only-control" id="clipboard-button" type="button" aria-haspopup="dialog" aria-controls="clipboard-dialog">
-          <svg><use href="#i-clipboard"></use></svg><span>Clipboard</span>
-        </button>
-        <span class="input-controls-divider desktop-only-control" aria-hidden="true"></span>
-        <button class="input-control-button modifier-button desktop-only-control" type="button" data-modifier="control" aria-pressed="false">Ctrl</button>
-        <button class="input-control-button modifier-button desktop-only-control" type="button" data-modifier="alt" aria-pressed="false">Alt</button>
-        <button class="input-control-button modifier-button desktop-only-control" type="button" data-modifier="super" aria-pressed="false">Super</button>
-        <button class="input-control-button input-control-danger desktop-only-control" id="cad-button" type="button" title="Send Ctrl+Alt+Delete">Ctrl Alt Del</button>
-        <span class="input-controls-divider desktop-only-control" aria-hidden="true"></span>
-        <button class="input-control-button match-screen-button desktop-only-control" id="match-screen-button" type="button">
-          <svg><use href="#i-desktop"></use></svg><span>Match screen</span>
-        </button>
-        <span class="input-controls-divider desktop-only-control" aria-hidden="true"></span>
-        <button class="input-control-button menu-destination-button" id="tools-button" type="button" aria-haspopup="dialog" aria-controls="tools-dialog" data-testid="open-tools">
-          <svg><use href="#i-tools"></use></svg><span>Tools</span>
-        </button>
-      </div>
+  <a class="skip-link" href="#agent-toggle">Skip to agent</a>
+  <main id="desktop-stage" aria-label="Remote desktop" tabindex="-1">
+    <div id="screen" aria-label="Remote Linux desktop" data-testid="novnc-screen"></div>
+    <div id="connection-panel" data-testid="connection-panel" role="status">
+      <p id="connection-message">Connecting to your workspace…</p>
+    </div>
+  </main>
+  <button id="agent-toggle" type="button" aria-label="Open VibeStack agent" aria-controls="agent-panel" aria-expanded="false">
+    <svg aria-hidden="true" viewBox="0 0 32 32"><path d="M7 9h18v13H14l-7 5V9Z"/><path d="M12 15h1m6 0h1"/></svg>
+    <span id="agent-indicator" aria-hidden="true"></span>
+  </button>
+  <section id="agent-panel" role="dialog" aria-modal="false" aria-labelledby="agent-title" hidden>
+    <header class="panel-header">
+      <div><p class="eyebrow">Your workspace</p><h1 id="agent-title">VibeStack agent</h1></div>
+      <button id="agent-close" type="button" class="icon-button" aria-label="Close agent">×</button>
     </header>
-
-    <main class="desktop-stage workspace-stage" id="desktop-stage" tabindex="-1" role="tabpanel" aria-labelledby="desktop-view-tab" data-testid="desktop-stage">
-      <div class="screen" id="screen" aria-label="Remote Linux desktop" data-testid="novnc-screen"></div>
-
-      <section class="connection-panel" id="connection-panel" aria-labelledby="connection-title" aria-live="polite" aria-atomic="true" data-testid="connection-panel">
-        <div class="connection-glyph" aria-hidden="true"><svg><use href="#i-desktop"></use></svg></div>
-        <p class="eyebrow">Remote desktop</p>
-        <h1 id="connection-title">Starting your workspace</h1>
-        <p id="connection-message">Connecting to the desktop inside this VibeStack.</p>
-        <button class="primary-button" id="connection-action" type="button" hidden>Try again</button>
+    <p id="panel-notice" role="status" aria-live="polite"></p>
+    <div class="panel-body">
+      <section id="connection-step" hidden aria-labelledby="connect-heading">
+        <h2 id="connect-heading">Connect your workspace</h2>
+        <p>Paste the workspace credential supplied by your local operator. This connection stays in a private browser session.</p>
+        <form id="credential-form">
+          <label for="workspace-credential">Workspace credential</label>
+          <input id="workspace-credential" type="password" autocomplete="off" spellcheck="false" required>
+          <button class="primary" type="submit">Connect</button>
+        </form>
+        <p><a href="/SERVICE.md" target="_blank" rel="noreferrer">How to obtain a workspace credential</a></p>
       </section>
-
-      <input class="virtual-keyboard" id="virtual-keyboard" type="text" inputmode="text" enterkeyhint="enter" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Remote desktop keyboard input">
-    </main>
-
-    <main class="terminal-stage workspace-stage" id="terminal-stage" tabindex="-1" role="tabpanel" aria-labelledby="terminal-view-tab" data-testid="terminal-stage" hidden>
-      <iframe class="terminal-frame" id="terminal-frame" title="VibeStack browser terminal" data-src="/terminal/" data-testid="terminal-frame"></iframe>
-    </main>
-    <main class="editor-stage workspace-stage" id="editor-stage" tabindex="-1" role="tabpanel" aria-labelledby="editor-view-tab" hidden>
-      <div class="editor-unavailable" id="editor-unavailable" role="status"><h2>Editor</h2><p id="editor-status">Checking Editor…</p><button class="primary-button" id="editor-retry" type="button">Retry Editor</button><button class="secondary-button" type="button" data-open-settings>Open Settings</button></div>
-      <iframe class="terminal-frame" id="editor-frame" title="VibeStack Editor" allow="clipboard-read; clipboard-write" hidden></iframe>
-    </main>
-  </div>
-
-  <dialog class="drawer" id="apps-dialog" aria-labelledby="apps-title" data-testid="apps-drawer">
-    <div class="drawer-shell">
-      <header class="drawer-header"><div><p class="eyebrow">Make this workspace yours</p><h2 id="apps-title">Apps</h2></div><button class="icon-button close-button" type="button" data-close-dialog aria-label="Close apps"><svg aria-hidden="true"><use href="#i-close"></use></svg></button></header>
-      <div class="drawer-content">
-        <p>Choose individual apps or start with a pack. You can add more whenever you need them.</p>
-        <a class="primary-button browse-apps" href="/setup/?force=1&screen=apps">Browse apps and packs</a>
-        <p id="apps-summary" role="status">Checking installed apps…</p>
-        <section aria-labelledby="apps-packs-title"><h3 id="apps-packs-title">Packs</h3><div class="apps-packs" id="apps-packs"></div></section>
-        <p><a href="/setup/?force=1#agent-connect-title">Connect your agent</a></p>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog class="drawer" id="settings-dialog" aria-labelledby="settings-title" data-testid="settings-drawer">
-    <div class="drawer-layout">
-      <header class="drawer-header">
-        <div><p class="eyebrow">Desktop controls</p><h2 id="settings-title">Settings</h2></div>
-        <button class="icon-button close-button" type="button" data-close-dialog aria-label="Close settings"><svg><use href="#i-close"></use></svg></button>
-      </header>
-      <div class="drawer-content">
-        <section class="settings-shortcuts"><button class="secondary-button" type="button" data-open-apps>Apps and packs</button><a href="/setup/?force=1&amp;screen=password">Change password</a></section>
-        <section class="setting-section connection-setting" aria-labelledby="connection-heading">
-          <div class="section-heading"><div><h3 id="connection-heading">Connection</h3><p id="settings-connection-note">The remote desktop connects automatically.</p></div></div>
-          <button class="secondary-button" id="disconnect-button" type="button">Disconnect desktop</button>
-        </section>
-
-        <section class="setting-section" aria-labelledby="scale-heading">
-          <div class="section-heading"><div><h3 id="scale-heading">Canvas size</h3><p>Choose how the remote desktop fits this screen.</p></div></div>
-          <div class="segmented-control">
-            <label><input type="radio" name="scale" value="fit" checked><span>Fit screen</span></label>
-            <label><input type="radio" name="scale" value="actual"><span>Actual size</span></label>
+      <section id="password-step" hidden aria-labelledby="password-heading">
+        <h2 id="password-heading">Set your Linux password</h2>
+        <p>Use this for sudo inside the desktop. It goes directly to the password handler and is never sent to an agent.</p>
+        <form id="password-form">
+          <label for="linux-password">Linux password</label>
+          <input id="linux-password" type="password" autocomplete="new-password" minlength="12" required>
+          <label for="linux-confirmation">Confirm Linux password</label>
+          <input id="linux-confirmation" type="password" autocomplete="new-password" minlength="12" required>
+          <button class="primary" type="submit">Save password</button>
+        </form>
+      </section>
+      <section id="agent-workspace" hidden>
+        <details id="provider-setup" open>
+          <summary>Agent setup</summary>
+          <div class="setup-fields">
+            <label for="provider-select">Provider</label><select id="provider-select"></select>
+            <p id="provider-status" role="status">Choose an agent runtime for this desktop.</p>
+            <div class="button-row"><button id="provider-activate" class="primary" type="button">Activate provider</button><button id="provider-open" type="button" hidden>Open sign-in app</button><button id="provider-refresh" type="button">Refresh status</button><button id="provider-stop" type="button" hidden>Stop provider</button></div>
+            <label for="model-select">Model</label><select id="model-select"><option value="">Activate a provider first</option></select>
+            <label for="project-select">Project folder</label><input id="project-select" value="vibestack" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{0,127}" maxlength="128" autocomplete="off" spellcheck="false" aria-describedby="project-hint">
+            <p class="hint" id="project-hint">A folder directly inside /projects. Your Codespace source is usually vibestack.</p>
+            <button id="new-conversation" type="button">New conversation</button>
+            <p class="hint">The provider may use a remote model and your account's quota. Its tools can change files and run commands as the desktop user.</p>
           </div>
-        </section>
-
-        <section class="setting-section" aria-labelledby="render-profile-heading">
-          <div class="section-heading"><div><h3 id="render-profile-heading">Rendering profile</h3><p>Start with a tuned balance, then adjust the controls below if needed.</p></div></div>
-          <label class="sr-only" for="render-profile">Rendering profile</label>
-          <select id="render-profile">
-            <option value="balanced">Balanced</option>
-            <option value="clarity">Maximum clarity</option>
-            <option value="constrained">Constrained network</option>
-            <option value="custom">Custom</option>
-          </select>
-        </section>
-
-        <section class="setting-section" aria-labelledby="quality-heading">
-          <div class="range-heading"><div><h3 id="quality-heading">Image quality</h3><p>Higher values use more bandwidth.</p></div><output id="quality-output" for="quality-range">7</output></div>
-          <input class="range" id="quality-range" type="range" min="0" max="9" step="1" value="7" aria-labelledby="quality-heading quality-output">
-        </section>
-
-        <section class="setting-section" aria-labelledby="compression-heading">
-          <div class="range-heading"><div><h3 id="compression-heading">Compression</h3><p>Higher values reduce bandwidth but use more CPU.</p></div><output id="compression-output" for="compression-range">2</output></div>
-          <input class="range" id="compression-range" type="range" min="0" max="9" step="1" value="2" aria-labelledby="compression-heading compression-output">
-        </section>
-
-        <section class="setting-section toggle-list" aria-label="Connection preferences">
-          <label class="toggle-row">
-            <span><strong>View only</strong><small>Ignore mouse and keyboard input.</small></span>
-            <input id="view-only-toggle" type="checkbox" role="switch"><i aria-hidden="true"></i>
-          </label>
-          <label class="toggle-row">
-            <span><strong>Reconnect automatically</strong><small>Recover when the desktop restarts.</small></span>
-            <input id="reconnect-toggle" type="checkbox" role="switch" checked><i aria-hidden="true"></i>
-          </label>
-        </section>
-
-        <section class="setting-section" aria-labelledby="display-heading">
-          <div class="section-heading"><div><h3 id="display-heading">Desktop resolution</h3><p>Match the Linux desktop to this screen or choose a fixed size.</p></div></div>
-          <label class="toggle-row display-auto-row">
-            <span><strong>Match screen automatically</strong><small>Resize after this browser or device changes orientation.</small></span>
-            <input id="auto-resize-toggle" type="checkbox" role="switch"><i aria-hidden="true"></i>
-          </label>
-          <div class="inline-form">
-            <label class="sr-only" for="display-select">Desktop resolution</label>
-            <select id="display-select"><option value="">Loading available sizes…</option></select>
-            <button class="secondary-button" id="display-apply" type="button" disabled>Apply</button>
-          </div>
-          <p class="field-note" id="display-note" role="status"></p>
-        </section>
-      </div>
+        </details>
+        <label for="conversation-select">Conversation</label><select id="conversation-select"><option value="">New conversation</option></select>
+        <p id="conversation-status" role="status">Choose a provider and model to begin.</p>
+        <p id="history-gap" class="notice" hidden>Some messages are unavailable here. Open the provider app to inspect its saved history before continuing.</p>
+        <div id="messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions text"></div>
+        <div id="approvals" aria-label="Pending human approvals"></div>
+        <form id="message-form">
+          <label for="message-input">Message your agent</label>
+          <textarea id="message-input" rows="3" maxlength="65536" placeholder="What would you like to build?" required></textarea>
+          <div class="button-row"><button id="send-message" class="primary" type="submit">Send</button><button id="stop-turn" type="button" hidden>Stop turn</button></div>
+        </form>
+      </section>
+      <details id="desktop-recovery">
+        <summary>Connection help</summary>
+        <p id="connection-status" data-testid="connection-status" data-state="connecting">Desktop connecting…</p>
+        <button id="desktop-reconnect" type="button">Reconnect desktop</button>
+        <p><a href="/AGENTS.md" target="_blank" rel="noreferrer">Agent and CLI connection guide</a></p>
+        <button id="disconnect-workspace" type="button" hidden>Disconnect this browser</button>
+      </details>
     </div>
-  </dialog>
-
-  <dialog class="drawer" id="tools-dialog" aria-labelledby="tools-title" data-testid="tools-drawer">
-    <div class="drawer-layout">
-      <header class="drawer-header">
-        <div><p class="eyebrow">Workspace</p><h2 id="tools-title">Tools</h2></div>
-        <button class="icon-button close-button" type="button" data-close-dialog aria-label="Close tools"><svg><use href="#i-close"></use></svg></button>
-      </header>
-      <div class="drawer-content">
-        <div class="tool-summary" aria-label="System status">
-          <div><span>Uptime</span><strong id="status-uptime">—</strong></div>
-          <div><span>Disk free</span><strong id="status-disk">—</strong></div>
-          <div><span>Resolution</span><strong id="status-resolution">—</strong></div>
-        </div>
-
-        <section class="setting-section" aria-labelledby="services-heading">
-          <div class="section-heading with-action"><div><h3 id="services-heading">Services</h3><p>Start, stop, or restart persistent workspace services. Stopping native VNC leaves browser Desktop available.</p></div>
-            <button class="icon-button" id="status-refresh" type="button" aria-label="Refresh system status" title="Refresh"><svg><use href="#i-refresh"></use></svg></button>
-          </div>
-          <div class="service-list" id="service-list" aria-live="polite"><p class="empty-state">Open Tools to load service status.</p></div>
-        </section>
-
-        <section class="setting-section" aria-labelledby="logs-heading">
-          <div class="section-heading"><div><h3 id="logs-heading">Service logs</h3><p>Up to 200 recent lines. Logs are never stored in the browser.</p></div></div>
-          <div class="inline-form">
-            <label class="sr-only" for="log-service">Service</label>
-            <select id="log-service">
-              <option value="desktop">Desktop</option>
-              <option value="vnc">VNC</option>
-              <option value="terminal">Terminal</option>
-              <option value="setup">Setup</option>
-              <option value="ssh">SSH</option>
-              <option value="native-vnc">Native VNC</option>
-              <option value="editor">Browser editor</option>
-            </select>
-            <button class="secondary-button" id="log-refresh" type="button">Load</button>
-          </div>
-          <pre class="log-output" id="log-output" tabindex="0" aria-label="Service log output">Choose a service, then load its recent log.</pre>
-          <p class="field-note" id="log-status" role="status"></p>
-          <button class="text-button" id="log-more" type="button" hidden>Check for new entries</button>
-        </section>
-
-        <section class="quick-links" aria-label="Open another VibeStack interface">
-          <a href="/vnc/?view=desktop"><strong>Desktop</strong><svg aria-hidden="true"><use href="#i-desktop"></use></svg></a>
-          <a href="/vnc/?view=terminal"><strong>Terminal</strong><svg aria-hidden="true"><use href="#i-terminal"></use></svg></a>
-          <a href="/vnc/?view=editor" data-workspace-editor><strong>Editor</strong><svg aria-hidden="true"><use href="#i-tools"></use></svg></a>
-          <a href="/vnc/?panel=settings" data-open-settings><strong>Settings</strong><svg aria-hidden="true"><use href="#i-settings"></use></svg></a>
-        </section>
-        <p><a href="/vnc/?panel=apps" data-open-apps>Apps and packs</a></p>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog class="clipboard-dialog" id="clipboard-dialog" aria-labelledby="clipboard-title">
-    <header class="modal-header"><div><p class="eyebrow">Shared clipboard</p><h2 id="clipboard-title">Clipboard</h2></div><button class="icon-button close-button" type="button" data-close-dialog aria-label="Close clipboard"><svg><use href="#i-close"></use></svg></button></header>
-    <p>Paste text below to send it to Linux. Text copied inside Linux appears here.</p>
-    <label class="sr-only" for="clipboard-text">Clipboard text</label>
-    <textarea id="clipboard-text" rows="7" placeholder="Paste or type text…" spellcheck="false"></textarea>
-    <div class="modal-actions">
-      <button class="text-button" id="clipboard-clear" type="button">Clear</button>
-      <button class="text-button" id="clipboard-copy" type="button">Copy to this device</button>
-      <button class="primary-button" id="clipboard-send" type="button">Send to desktop</button>
-    </div>
-  </dialog>
-
-  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
-  <noscript><div class="noscript">VibeStack Desktop requires JavaScript to connect to the remote desktop.</div></noscript>
-
-  <script type="module" src="app.js"></script>
+    <footer>VibeStack</footer>
+  </section>
+  <noscript>VibeStack needs JavaScript to connect to the desktop and agent.</noscript>
 </body>
 </html>

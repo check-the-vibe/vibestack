@@ -190,7 +190,7 @@ Everything else is a catalog component.
 | `/AGENTS.md`, `/CLI.md`, `/AUTOMATION.md`, `/RUNNER.md` | Non-cacheable version-matched guides. |
 | `/cli.sh`, `/skills/vibestack/SKILL.md` | Secret-free client bootstrap and portable agent skill. |
 | `/manifest.webmanifest`, `/service-worker.js`, `/icons/` | PWA resources. |
-| `/` | Opens Desktop; supported panel/view query parameters are preserved. Header logos return here. |
+| `/` | Opens the desktop canvas and agent icon; old panel/view parameters are discarded. |
 
 Redirects are relative, so the host and port the client used are preserved.
 Dynamic interfaces and API responses are never service-worker cached.
@@ -202,41 +202,29 @@ Dynamic interfaces and API responses are never service-worker cached.
 connects to `/vnc/websockify`. VibeStack never imports upstream UI modules or
 uses underscore-prefixed noVNC internals.
 
-On incomplete first-run or legacy state the root launcher first routes the
-browser to `/setup/`. Once onboarding is complete, it sends explicit choices to
-`/vnc/?view=desktop` or `/vnc/?view=terminal`. The shell exposes those views as accessible top-bar tabs,
-updates same-document history, and embeds the existing same-origin `/terminal/`
-route without altering ttyd. A terminal-first launch does not create an RFB
-connection; switching away from Desktop disconnects it and switching back
-starts a fresh bounded connection.
+The root entry point opens `/vnc/` and ignores old navigation query parameters.
+The canvas has one agent icon. A keyboard-accessible nonmodal panel contains
+separate workspace-credential and Linux-password forms, deterministic provider
+setup, provider/model/project selection, conversations, text/action events,
+human approvals, interruption and connection help. It uses the existing service
+cookie/CSRF/instance boundary; no provider-specific endpoints or private secrets
+reach the browser. There is no vendor-specific installation logic in the UI.
 
-The shell has a full-viewport canvas, embedded terminal, status/recovery UI, Settings and Tools
-drawers, accessible focus management and touch-sized controls. It explicitly
-handles connect, disconnect, security failure, credential requirement,
-server-verification, clipboard and desktop-name events. An unexpected network
-disconnect uses bounded reconnects; a security failure never loops.
+Closing/Escape hides the panel without stopping native work; focus returns to the
+icon, and canvas input outside the panel remains available. Switching provider or
+starting a new conversation never forwards another conversation's history. Text
+uses DOM text nodes, not HTML. Responses have bounded page/DOM buffers. Lost replies
+are inspected rather than automatically replayed; history gaps and unsupported
+native interactions remain visible. Owner-only one-action approvals require an
+explicit human click, and incomplete previews cannot be allowed.
 
-The top bar's collapsed **Menu** disclosure opens a popover containing the
-software-keyboard trigger, clipboard, latched Ctrl/Alt/Super keys,
-Ctrl-Alt-Delete, a one-shot **Match screen** action, and the **Settings** and
-**Tools** drawer launchers. It replaces the persistent bottom control dock and
-the separate top-level drawer buttons, so these actions do not permanently
-reserve or cover canvas space. Focus and fullscreen remain directly available
-in the top bar.
-
-Settings offers balanced (quality 7/compression 2), maximum-clarity (9/2), and
-constrained-link (5/6) rendering profiles plus fit/1:1 local scaling, manual
-JPEG quality/compression, view-only, automatic reconnect, optional automatic
-screen matching and an explicit fixed OS display resolution. Automatic
-matching is off by default. It derives the
-remote size from the rendered desktop stage in CSS pixels, preserves the stage
-orientation, debounces viewport changes and pauses while the page is hidden or
-a browser text field/software keyboard owns the viewport. Fit scaling remains
-enabled as the local presentation fallback; `RFB.resizeSession` remains false.
-Tools exposes core service cards, bounded logs and confirmed restart actions.
-The same control contract manages SSH, native VNC, and core editor
-services with explicit start/stop/restart operations. Stopping native VNC does
-not stop the independent browser desktop path.
+The canvas uses fit scaling, quality 7/compression 2 and `RFB.resizeSession=false`.
+Initial or clean disconnect offers manual recovery; an established session's
+unexpected interruption uses bounded backoff. Security/verification failures do
+not retry. Standalone old UI/services remain until VST-016 migration; the current
+canvas no longer embeds ttyd/code-server or their navigation. The outer Codespaces
+editor remains the source-editing surface. See
+[the overlay contract](architecture/agent-overlay.md) for evidence and limits.
 
 Inside XFCE, the stock application tree is replaced by a VibeStack menu with
 VibeStack Actions, Coding, Create & Review, Applications, and System collections.
@@ -247,9 +235,9 @@ such as taking a screenshot. Category discovery lets per-user Flatpak exports
 appear without regenerating the menu. The menu never exposes arbitrary shell
 text as a desktop action.
 
-Only these preferences are persisted in versioned browser local storage:
-scale mode, quality, compression, view-only, reconnect and the automatic-match
-toggle. Clipboard text, credentials, logs and API data are never persisted.
+The overlay writes no browser local/session storage. Transient chat stays in page
+memory; provider-native history and protected manager metadata retain their
+separate persistence contracts. Existing old preferences are not read or erased.
 
 The PWA manifest starts at `/`, has root scope and uses standalone display.
 The root-scoped service worker caches versioned static shell/runtime assets and
@@ -696,10 +684,9 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-2 `/vnc/` serves the VibeStack shell, contains no stock noVNC controls,
   imports the pinned RFB module, and reaches ServerInit through
   `/vnc/websockify`.
-- AC-3 `/` opens Desktop, requesting password setup only when needed. Successful
-  password setup opens the Apps sidebar. Query `panel=apps` forces that sidebar;
-  Apps opens the full-screen searchable catalog with pack selection. Terminal and
-  Editor each have a full workspace view and a return path to Desktop.
+- AC-3 `/` opens the desktop canvas and agent icon. The panel provides workspace
+  connection, first password and provider setup without a model. Old navigation
+  parameters do not resurrect the retired panels.
 - AC-4 `/manifest.webmanifest`, `/service-worker.js`, shell assets, icons and
   required `/novnc/` modules return correct content types. Obsolete `/ui/`,
   `/admin/` paths return 404. `/mcp` requires workspace authentication before
@@ -712,28 +699,16 @@ marked physical are release checks performed on an iPadOS 17+ device.
 - AC-6 Connection state covers connect, clean disconnect, unexpected
   disconnect, offline pause, bounded reconnect, manual Retry, security failure
   and VNC restart without creating duplicate RFB objects or retry timers.
-- AC-6a Desktop/Terminal tabs are keyboard accessible, preserve same-document
-  history, lazy-load the same-origin ttyd frame, avoid an RFB connection for a
-  terminal-first launch, and reconnect when Desktop is selected again. The
-  disposable browser suite loads the real ttyd client, verifies its iframe,
-  CSP, resources, WebSocket and focus path, and observes a computed result from
-  harmless keyboard input sent to the PTY.
-- AC-7 Fit and 1:1 modes, quality 0–9, compression 0–9, view-only, reconnect
-  and automatic-match preferences affect their documented behavior and survive
-  reload. Invalid stored fields fall back safely; automatic matching defaults
-  off and `RFB.resizeSession` remains false.
-- AC-8 The top **Menu** disclosure is collapsed by default and provides
-  clipboard send/receive, software-keyboard focus, latched modifiers,
-  Ctrl-Alt-Delete, one-shot screen matching, Settings, and Tools without a
-  bottom desktop overlay or separate top-level Settings/Tools buttons. Clipboard
-  and credentials never enter persistent storage, and modifiers are released
-  when the panel closes, on disconnect, and on page hide.
-- AC-9 The Menu popover and Settings and Tools drawers are keyboard
-  accessible, restore focus, close on Escape, use 44px touch targets and
-  communicate status without color alone. Logs and remote strings are rendered
-  as text.
-- AC-10 Service restart requires explicit confirmation, reports the backend
-  result, and an expected VNC disconnect flows into normal reconnect recovery.
+- AC-6a The canvas remains interactive outside the nonmodal panel. Closing the
+  panel retains its conversation and running work; source editing uses Codespaces.
+- AC-7 Fit scaling and balanced rendering remain defaults; `resizeSession` stays
+  false. The panel offers connection recovery without old display/settings menus.
+- AC-8 No legacy toolbar, tabs, Apps/Settings drawer or embedded terminal/editor
+  is present in the canvas. Standalone route/service retirement is VST-016.
+- AC-9 The icon and panel are keyboard/screen-reader accessible, restore focus,
+  close on Escape, fit narrow screens and render provider content as inert text.
+- AC-10 Setup, streaming, scoped human approvals, lost replies, interruption and
+  event gaps follow SPEC-004. Fakes supplement real signed-in provider acceptance.
 
 **Control API and privilege boundary**
 
@@ -975,26 +950,16 @@ its output in `/data/logs/vibestack/services/vibestack-control.log`. The host
 walkthrough helper combines sanitized metadata into a private rotating JSONL
 trace and supports explicitly targeted ephemeral source patches with backups.
 
-Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
-Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
-sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
-onboarding was completed earlier. The same parameters work on `/vnc/`.
-After a successful password submission, Setup opens `/vnc/?panel=apps`.
-
-Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
-Packs reuse the existing catalog presets; choosing a pack selects its supported
-components, and Install submits the existing durable install operation. Search
-never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
-without installing it. Password changes remain available from Settings at
-`/setup/?force=1&screen=password`.
-
-Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
-workspace beneath its navigation. Their Back control and browser Back return to
-Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
-services remain separate same-origin frames. If Editor is unavailable, its view
-offers service recovery instead of loading a broken frame. No new API authority or
-storage migration is introduced. Patches and later image updates must preserve
-existing `/data`, `/projects`, attached drives, passwords and saved selections.
+The desktop entry point (`/` → `/vnc/`) shows a full canvas and one agent icon.
+The icon opens a nonmodal panel for workspace connection, first Linux password,
+provider activation/sign-in, conversations, approvals and recovery. Closing it
+keeps provider work running and restores focus to the icon. Old `view`/`panel`
+query parameters do not reopen retired navigation. No chat text, provider output
+or credentials are stored in browser local/session storage. API authorization,
+browser CSRF, persistent mounts and provider execution authority remain unchanged.
+Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
+VST-016 owns their complete removal after replacement acceptance. Source editing
+remains available in the outer Codespaces editor.
 
 The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
 amd64/arm64 package checksums and identities are verified during image build;

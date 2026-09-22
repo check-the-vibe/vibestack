@@ -175,26 +175,16 @@ Most runtime source is copied into the image, so changes to `desktop/`,
 require a rebuild. Playwright tests can target an already-running container;
 Python source tests run directly from the checkout.
 
-Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
-Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
-sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
-onboarding was completed earlier. The same parameters work on `/vnc/`.
-After a successful password submission, Setup opens `/vnc/?panel=apps`.
-
-Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
-Packs reuse the existing catalog presets; choosing a pack selects its supported
-components, and Install submits the existing durable install operation. Search
-never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
-without installing it. Password changes remain available from Settings at
-`/setup/?force=1&screen=password`.
-
-Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
-workspace beneath its navigation. Their Back control and browser Back return to
-Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
-services remain separate same-origin frames. If Editor is unavailable, its view
-offers service recovery instead of loading a broken frame. No new API authority or
-storage migration is introduced. Patches and later image updates must preserve
-existing `/data`, `/projects`, attached drives, passwords and saved selections.
+The desktop entry point (`/` → `/vnc/`) shows a full canvas and one agent icon.
+The icon opens a nonmodal panel for workspace connection, first Linux password,
+provider activation/sign-in, conversations, approvals and recovery. Closing it
+keeps provider work running and restores focus to the icon. Old `view`/`panel`
+query parameters do not reopen retired navigation. No chat text, provider output
+or credentials are stored in browser local/session storage. API authorization,
+browser CSRF, persistent mounts and provider execution authority remain unchanged.
+Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
+VST-016 owns their complete removal after replacement acceptance. Source editing
+remains available in the outer Codespaces editor.
 
 The same image's canonical operating instructions are available internally at
 `/usr/share/doc/vibestack/AGENTS.md` and externally at `/AGENTS.md`; the full
@@ -679,26 +669,16 @@ reserve the full build/disposable image/browser acceptance for the agreed featur
 checkpoint. Record any interim failures. Before releasing a durable image, run
 the normal complete workflow above; a source patch is not image acceptance.
 
-Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
-Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
-sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
-onboarding was completed earlier. The same parameters work on `/vnc/`.
-After a successful password submission, Setup opens `/vnc/?panel=apps`.
-
-Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
-Packs reuse the existing catalog presets; choosing a pack selects its supported
-components, and Install submits the existing durable install operation. Search
-never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
-without installing it. Password changes remain available from Settings at
-`/setup/?force=1&screen=password`.
-
-Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
-workspace beneath its navigation. Their Back control and browser Back return to
-Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
-services remain separate same-origin frames. If Editor is unavailable, its view
-offers service recovery instead of loading a broken frame. No new API authority or
-storage migration is introduced. Patches and later image updates must preserve
-existing `/data`, `/projects`, attached drives, passwords and saved selections.
+The desktop entry point (`/` → `/vnc/`) shows a full canvas and one agent icon.
+The icon opens a nonmodal panel for workspace connection, first Linux password,
+provider activation/sign-in, conversations, approvals and recovery. Closing it
+keeps provider work running and restores focus to the icon. Old `view`/`panel`
+query parameters do not reopen retired navigation. No chat text, provider output
+or credentials are stored in browser local/session storage. API authorization,
+browser CSRF, persistent mounts and provider execution authority remain unchanged.
+Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
+VST-016 owns their complete removal after replacement acceptance. Source editing
+remains available in the outer Codespaces editor.
 
 The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
 amd64/arm64 package checksums and identities are verified during image build;

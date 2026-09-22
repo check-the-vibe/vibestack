@@ -257,9 +257,9 @@ URL:
 
 | Path | Surface |
 |---|---|
-| `/` | Launcher for Desktop, Terminal, setup, and this agent guide. |
+| `/` | Desktop canvas with agent-icon setup/chat overlay. |
 | `/vnc/?view=desktop` | Custom browser shell showing the XFCE desktop. |
-| `/vnc/?view=terminal` | The same shell with the persistent terminal selected. |
+| `/vnc/?view=terminal` | Compatibility link; opens the desktop/agent overlay. |
 | `/terminal/` | Raw ttyd terminal, backed by the same persistent tmux session. |
 | `/setup/?force=1` | Linux-password onboarding and durable component catalog. |
 | `/editor/` | Optional code-server project editor. |
@@ -267,12 +267,14 @@ URL:
 | `/CLI.md`, `/RUNNER.md` | Client and Docker-host runner references. |
 | `/AUTOMATION.md` | Complete REST API reference and examples. |
 
-The browser shell's **Desktop** and **Terminal** tabs switch views without
-leaving the workspace. **Menu** contains the on-screen keyboard, clipboard,
-modifier keys, Ctrl-Alt-Delete, Match screen, **Settings**, and **Tools**.
-Settings controls connection, scaling, image quality/compression, view-only,
-reconnect, and desktop resolution. Tools shows service health, bounded logs,
-and allowlisted restart actions.
+Open the agent icon on `/vnc/` for deterministic connection/password/provider
+setup and chat. Human secret forms submit directly to their handlers, not the
+model. The panel closes on Escape without stopping work. Provider output is inert
+text; only a human owner can answer its exact native approval. If the event stream
+reports a gap or unknown outcome, inspect provider history before more work.
+The old shell tabs/menus and embedded terminal/editor have been removed. Standalone
+legacy routes remain only during the VST-016 migration. Source editing stays in
+the outer Codespaces editor.
 
 The XFCE **VibeStack** menu contains Projects, Desktop, persistent logs, Setup
 & Onboarding, the Agent and Automation guides, service status, the Flathub
@@ -503,26 +505,16 @@ contents, terminal data or exception messages to this trace. Host operators can
 use `bin/vibestack-walkthrough` from the source checkout to collect a sanitized
 trace and apply/roll back explicit development patches; see `docs/DEVELOPMENT.md`.
 
-Desktop is the default landing page (`/` opens `/vnc/`). Navigation retains
-Desktop, Terminal, Editor, and Settings. Apps and Settings are contextual
-sidebars; `/?panel=apps` and `/?panel=settings` force them open, including when
-onboarding was completed earlier. The same parameters work on `/vnc/`.
-After a successful password submission, Setup opens `/vnc/?panel=apps`.
-
-Apps opens the full-screen searchable catalog at `/setup/?force=1&screen=apps`.
-Packs reuse the existing catalog presets; choosing a pack selects its supported
-components, and Install submits the existing durable install operation. Search
-never clears the selection. An optional `pack=<catalog-preset-id>` selects a pack
-without installing it. Password changes remain available from Settings at
-`/setup/?force=1&screen=password`.
-
-Terminal (`/vnc/?view=terminal`) and Editor (`/vnc/?view=editor`) each fill the
-workspace beneath its navigation. Their Back control and browser Back return to
-Desktop, including on direct entry. The underlying `/terminal/` and `/editor/`
-services remain separate same-origin frames. If Editor is unavailable, its view
-offers service recovery instead of loading a broken frame. No new API authority or
-storage migration is introduced. Patches and later image updates must preserve
-existing `/data`, `/projects`, attached drives, passwords and saved selections.
+The desktop entry point (`/` → `/vnc/`) shows a full canvas and one agent icon.
+The icon opens a nonmodal panel for workspace connection, first Linux password,
+provider activation/sign-in, conversations, approvals and recovery. Closing it
+keeps provider work running and restores focus to the icon. Old `view`/`panel`
+query parameters do not reopen retired navigation. No chat text, provider output
+or credentials are stored in browser local/session storage. API authorization,
+browser CSRF, persistent mounts and provider execution authority remain unchanged.
+Standalone `/setup/`, `/terminal/` and `/editor/` services remain during VST-015;
+VST-016 owns their complete removal after replacement acceptance. Source editing
+remains available in the outer Codespaces editor.
 
 The browser Editor is a required, preinstalled code-server 4.136.2 service. Its
 amd64/arm64 package checksums and identities are verified during image build;
