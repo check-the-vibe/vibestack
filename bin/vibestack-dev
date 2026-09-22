@@ -347,7 +347,7 @@ run_acceptance() (
     copy_onboarding_probe
     docker exec -i "$acceptance_container" \
       python3 /tmp/vibestack-runtime-onboarding-check.py \
-        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" \
+        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" with-providers \
       < "$acceptance_password_file"
     rollback_probe previous
     docker exec -u vibe "$acceptance_container" vibestack-check --live
@@ -358,7 +358,7 @@ run_acceptance() (
     copy_onboarding_probe
     docker exec -i "$acceptance_container" \
       python3 /tmp/vibestack-runtime-onboarding-check.py \
-        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" \
+        verify-catalog-restored "$ACCEPTANCE_RESTORE_TIMEOUT_SECONDS" with-providers \
       < "$acceptance_password_file"
     rollback_probe candidate
     docker exec -u vibe "$acceptance_container" vibestack-check --live

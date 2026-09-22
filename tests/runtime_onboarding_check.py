@@ -855,6 +855,7 @@ def parse_restore_timeout(raw: str) -> int:
 
 
 def main() -> int:
+    global CATALOG_COMPONENTS
     require(os.geteuid() == 0, "runtime onboarding acceptance must run as root")
     require(len(sys.argv) >= 2, "invalid acceptance mode")
     mode = sys.argv[1]
@@ -865,9 +866,16 @@ def main() -> int:
         return 0
     require(
         (mode in {"configure", "verify-restored"} and len(sys.argv) == 2)
-        or (mode == "verify-catalog-restored" and len(sys.argv) == 3),
+        or (mode == "verify-catalog-restored" and len(sys.argv) == 3)
+        or (mode == "verify-catalog-restored" and len(sys.argv) == 4 and sys.argv[3] == "with-providers"),
         "invalid acceptance mode",
     )
+
+    if mode == "verify-catalog-restored" and len(sys.argv) == 4:
+        # The native-provider smoke runs after the original catalog check.
+        # Preserve exact-set validation, now including its explicit additions
+        # and their shared catalog dependency, on both rollback transitions.
+        CATALOG_COMPONENTS += ("node", "codex-cli", "opencode")
 
     secret = read_secret()
     try:
